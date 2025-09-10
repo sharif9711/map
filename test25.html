@@ -1,0 +1,296 @@
+﻿<!DOCTYPE html>
+<html><head><meta charset='utf-8'>
+<meta name='viewport' content='width=device-width,initial-scale=1'>
+<title>출장용 지도</title>
+<style>
+*{box-sizing:border-box}html,body{width:100%;height:100%;margin:0}
+#wrap{display:flex;width:100%;height:100vh}
+#side{width:460px;max-width:56vw;border-right:1px solid #e5e7eb;
+background:#fafafa;display:flex;flex-direction:column}
+#side .hdr{padding:10px 12px;border-bottom:1px solid #e5e7eb;
+background:#fff;font-weight:600;font-size:13px;display:flex;
+align-items:center;gap:8px;justify-content:space-between}
+.leftHdr{display:flex;align-items:center;gap:8px}
+.count{margin-left:8px;font-size:12px;background:#111827;color:#fff;
+border-radius:999px;padding:2px 8px}
+.btnPrimary{font-size:12px;border:1px solid #1d4ed8;background:#2563eb;
+color:#fff;border-radius:8px;padding:6px 10px;cursor:pointer}
+.btnPrimary:disabled{opacity:.5;cursor:not-allowed;background:#9ca3af;
+border-color:#9ca3af}
+#list{overflow:auto;flex:1;padding:8px}
+.item{display:flex;gap:8px;align-items:flex-start;
+justify-content:space-between;padding:8px 10px;border:1px solid #e5e7eb;
+background:#fff;border-radius:10px;margin-bottom:6px;transition:.15s}
+.item.hidden{opacity:.55}.meta{flex:1;min-width:0}
+.it-line{font-size:12px;line-height:1.2;white-space:nowrap;overflow:hidden;
+text-overflow:ellipsis;color:#111827}
+.ctrl-row{margin-top:6px;display:flex;gap:6px;flex-wrap:wrap}
+.btnSmall{font-size:12px;border:1px solid #e5e7eb;background:#fff;
+border-radius:8px;padding:4px 10px;cursor:pointer;transition:.15s}
+.btnSmall.route-on{background:#10b981;border-color:#059669;color:#fff}
+.item.selected{border-color:#2563eb;background:#dbeafe;
+box-shadow:0 0 0 2px rgba(37,99,235,.2) inset}
+.item.selected .it-line{color:#1d4ed8;font-weight:600}
+#map{flex:1;position:relative}
+.mapTools{position:absolute;left:12px;top:12px;z-index:15;background:#fff;
+border:1px solid #e5e7eb;border-radius:10px;box-shadow:0 2px 6px rgba(0,0,0,.08);
+padding:6px 8px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.toolGroup{display:flex;gap:6px;flex-wrap:wrap}
+.btnToggle{appearance:none;border:1px solid #e5e7eb;background:#fff;
+border-radius:999px;padding:6px 12px;font-size:12px;color:#111827;cursor:pointer;
+transition:.15s}
+.btnToggle.is-on{background:#2563eb;border-color:#1d4ed8;color:#fff;
+box-shadow:0 0 0 2px rgba(37,99,235,.15)}
+.label{display:inline-block;margin-left:10px;padding:4px 8px;background:#111;
+color:#fff;border-radius:8px}
+.toast{position:absolute;left:50%;top:16px;transform:translateX(-50%);
+padding:8px 12px;background:#111827;color:#fff;border-radius:10px;font-size:12px;opacity:.92;z-index:20}
+.mypos-wrap{position:relative;width:24px;height:24px;transform:translate(-50%,-50%)}
+.mypos-dot{position:absolute;left:50%;top:50%;width:15px;height:15px;margin:-7.5px 0 0 -7.5px;
+border-radius:50%;background:#fbbf24;box-shadow:0 0 0 2px #fff}
+.mypos-pulse{position:absolute;left:50%;top:50%;width:15px;height:15px;margin:-7.5px 0 0 -7.5px;
+border-radius:50%;background:#fde68a;opacity:.8;animation:pulse 1.8s ease-out infinite}
+@keyframes pulse{0%{transform:translate(-50%,-50%) scale(1);opacity:.8}
+80%{transform:translate(-50%,-50%) scale(2.4);opacity:0}
+100%{transform:translate(-50%,-50%) scale(2.4);opacity:0}}
+.nav-arrow{width:34px;height:34px;transform:translate(-50%,-50%) rotate(0deg);pointer-events:none}
+.info-card{min-width:220px;max-width:340px;background:#fff;border:1px solid #e5e7eb;
+border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.12);padding:10px 12px;font-size:12px;color:#111827;position:relative}
+.info-title{font-weight:700;margin-bottom:4px}.info-addr{color:#374151;line-height:1.3;margin-bottom:8px}
+.info-actions{display:flex;gap:6px;flex-wrap:wrap}
+.info-close{position:absolute;top:6px;right:6px;font-size:11px;padding:2px 6px;border:1px solid #e5e7eb;border-radius:6px;background:#f3f4f6;cursor:pointer}
+.info-close:hover{background:#e5e7eb}
+.statusBar{position:absolute;top:56px;left:12px;z-index:16;display:flex;gap:6px;background:#fff;border:1px solid #e5e7eb;border-radius:10px;box-shadow:0 2px 6px rgba(0,0,0,.08);padding:6px 8px}
+.filterBtn{font-size:12px;border:1px solid #e5e7eb;background:#fff;border-radius:999px;padding:6px 10px;cursor:pointer}
+.filterBtn.on{background:#111827;color:#fff;border-color:#111827}
+.modal-back{position:fixed;left:0;top:0;width:100%;height:100%;background:rgba(0,0,0,.35);display:none;align-items:center;justify-content:center;z-index:50}
+.modal{width:560px;max-width:92vw;background:#fff;border-radius:14px;border:1px solid #e5e7eb;box-shadow:0 16px 40px rgba(0,0,0,.18)}
+.modal .m-hdr{padding:12px 14px;border-bottom:1px solid #e5e7eb;font-weight:700}
+.modal .m-bd{padding:12px 14px;display:flex;gap:10px;flex-direction:column}
+.chips{display:flex;gap:8px;flex-wrap:wrap}.chip{padding:6px 10px;border:1px solid #e5e7eb;border-radius:999px;background:#fff;cursor:pointer;font-size:12px}
+.chip.on{background:#2563eb;border-color:#1d4ed8;color:#fff}
+.memo-read{border:1px dashed #e5e7eb;border-radius:10px;padding:8px;background:#fafafa;min-height:60px;white-space:pre-wrap}
+.memo-add{width:100%;min-height:90px;resize:vertical;border:1px solid #e5e7eb;border-radius:10px;padding:8px;font-size:12px}
+.m-ft{padding:10px 14px;border-top:1px solid #e5e7eb;display:flex;gap:8px;justify-content:flex-end}
+</style></head>
+<body><div id='wrap'>
+<div id='side'>
+<div class='hdr'><div class='leftHdr'>장소 목록 <span id='selCount' class='count'>0</span></div>
+<button id='btnExport' class='btnPrimary' disabled>완료(저장)</button></div>
+<div id='list'></div></div>
+<div id='map'><div class='mapTools'>
+<div class='toolGroup' id='grpMain'>
+<button id='btnList' class='btnToggle' aria-pressed='false'>목록</button>
+<button id='btnNames' class='btnToggle is-on' aria-pressed='true'>이름</button>
+<button id='btnMy' class='btnToggle' aria-pressed='false'>위치</button>
+<button id='btnDrive' class='btnToggle' aria-pressed='false'>길안내</button>
+</div></div>
+<div class='statusBar' id='grpFilter'>
+<button class='filterBtn on' data-filter='전체'>전체</button>
+<button class='filterBtn' data-filter='예정'>예정</button>
+<button class='filterBtn' data-filter='완료'>완료</button>
+<button class='filterBtn' data-filter='보류'>보류</button>
+</div></div></div>
+<div id='modalBack' class='modal-back'><div class='modal'>
+<div class='m-hdr'>상세 편집</div>
+<div class='m-bd'>
+<div class='chips'>
+<button class='chip' data-status='예정'>예정</button>
+<button class='chip' data-status='완료'>완료</button>
+<button class='chip' data-status='보류'>보류</button>
+</div>
+<div class='memo-read' id='memoRead'></div>
+<textarea class='memo-add' id='memoAdd' placeholder='추가로 남길 내용을 아래에 입력하세요(기존 내용은 위에 표시)'></textarea>
+</div>
+<div class='m-ft'><button id='btnSaveDetail' class='btnPrimary'>저장</button>
+<button id='btnCloseDetail' class='btnSmall'>닫기</button></div>
+</div></div>
+<script src='https://dapi.kakao.com/v2/maps/sdk.js?appkey=cdad276f68285333fba23b841fb49970'></script>
+<script src='https://developers.kakao.com/sdk/js/kakao.min.js'></script>
+<script>var rows=[{no:'1',title:'운남점',addr:'광주 광산구 하남대로 282 금강빌딩 1층',lat:35.1787932760297,lng:126.824498412264},{no:'2',title:'호남대점',addr:'광주광역시 광산구 선암동 779 1층 101호',lat:35.1486544192531,lng:126.770518587754},{no:'3',title:'수완점',addr:'광주광역시 광산구 수완동 1088 103호',lat:35.1916631352745,lng:126.824844279558},{no:'4',title:'전대후문점',addr:'광주광역시 북구 용봉동 161-11',lat:35.1754245688978,lng:126.913165485388},{no:'5',title:'충장로점',addr:'광주광역시 동구 충장로3가 15',lat:35.1486301123945,lng:126.915937398076},{no:'6',title:'첨단쌍암점',addr:'광주광역시 광산구 쌍암동 694-88 1층 103호 104호',lat:35.2153916318526,lng:126.852480017226},{no:'7',title:'수완점',addr:'광주광역시 광산구 수완동 1088 103호',lat:35.1916631352745,lng:126.824844279558},{no:'8',title:'대촌점',addr:'광주광역시 남구 지석동 323-4 1층 101호',lat:35.083126671149,lng:126.829909049979},{no:'9',title:'조선대점',addr:'광주광역시 동구 동명동 118-24',lat:35.1467422082157,lng:126.928271311048},{no:'10',title:'진월한신점',addr:'광주광역시 남구 진월동 339-7 1층',lat:35.121600033918,lng:126.895952111938},{no:'11',title:'운천점',addr:'광주광역시 서구 쌍촌동 981-24 1층',lat:35.1499761332719,lng:126.857448296664},{no:'12',title:'첨단중앙점',addr:'광주광역시 광산구 쌍암동 668-15 1층 102호',lat:35.2188143593882,lng:126.845707360072},{no:'13',title:'전대예대점',addr:'광주광역시 북구 용봉동 1210-8 1층',lat:35.1807822600771,lng:126.90400600916},{no:'14',title:'첨단산월점',addr:'광주광역시 광산구 산월동 883-1 호반리젠시빌 상가동 1층 103호',lat:35.2123160320473,lng:126.848384840562},{no:'15',title:'남시장점',addr:'광주광역시 동구 학동 63-7 1, 2층',lat:35.1404070135123,lng:126.921481120907},{no:'16',title:'신가점',addr:'광주광역시 광산구 신가동 986-3 동광빌딩 1층',lat:35.1854024393134,lng:126.836795209883},{no:'17',title:'농성점',addr:'광주광역시 서구 농성동 393-15 1층',lat:35.1570764872189,lng:126.883390255856},{no:'18',title:'일곡점',addr:'광주광역시 북구 일곡동 828-6',lat:35.2047148306774,lng:126.899116129213},{no:'19',title:'각화더샵점',addr:'광주광역시 북구 각화동 724 301동 B104호',lat:35.1849714846553,lng:126.930517103483},{no:'20',title:'충장중앙점',addr:'광주광역시 동구 호남동 35-3',lat:35.1482881185364,lng:126.912976045458},{no:'21',title:'동천점',addr:'광주광역시 서구 동천동 636 1층',lat:35.1711017761997,lng:126.868405879448},{no:'22',title:'화정중앙점',addr:'광주광역시 서구 화정동 783-27',lat:35.1528540818358,lng:126.879989494949},{no:'23',title:'첨단점',addr:'광주광역시 광산구 월계동 888-14 다음빌딩 1층 103호',lat:35.2150091099163,lng:126.843654238094},{no:'24',title:'송정역점',addr:'광주광역시 광산구 송정동 1430',lat:35.1380548531096,lng:126.791555678126},{no:'25',title:'상무지구점',addr:'광주광역시 서구 치평동 1217 1층',lat:35.1549394905296,lng:126.849925580021},{no:'26',title:'송정사랑점',addr:'광주광역시 광산구 송정동 895-1 1층',lat:35.1347708365084,lng:126.797727638685},{no:'27',title:'첨단2지구점',addr:'광주광역시 북구 신용동 713',lat:35.2073360758757,lng:126.862035603047},{no:'28',title:'금호점',addr:'광주광역시 서구 금호동 763-7 1층',lat:35.132664931047,lng:126.858667515118},{no:'29',title:'주월양우점',addr:'광주광역시 남구 주월동 960-5 1층 102호',lat:35.1341677613906,lng:126.897871631992},{no:'30',title:'문흥점',addr:'광주광역시 북구 문흥동 1002-2',lat:35.185635940221,lng:126.920925133066},{no:'31',title:'진월중앙점',addr:'광주광역시 남구 주월동 407-17 1층',lat:35.1263183412475,lng:126.897248941864},{no:'32',title:'쌍촌역점',addr:'광주광역시 서구 쌍촌동 947-41 1층',lat:35.1523714094528,lng:126.869279888025}];</script>
+<script type='module'>
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
+import { getFirestore, doc, getDoc, setDoc } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
+const fbCfg={apiKey:'AIzaSyDPRIMTMAwAo4roxIsiE0Bq5PtkBtsE9rU',authDomain:'checkmap-7c8a9.firebaseapp.com',projectId:'checkmap-7c8a9',storageBucket:'checkmap-7c8a9.firebasestorage.app',messagingSenderId:'951127160884',appId:'1:951127160884:web:19c783c31fbf45dc18b261'};
+const app=initializeApp(fbCfg); const db=getFirestore(app);
+const side=document.getElementById('side');
+const map=new kakao.maps.Map(document.getElementById('map'),{center:new kakao.maps.LatLng(37.566826,126.9786567),level:8});
+map.addControl(new kakao.maps.MapTypeControl(),kakao.maps.ControlPosition.TOPRIGHT);
+map.addControl(new kakao.maps.ZoomControl(),kakao.maps.ControlPosition.RIGHT);
+let markers=[];let bounds=new kakao.maps.LatLngBounds();let routeLine=null;let currentRouteIdx=null;let showNames=true;
+let selectedIdx=null;let activeInfo=null;let myOverlay=null;let myAcc=null;let myWatchId=null;let myLastLL=null;let prevLL=null;let firstFix=true;
+let drivingMode=false;let driveJustEnabled=false;let headingOverlay=null;let headingDeg=0;let currentFilter='전체';
+try{ if(!window.Kakao||!window.Kakao.isInitialized()) { window.Kakao.init('cdad276f68285333fba23b841fb49970'); } }catch(e){ console.warn(e); }
+function isMobile(){ return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent); }
+function openKakaoNavi(lat,lng,title,addr){
+  const name=encodeURIComponent(title||addr||'목적지');
+  const web='https://map.kakao.com/link/to/'+name+','+lat+','+lng;
+  if(isMobile() && window.Kakao && window.Kakao.Navi){
+    try{ window.Kakao.Navi.start({name:decodeURIComponent(name),x:Number(lng),y:Number(lat),coordType:'wgs84'}); return; }catch(e){ console.error(e); }
+  }
+  const appUrl='kakaonavi://navigate?apiver=1.0&coord_type=wgs84&by=CAR&ep='+encodeURIComponent(lng+','+lat)+'&name='+name+'&appkey=cdad276f68285333fba23b841fb49970';
+  if(isMobile()){ const t=Date.now(); window.location.href=appUrl; setTimeout(function(){ if(Date.now()-t<1500){ window.location.href=web; } },800); }
+  else { window.open(web,'_blank'); }
+}
+function colorsByStatus(st){ if(st==='완료') return {fill:'#2563eb',stroke:'#1d4ed8'}; if(st==='보류') return {fill:'#9ca3af',stroke:'#6b7280'}; return {fill:'#10b981',stroke:'#059669'}; }
+function getRowNumber(r,i){let t=r.no?String(r.no).trim():''; if(!t)t=String((i!=null?i:r.__idx)+1); return t;}
+function svgMarkerURL(text,_,status){ const cs=colorsByStatus(status||'예정'); text=String(text||''); if(text.length>3) text=text.slice(-3); const a="<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'>"; const b="<circle cx='16' cy='16' r='14' fill='"+cs.fill+"' stroke='"+cs.stroke+"' stroke-width='2'/>"; const c="<text x='16' y='21' text-anchor='middle' font-size='14' font-weight='700' fill='#fff'>"+text+"</text></svg>"; return 'data:image/svg+xml;charset=UTF-8,'+encodeURIComponent(a+b+c); }
+function makeMarkerImage(r){ const url=svgMarkerURL(getRowNumber(r),{},r.__status||'예정'); return new kakao.maps.MarkerImage(url,new kakao.maps.Size(32,32),{offset:new kakao.maps.Point(16,16)});} 
+function refreshMarker(i){const r=rows[i]; if(!r||!r.__marker)return; r.__marker.setImage(makeMarkerImage(r));}
+function refreshAllMarkers(){rows.forEach((_,i)=>refreshMarker(i));}
+function refreshLabelSize(){const lv=map.getLevel(),sz=Math.max(10,22-lv); document.querySelectorAll('.label').forEach(function(e){e.style.fontSize=sz+'px'});} 
+kakao.maps.event.addListener(map,'zoom_changed',refreshLabelSize); refreshLabelSize();
+const $list=document.getElementById('list');
+function renderList(a){
+  $list.innerHTML='';
+  a.forEach(function(r){
+    const hiddenByFilter=(currentFilter!=='전체' && (r.__status||'예정')!==currentFilter);
+    const el=document.createElement('div');
+    el.className='item';
+    el.dataset.idx=r.__idx;
+    if(r.__hidden || hiddenByFilter){ el.classList.add('hidden'); }
+    const tag=' ['+(r.__status||'예정')+(r.__memo?(' : '+r.__memo):'')+']';
+    const one='['+(r.no||'')+'] '+r.title+(r.addr?(' · '+r.addr):'')+tag;
+    var h=[];
+    h.push('<div class="meta">');
+    h.push('<div class="it-line">'+one+'</div>');
+    h.push('<div class="ctrl-row">');
+    h.push('<button class="btnSmall btnUnsel">선택해제</button>');
+    h.push('<button class="btnSmall btnRoute" aria-pressed="false">길안내</button>');
+    h.push('<button class="btnSmall btnDetail">자세히</button>');
+    h.push('</div></div>');
+    el.innerHTML=h.join('');
+    el.querySelector('.btnUnsel').addEventListener('click',function(e){
+      e.stopPropagation();
+      remove500At(r.__idx);
+      if(selectedIdx===r.__idx) selectedIdx=null;
+      document.querySelectorAll('#list .item').forEach(function(c){ c.classList.remove('selected'); });
+      refreshAllMarkers(); updateCount();
+    });
+    el.querySelector('.btnRoute').addEventListener('click',function(e){
+      e.stopPropagation(); routeTo(r.__idx);
+    });
+    el.querySelector('.btnDetail').addEventListener('click',function(e){
+      e.stopPropagation(); openDetail(r.__idx);
+    });
+    el.addEventListener('click',function(){
+      handleSelect(r.__idx); showPlaceInfo(r.__idx);
+    });
+    $list.appendChild(el);
+  });
+  updateCount();
+  updateRouteButtons();
+}
+rows.forEach(function(r,idx){ r.__idx=idx; r.__circle=null; r.__drawn=false; r.__hidden=false; r.__hiddenByFilter=false; r.__nameOv=null; r.__marker=null; r.__status='예정'; r.__memo=''; const ll=new kakao.maps.LatLng(r.lat,r.lng); bounds.extend(ll); const m=new kakao.maps.Marker({position:ll,image:makeMarkerImage(r)}); r.__marker=m; m.setMap(map); const d=document.createElement('div'); d.className='label'; d.textContent=r.title; d.style.cursor='pointer'; d.addEventListener('click',function(e){e.stopPropagation(); handleSelect(r.__idx); showPlaceInfo(r.__idx);}); const ov=new kakao.maps.CustomOverlay({position:ll,content:d,xAnchor:0,yAnchor:.5}); r.__nameOv=ov; ov.setMap(map); kakao.maps.event.addListener(m,'click',function(){handleSelect(r.__idx); showPlaceInfo(r.__idx);});}); if(rows.length>0){map.setBounds(bounds);} renderList(rows); refreshAllMarkers();
+async function loadPersisted(){ for(const r of rows){ const id='place_'+r.__idx; const ref=doc(db,'checkmap_items',id); const s=await getDoc(ref); if(s.exists()){ const v=s.data(); r.__status=v.status||'예정'; r.__memo=v.memo||''; } } renderList(rows); refreshAllMarkers(); applyFilter(); }
+loadPersisted();
+function createCircle(center,rad){ const c=new kakao.maps.Circle({center:center,radius:rad,strokeWeight:2,strokeColor:'#ef4444',strokeOpacity:0.9,fillColor:'#ef4444',fillOpacity:0.15}); return c; }
+function draw500Once(i){ const r=rows[i]; if(!r||r.__hidden||r.__hiddenByFilter) return; if(r.__circle){ renderList(rows); return; } const ll=new kakao.maps.LatLng(r.lat,r.lng); r.__circle=createCircle(ll,500); r.__circle.setMap(map); r.__drawn=true; renderList(rows); }
+function remove500At(i){ const r=rows[i]; if(!r) return; if(r.__circle){ r.__circle.setMap(null); r.__circle=null; } r.__drawn=false; renderList(rows); }
+function setNameLabelsVisible(on){ showNames=!!on; rows.forEach(function(r){ if(r.__nameOv) r.__nameOv.setMap((showNames && !r.__hidden && !r.__hiddenByFilter)?map:null); }); }
+function applyVisibility(r){ const v=(!r.__hidden && !r.__hiddenByFilter); if(r.__marker) r.__marker.setMap(v?map:null); if(r.__nameOv) r.__nameOv.setMap((v&&showNames)?map:null); if(r.__circle) r.__circle.setMap(v?map:null); refreshMarker(r.__idx); }
+function toggleRowVisibility(i){ const r=rows[i]; if(!r) return; r.__hidden=!r.__hidden; applyVisibility(r); renderList(rows); if(activeInfo){activeInfo.setMap(null); activeInfo=null;} }
+function applyFilter(){ rows.forEach(function(r){ r.__hiddenByFilter=(currentFilter!=='전체' && (r.__status||'예정')!==currentFilter); applyVisibility(r); }); renderList(rows); }
+const $btnList=document.getElementById('btnList'); const $btnNames=document.getElementById('btnNames'); const $btnMy=document.getElementById('btnMy'); const $btnDrive=document.getElementById('btnDrive');
+function setBtnState(btn,on){btn.classList.toggle('is-on',!!on); btn.setAttribute('aria-pressed',on?'true':'false');}
+function setListVisible(on){ side.style.display=on?'flex':'none'; setTimeout(function(){map.relayout()},150); }
+setBtnState($btnNames,true); setBtnState($btnList,false); setBtnState($btnMy,true); setBtnState($btnDrive,false); setListVisible(false);
+$btnNames.addEventListener('click',function(){ const on=!$btnNames.classList.contains('is-on'); setBtnState($btnNames,on); setNameLabelsVisible(on); });
+$btnList.addEventListener('click',function(){ const on=!$btnList.classList.contains('is-on'); setBtnState($btnList,on); setListVisible(on); });
+document.querySelectorAll('.statusBar .filterBtn').forEach(function(btn){ btn.addEventListener('click',function(){ document.querySelectorAll('.statusBar .filterBtn').forEach(function(b){b.classList.remove('on')}); btn.classList.add('on'); currentFilter=btn.dataset.filter||'전체'; applyFilter(); }); });
+function buildMyPosContent(){ const w=document.createElement('div'); w.className='mypos-wrap'; const p=document.createElement('div'); p.className='mypos-pulse'; const d=document.createElement('div'); d.className='mypos-dot'; w.appendChild(p); w.appendChild(d); return w; }
+function buildHeadingContent(){ const a="<svg class='nav-arrow' viewBox='0 0 100 100'>"; const b="<polygon points='50,5 90,95 50,80 10,95' fill='#f59e0b' stroke='#d97706' stroke-width='4'/>"; const c="</svg>"; const x=document.createElement('div'); x.innerHTML=a+b+c; return x.firstChild; }
+function setMyOverlayPosition(ll){ if(!myOverlay){ myOverlay=new kakao.maps.CustomOverlay({position:ll,content:buildMyPosContent(),yAnchor:0.5,xAnchor:0.5}); } else { myOverlay.setPosition(ll); } myOverlay.setMap(map); }
+function setHeadingOverlay(ll,deg){ if(!headingOverlay){ headingOverlay=new kakao.maps.CustomOverlay({position:ll,content:buildHeadingContent(),yAnchor:0.5,xAnchor:0.5}); } else { headingOverlay.setPosition(ll); } headingOverlay.setMap(map); const el=headingOverlay.getContent(); if(el){ el.style.transform='translate(-50%,-50%) rotate('+deg+'deg)'; } }
+function toRad(d){return d*Math.PI/180} function toDeg(r){return r*180/Math.PI}
+function calcBearing(a,b){ const lat1=toRad(a.getLat()), lon1=toRad(a.getLng()); const lat2=toRad(b.getLat()), lon2=toRad(b.getLng()); const y=Math.sin(lon2-lon1)*Math.cos(lat2); const x=Math.cos(lat1)*Math.sin(lat2)-Math.sin(lat1)*Math.cos(lat2)*Math.cos(lon2-lon1); return ((Math.atan2(y,x)*180/Math.PI)+360)%360; }
+function disableMyPos(){ if(myWatchId!=null){ navigator.geolocation.clearWatch(myWatchId); myWatchId=null; } if(myOverlay){ myOverlay.setMap(null); myOverlay=null; } if(myAcc){ myAcc.setMap(null); myAcc=null; } if(headingOverlay){ headingOverlay.setMap(null); headingOverlay=null; } myLastLL=null; }
+function onGeoSuccess(pos){ const lat=pos.coords.latitude; const lng=pos.coords.longitude; const acc=pos.coords.accuracy||0; const ll=new kakao.maps.LatLng(lat,lng); prevLL=myLastLL?new kakao.maps.LatLng(myLastLL.getLat(),myLastLL.getLng()):null; myLastLL=ll; setMyOverlayPosition(ll); if(acc>0){ if(myAcc){ myAcc.setMap(null); myAcc=null; } myAcc=new kakao.maps.Circle({center:ll,radius:Math.min(acc,200),strokeWeight:1,strokeColor:'#f59e0b',strokeOpacity:0.9,fillColor:'#f59e0b',fillOpacity:0.15}); myAcc.setMap(map); } const hasHead=(typeof pos.coords.heading==='number'&&!isNaN(pos.coords.heading)); const hd= hasHead ? pos.coords.heading : (prevLL?calcBearing(prevLL,ll):0); headingDeg=hd; setHeadingOverlay(ll,hd); if(firstFix){ map.setCenter(ll); firstFix=false; } if(drivingMode){ map.setCenter(ll); if(driveJustEnabled){ map.setLevel(1); driveJustEnabled=false; } } }
+function onGeoError(err){ alert('위치 권한 거부 또는 오류: '+err.message); setBtnState($btnMy,false); disableMyPos(); }
+function geoOpts(){ return { enableHighAccuracy:true, maximumAge:10000, timeout:10000 }; }
+function enableMyPos(on){ if(on){ if(!navigator.geolocation){ alert('이 브라우저는 위치를 지원하지 않습니다.'); setBtnState($btnMy,false); return; } firstFix=true; myWatchId=navigator.geolocation.watchPosition(onGeoSuccess,onGeoError,geoOpts()); } else { disableMyPos(); } }
+$btnMy.addEventListener('click',function(){ const on=!$btnMy.classList.contains('is-on'); setBtnState($btnMy,on); enableMyPos(on); });
+$btnDrive.addEventListener('click',function(){ const on=!$btnDrive.classList.contains('is-on'); if(on && !myLastLL){ setBtnState($btnMy,true); enableMyPos(true); alert('위치 권한을 허용하면 운전 모드가 활성화됩니다.'); return; } drivingMode=on; setBtnState($btnDrive,on); if(drivingMode && myLastLL){ map.setCenter(myLastLL); driveJustEnabled=true; } });
+function selectItem(i){ selectedIdx=i; document.querySelectorAll('#list .item').forEach(function(c){c.classList.toggle('selected',Number(c.dataset.idx)===i)}); refreshAllMarkers(); }
+function focusTo(i){ const r=rows[i]; if(!r) return; const ll=new kakao.maps.LatLng(r.lat,r.lng); map.relayout(); map.setCenter(ll); selectItem(i); showToast('['+(r.no||'')+'] '+r.title+(r.addr?(' · '+r.addr):'')); }
+function handleSelect(i){ focusTo(i); draw500Once(i); const el=document.querySelector("#list .item[data-idx='"+i+"']"); if(el) el.scrollIntoView({block:'center'}); }
+let toast; function showToast(t){ if(toast) toast.remove(); toast=document.createElement('div'); toast.className='toast'; toast.textContent=t; document.body.appendChild(toast); setTimeout(function(){ if(toast){toast.remove();toast=null;} },1400); }
+function showPlaceInfo(i){ const r=rows[i]; if(!r) return; if(activeInfo){activeInfo.setMap(null); activeInfo=null;} const wrap=document.createElement('div'); wrap.className='info-card'; wrap.style.marginTop='8px'; const title='['+(r.no||'')+'] '+(r.title||''); const a=r.addr||''; let html=''; html+='<button class="info-close" type="button">닫기</button>'; html+='<div class="info-title">'+title+'</div>'; html+='<div class="info-addr">'+a+'</div>'; html+='<div class="info-actions">'; html+='<button class="btnSmall btnRouteInCard" aria-pressed="false">길안내</button>'; html+='<button class="btnSmall btnDetailInCard">자세히</button>'; html+='<button class="btnSmall btnNaviInCard">카카오내비</button>'; html+='</div>'; wrap.innerHTML=html; wrap.addEventListener('click',function(e){e.stopPropagation();}); const ov=new kakao.maps.CustomOverlay({position:new kakao.maps.LatLng(r.lat,r.lng),content:wrap,xAnchor:0.5,yAnchor:0}); activeInfo=ov; ov.setMap(map);
+  const btn1=wrap.querySelector('.btnRouteInCard'); if(btn1){ btn1.addEventListener('click',function(e){ e.stopPropagation(); routeTo(i); }); }
+  const btn2=wrap.querySelector('.btnDetailInCard'); if(btn2){ btn2.addEventListener('click',function(e){ e.stopPropagation(); openDetail(i); }); }
+  const btn3=wrap.querySelector('.btnNaviInCard'); if(btn3){ btn3.addEventListener('click',function(e){ e.stopPropagation(); openKakaoNavi(r.lat,r.lng,r.title,r.addr); }); }
+  const btnX=wrap.querySelector('.info-close'); if(btnX){ btnX.addEventListener('click',function(e){ e.stopPropagation(); if(activeInfo){ activeInfo.setMap(null); activeInfo=null; } }); }
+  updateRouteButtons(); }
+function clearRoute(){
+  if(routeLine){ routeLine.setMap(null); routeLine=null; }
+  currentRouteIdx=null; updateRouteButtons();
+}
+function updateRouteButtons(){
+  document.querySelectorAll('#list .item .btnRoute').forEach(function(btn){
+    const i=Number(btn.closest('.item').dataset.idx);
+    const on=(routeLine && currentRouteIdx===i);
+    btn.classList.toggle('route-on',on);
+    btn.setAttribute('aria-pressed',on?'true':'false');
+    btn.textContent= on ? '길안내 ON' : '길안내';
+  });
+  refreshAllMarkers();
+}
+function makeOsrmUrl(slng,slat,dlng,dlat){
+  const b='https://router.project-osrm.org/route/v1/driving/';
+  const q='?overview=full&geometries=geojson';
+  return b + slng + ',' + slat + ';' + dlng + ',' + dlat + q;
+}
+function routeTo(idx){
+  const r=rows[idx]; if(!r) return;
+  if(!myLastLL){
+    setBtnState($btnMy,true); enableMyPos(true);
+    alert('내 위치를 가져오는 중입니다. 위치 허용 후 다시 길안내를 눌러주세요.');
+    return;
+  }
+  if(routeLine && currentRouteIdx===idx){
+    clearRoute(); showToast('길안내 해제'); return;
+  }
+  const sLat=myLastLL.getLat();
+  const sLng=myLastLL.getLng();
+  const dLat=r.lat, dLng=r.lng;
+  const url=makeOsrmUrl(sLng,sLat,dLng,dLat);
+  fetch(url)
+    .then(function(res){ return res.json(); })
+    .then(function(data){
+      if(!data || !data.routes || !data.routes.length){
+        alert('경로를 찾지 못했습니다.'); return;
+      }
+      const route=data.routes[0];
+      const coords=route.geometry.coordinates;
+      const path=coords.map(function(c){ return new kakao.maps.LatLng(c[1],c[0]); });
+      if(routeLine){ routeLine.setMap(null); routeLine=null; }
+      routeLine=new kakao.maps.Polyline({
+        path:path, strokeWeight:7, strokeColor:'#fbbf24',
+        strokeOpacity:0.95, strokeStyle:'solid'
+      });
+      routeLine.setMap(map);
+      const b=new kakao.maps.LatLngBounds();
+      path.forEach(function(p){ b.extend(p); });
+      map.setBounds(b);
+      const dist=(route.distance||0)/1000;
+      const dur=Math.round((route.duration||0)/60);
+      currentRouteIdx=idx; updateRouteButtons();
+      showToast('길안내 · 거리 '+dist.toFixed(1)+' km · 예상 '+dur+'분');
+    })
+    .catch(function(err){ alert('경로 요청 실패: '+err); });
+}
+const back=document.getElementById('modalBack'); const btnSave=document.getElementById('btnSaveDetail'); const btnClose=document.getElementById('btnCloseDetail'); const memoRead=document.getElementById('memoRead'); const memoAdd=document.getElementById('memoAdd'); const chips=back.querySelectorAll('.chip'); let editingIdx=null;
+function openDetail(i){ editingIdx=i; const r=rows[i]; back.style.display='flex'; memoRead.textContent=r.__memo||''; memoAdd.value=''; chips.forEach(function(c){ c.classList.toggle('on', c.dataset.status===(r.__status||'예정')); }); }
+chips.forEach(function(c){c.addEventListener('click',function(){ chips.forEach(function(x){x.classList.remove('on')}); c.classList.add('on'); })});
+btnClose.addEventListener('click',function(){ back.style.display='none'; });
+function z2(n){return String(n).padStart(2,'0')} function nowStampKST(){ const d=new Date(); return (d.getFullYear()%100)+'/'+z2(d.getMonth()+1)+'/'+z2(d.getDate())+' '+z2(d.getHours())+':'+z2(d.getMinutes()); }
+btnSave.addEventListener('click',async function(){ if(editingIdx==null) return; const r=rows[editingIdx]; const stt=[...chips].find(x=>x.classList.contains('on'))?.dataset.status||'예정'; const add=(memoAdd.value||'').trim(); const addWithTs= add? (add+' ('+nowStampKST()+')') : ''; const merged=(r.__memo? (r.__memo + (addWithTs?('\n'+addWithTs):'')) : addWithTs); r.__status=stt; r.__memo=merged; refreshMarker(editingIdx); renderList(rows); back.style.display='none'; try{ const id='place_'+r.__idx; await setDoc(doc(db,'checkmap_items',id),{status:stt,memo:r.__memo,idx:r.__idx,lat:r.lat,lng:r.lng,title:r.title,no:r.no||'',addr:r.addr||''},{merge:true}); } catch(e){ console.error(e); alert('저장 실패: '+e.message); } applyFilter(); });
+function updateCount(){ const n=rows.filter(r=>!!r.__circle).length; const el=document.getElementById('selCount'); if(el) el.textContent=n; const be=document.getElementById('btnExport'); const anyDone=rows.some(r=>r.__status==='완료'||r.__status==='보류'); if(be) be.disabled=(n===0 && !anyDone); }
+function sheetFromAOA(aoa){ const ws=XLSX.utils.aoa_to_sheet(aoa); const w=aoa[0].map(function(_,ci){ let max=0; for(let ri=0;ri<aoa.length;ri++){ const t=String(aoa[ri][ci]??''); if(t.length>max) max=t.length; } return {wch:Math.min(Math.max(max+2,8),60)}; }); ws['!cols']=w; return ws; }
+function exportCSV(aoa){ const ws=XLSX.utils.aoa_to_sheet(aoa); const csv=XLSX.utils.sheet_to_csv(ws); const blob=new Blob([csv],{type:'text/csv;charset=utf-8'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='places_export.csv'; document.body.appendChild(a); a.click(); setTimeout(function(){ URL.revokeObjectURL(url); a.remove(); },0); alert('XLSX 저장에 실패하여 CSV로 내보냈습니다.'); }
+document.getElementById('btnExport').addEventListener('click',function(){ const pick=rows.filter(r=>!!r.__circle); const done=rows.filter(r=>r.__status==='완료'||r.__status==='보류'); const m=new Map(); pick.forEach(r=>m.set(r.__idx,r)); done.forEach(r=>m.set(r.__idx,r)); const arr=[...m.values()]; if(arr.length===0){ alert('내보낼 항목이 없습니다.'); return; } const S=function(v){ return (v==null? '' : String(v)); }; const aoa=[['순번','이름','주소','상태','메모']]; arr.forEach(function(r){ aoa.push([ S(r.no), S(r.title), S(r.addr), S(r.__status), S(r.__memo) ]); }); try{ const ws=sheetFromAOA(aoa); const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'내보내기'); XLSX.writeFile(wb,'places_export.xlsx',{bookType:'xlsx',compression:true}); }catch(e){ console.error(e); try{ exportCSV(aoa); }catch(e2){ console.error(e2); alert('내보내기 실패: '+e2.message); } } });
+setBtnState($btnNames,true); setBtnState($btnList,false); setBtnState($btnMy,true); setBtnState($btnDrive,false);
+setListVisible(false); setNameLabelsVisible(true); enableMyPos(true); applyFilter();
+(function(){var s=document.createElement('script'); s.src='https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js'; document.head.appendChild(s);}());
+</script>
+</body></html>
