@@ -1,0 +1,144 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" /><title>12 - 지도</title><style>html,body{width:100%;height:100%;margin:0;padding:0;overflow:hidden;font:13px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}#map{width:100vw;height:100vh}</style></head><body><div id="map"></div><script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=cdad276f68285333fba23b841fb49970"></script><script>window.TITLE="12",window.POINTS=[{"no":1,"name":"홍길동1","phone":"010-2001-1001","addr":"서울특별시 중구 세종대로 110","memo":"비고 1","rIndex":0,"lat":37.566370776634,"lng":126.977918351844},{"no":2,"name":"홍길동2","phone":"010-2002-1002","addr":"서울특별시 용산구 이태원로 29","memo":"비고 2","rIndex":1,"lat":37.5373140468913,"lng":126.978466063237},{"no":3,"name":"홍길동3","phone":"010-2003-1003","addr":"부산광역시 해운대구 우동 1418","memo":"비고 3","rIndex":2,"lat":35.1653316123283,"lng":129.138816305747},{"no":4,"name":"홍길동4","phone":"010-2004-1004","addr":"대구광역시 중구 동성로 25","memo":"비고 4","rIndex":3,"lat":35.869387888093,"lng":128.595084930713},{"no":5,"name":"홍길동5","phone":"010-2005-1005","addr":"인천광역시 남동구 정각로 29","memo":"비고 5","rIndex":4,"lat":37.4560499608337,"lng":126.705255744089}]</script><script>
+(function(){
+  const TITLE   = window.TITLE || '지도';
+  const POINTS  = window.POINTS || [];
+  const Mem = {};
+  function safeLS(){ try{ const k='__ls_'+Math.random().toString(36).slice(2); localStorage.setItem(k,'1'); localStorage.removeItem(k); return localStorage; }catch(e){ return null; } }
+  const LS = safeLS();
+  const STATUS_KEY = id => `status_${TITLE}_${id}`;
+  const MEMO_KEY   = id => `memo_${TITLE}_${id}`;
+  async function saveStatus(id, v){ if (LS){ try{ LS.setItem(STATUS_KEY(id), v); return;}catch(e){} } Mem[STATUS_KEY(id)] = v; }
+  async function loadStatus(id){ if (LS){ try{ return LS.getItem(STATUS_KEY(id)) || 'plan'; }catch(e){} } return Mem[STATUS_KEY(id)] || 'plan'; }
+  async function saveMemo(id, list){ const v=JSON.stringify(list||[]); if (LS){ try{ LS.setItem(MEMO_KEY(id), v); return;}catch(e){} } Mem[MEMO_KEY(id)] = v; }
+  async function loadMemo(id){ if (LS){ try{ const s=LS.getItem(MEMO_KEY(id)); return s?JSON.parse(s):[]; }catch(e){} } const s=Mem[MEMO_KEY(id)]; return s?JSON.parse(s):[]; }
+  function escapeHtml(s){ return (s??'').toString().replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+  function makeId(pt){ return btoa(unescape(encodeURIComponent([pt.addr,pt.name,pt.phone].join('|')))).slice(0,16); }
+
+  const style = document.createElement('style');
+  style.textContent = `.label{position:relative;display:inline-flex;align-items:center;gap:10px;padding:8px 14px 8px 10px;border-radius:999px;cursor:pointer;user-select:none;background:rgba(255,255,255,.3);border:1px solid rgba(255,255,255,.6);box-shadow:0 8px 26px rgba(0,0,0,.18);backdrop-filter:blur(8px)}
+  .label .no{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:999px;background:radial-gradient(ellipse at 30% 30%,#a1c4fd,#3b82f6 70%);color:#fff;font-weight:900;font-size:18px}
+  .label .nm{font-size:15px;font-weight:700;color:#0f172a;max-width:38vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .label.hide-name .nm{display:none}
+  .card{position:absolute;left:50%;transform:translateX(-50%);bottom:10px;background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:12px;box-shadow:0 10px 28px rgba(0,0,0,.16);min-width:540px;max-width:90vw;z-index:99999}
+  .row{display:flex;align-items:center;gap:10px;margin:6px 0;flex-wrap:wrap}
+  .chip{padding:6px 10px;border-radius:999px;border:1px solid #cfd6dc;cursor:pointer;background:#f3f4f6}
+  .chip.active.plan{background:#3b82f6;color:#fff;border-color:#3b82f6}
+  .chip.active.done{background:#111827;color:#fff;border-color:#111827}
+  .chip.active.hold{background:#9ca3af;color:#fff;border-color:#9ca3af}
+  .btn{padding:8px 12px;border:1px solid #d1d5db;background:#f9fafb;border-radius:8px;cursor:pointer}
+  .btn:hover{background:#f3f4f6}
+  .list{max-height:120px;overflow:auto;border-top:1px dashed #e5e7eb;padding-top:6px;margin-top:6px}
+  .list .item{display:flex;gap:10px;padding:4px 2px;cursor:pointer}
+  .list .item:hover{background:#f9fafb}
+  .list .item .no{width:40px;color:#6b7280}
+  .x{position:absolute;right:8px;top:8px;width:28px;height:28px;border:1px solid #d1d5db;background:#f9fafb;border-radius:8px;cursor:pointer}
+  .lt{position:absolute;left:8px;top:8px;display:flex;gap:6px;z-index:9999}
+  .rt{position:absolute;right:8px;top:8px;display:flex;gap:6px;z-index:9999}
+  .filter{position:absolute;left:8px;top:48px;display:flex;gap:6px;z-index:9999}
+  .slide{position:absolute;left:8px;top:84px;width:320px;max-height:60vh;overflow:auto;background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:8px;box-shadow:0 10px 28px rgba(0,0,0,.12);display:none;z-index:9999}
+  .slide .row{display:flex;gap:8px;padding:6px;cursor:pointer;border-bottom:1px dashed #eee}
+  .slide .row:hover{background:#f9fafb}
+  .badge{padding:2px 6px;border-radius:999px;font-size:11px;border:1px solid #d1d5db}
+  .badge.plan{background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe}
+  .badge.done{background:#111827;color:#fff;border-color:#111827}
+  .badge.hold{background:#f3f4f6;color:#374151;border-color:#e5e7eb}
+  .modal{position:fixed;left:0;top:0;width:100vw;height:100vh;background:rgba(0,0,0,.35);display:none;align-items:center;justify-content:center;z-index:100000}
+  .modal .box{background:#fff;border:1px solid #e5e7eb;border-radius:12px;min-width:560px;max-width:90vw;padding:12px;box-shadow:0 16px 40px rgba(0,0,0,.24)}`;
+  document.head.appendChild(style);
+
+  const shell = document.createElement('div');
+  shell.innerHTML = `<div class="lt"><button id="btnList" class="btn">목록</button><button id="btnName" class="btn">이름</button><button id="btnMy" class="btn">위치</button></div>
+  <div class="filter"><button data-f="all" class="btn">전체</button><button data-f="plan" class="btn">예정</button><button data-f="done" class="btn">완료</button><button data-f="hold" class="btn">보류</button></div>
+  <div class="rt"><button id="btnGps" class="btn">GPS</button></div>
+  <div id="slide" class="slide"></div>
+  <div id="card" class="card">
+    <button id="closeCard" class="x" aria-label="닫기">×</button>
+    <div class="row"><span>상태:</span><button class="chip plan" data-st="plan">예정</button><button class="chip done" data-st="done">완료</button><button class="chip hold" data-st="hold">보류</button></div>
+    <div class="row"><span>정보:</span> <span id="i_basic">지점을 클릭하면 상세 정보가 표시됩니다.</span></div>
+    <div class="row"><span>주소:</span> <span id="i_addr">-</span></div>
+    <div class="row"><button id="btnRoute" class="btn">경로</button><button id="btnEdit" class="btn">자세히</button><button id="btnNavi" class="btn">카카오내비</button></div>
+    <div class="row"><button id="btnSample" class="btn">표본</button><button id="btnSampleAll" class="btn">전체표본</button><button id="btnUnsample" class="btn">표본해제</button><button id="btnSampleXLS" class="btn">표본엑셀</button><button id="btnBest" class="btn">최적경로</button><button id="btnBestXLS" class="btn">.XLS</button></div>
+    <div id="sameList" class="list"></div>
+  </div>
+  <div id="memoModal" class="modal" aria-hidden="true">
+    <div class="box">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><strong>상세편집</strong><button id="memoClose" class="btn">닫기</button></div>
+      <div id="memoList" style="max-height:240px;overflow:auto;border:1px dashed #e5e7eb;border-radius:8px;padding:8px;margin-bottom:8px"></div>
+      <div style="display:flex;gap:8px"><input id="memoInput" type="text" placeholder="새 메모를 입력하세요" style="flex:1;padding:8px 10px;border:1px solid #d1d5db;border-radius:8px" /><button id="memoSave" class="btn">저장</button></div>
+    </div>
+  </div>`;
+  document.body.appendChild(shell);
+
+  const map = new kakao.maps.Map(document.getElementById('map'), { center: new kakao.maps.LatLng(37.5665,126.9780), level:6 });
+  const mapTypeControl = new kakao.maps.MapTypeControl(); map.addControl(mapTypeControl, kakao.maps.ControlPosition.TOPRIGHT);
+  const zoomControl = new kakao.maps.ZoomControl(); map.addControl(zoomControl, kakao.maps.ControlPosition.RIGHT);
+
+  const bounds = new kakao.maps.LatLngBounds();
+  const overlays = []; const samples = new Set(); const circles = new Map(); let bestOrder = []; let nameVisible = true; let filterState='all';
+
+  function centerZoom(pt){ const ll=new kakao.maps.LatLng(pt.lat,pt.lng); const target=3; const cur=map.getLevel(); if(cur>target){ map.setLevel(target); setTimeout(()=>map.panTo(ll),120);} else { map.panTo(ll); if(cur>1) map.setLevel(cur-1);}}
+  function drawCircle(id,pt){ const c=new kakao.maps.Circle({center:new kakao.maps.LatLng(pt.lat,pt.lng),radius:500,strokeWeight:2,strokeColor:'#3b82f6',strokeOpacity:0.9,fillColor:'#3b82f6',fillOpacity:0.2}); c.setMap(map); circles.set(id,c); }
+  function removeCircle(id){ const c=circles.get(id); if(c){ c.setMap(null); circles.delete(id);} }
+  function getSameAddr(addr){ const t=(addr||'').trim(); return POINTS.filter(p=>(p.addr||'').trim()===t); }
+
+  const slide = document.getElementById('slide');
+  slide.innerHTML = POINTS.map((pt,i)=>`<div class="row" data-i="${i}"><span class="badge plan">#${pt.no}</span><span>${escapeHtml(pt.name||'(이름없음)')}</span><span style="color:#6b7280"> / ${escapeHtml(pt.addr||'')}</span></div>`).join('');
+
+  POINTS.forEach((pt,i)=>{ const id=makeId(pt); const ll=new kakao.maps.LatLng(pt.lat,pt.lng); bounds.extend(ll); const el=document.createElement('button'); el.className='label'; el.type='button'; el.dataset.i=i; el.dataset.id=id; el.innerHTML=`<span class="no">${pt.no}</span><span class="nm">${escapeHtml(pt.name||'(이름없음)')}</span>`; const ov=new kakao.maps.CustomOverlay({position:ll,yAnchor:1.1,content:el,clickable:true}); ov.setMap(map); overlays.push({id,pt,el,ov,visible:true});});
+  if(!bounds.isEmpty()) map.setBounds(bounds,60,60,60,60);
+
+  function telLink(phone){ if(!phone) return '-'; const num=String(phone).replace(/[^0-9+]/g,''); return `<a href="tel:${num}" style="color:#2563eb">${escapeHtml(phone)}</a>`; }
+
+  let current=null;
+  async function showCard(pt){
+    const id=makeId(pt); const status=await loadStatus(id); const memos=await loadMemo(id); current={pt,id,status,memos};
+    const card=document.getElementById('card'); card.querySelectorAll('.chip').forEach(ch=>ch.classList.remove('active')); card.querySelector(`.chip.${status}`).classList.add('active');
+    document.getElementById('i_basic').innerHTML=`NO ${pt.no} · ${escapeHtml(pt.name||'(이름없음)')} · ${telLink(pt.phone)}`;
+    document.getElementById('i_addr').textContent=pt.addr||'-';
+    const same=getSameAddr(pt.addr);
+    document.getElementById('sameList').innerHTML=same.map(p=>{ const sid=makeId(p); let st='plan'; try{ st=(LS?LS.getItem(STATUS_KEY(sid)):Mem[STATUS_KEY(sid)])||'plan'; }catch(e){ st=Mem[STATUS_KEY(sid)]||'plan'; } return `<div class="item" data-no="${p.no}" data-lat="${p.lat}" data-lng="${p.lng}"><span class="no">#${p.no}</span><span>${escapeHtml(p.name||'(이름없음)')}</span><span class="badge ${st}">${st==='plan'?'예정':st==='done'?'완료':'보류'}</span></div>`; }).join('');
+  }
+
+  function applyFilter(){ overlays.forEach(async o=>{ const st=await loadStatus(o.id); const show=(filterState==='all')||(filterState===st); o.visible=show; o.ov.setMap(show?map:null); }); }
+
+  function locateMe(){ if(!navigator.geolocation){ alert('이 브라우저는 위치를 지원하지 않습니다.'); return;} navigator.geolocation.getCurrentPosition(pos=>{ const ll=new kakao.maps.LatLng(pos.coords.latitude,pos.coords.longitude); new kakao.maps.Marker({position:ll,map}); map.panTo(ll); }, err=> alert('GPS 사용불가: '+err.message), {enableHighAccuracy:true,timeout:7000}); }
+  function openRoute(pt){ if(!navigator.geolocation){ window.open(`https://map.kakao.com/link/to/${encodeURIComponent(pt.name||'목적지')},${pt.lat},${pt.lng}`,'_blank'); return;} navigator.geolocation.getCurrentPosition(pos=>{ const sX=pos.coords.longitude,sY=pos.coords.latitude; const eX=pt.lng,eY=pt.lat; const url=`https://map.kakao.com/?sX=${sX}&sY=${sY}&eX=${eX}&eY=${eY}`; window.open(url,'_blank'); }, _=>{ window.open(`https://map.kakao.com/link/to/${encodeURIComponent(pt.name||'목적지')},${pt.lat},${pt.lng}`,'_blank'); }); }
+  function openKakaoNavi(pt){ const name=encodeURIComponent(pt.name||'목적지'); location.href=`kakaonavi://navigate?name=${name}&x=${pt.lng}&y=${pt.lat}&coord_type=wgs84&rpoption=1`; }
+
+  function toggleSample(id,pt){ if(samples.has(id)){ samples.delete(id); removeCircle(id);} else { samples.add(id); drawCircle(id,pt);} }
+  function sampleAll(){ overlays.forEach(async o=>{ const st=await loadStatus(o.id); if(st!=='done'){ samples.add(o.id); drawCircle(o.id,o.pt); } }); }
+  function clearSamples(){ samples.clear(); for(const [id,c] of circles){ c.setMap(null);} circles.clear(); }
+
+  function downloadXLS(filename, rows, headers){ const html='<html><head><meta charset="utf-8"></head><body><table border="1"><thead><tr>'+headers.map(h=>'<th>'+escapeHtml(h)+'</th>').join('')+'</tr></thead><tbody>'+rows.map(r=>'<tr>'+r.map(c=>'<td>'+escapeHtml(String(c??""))+'</td>').join('')+'</tr>').join('')+'</tbody></table></body></html>'; const blob=new Blob([html],{type:'application/vnd.ms-excel'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=filename; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),0); }
+  function exportSamplesXLS(){ const rows=overlays.filter(o=>samples.has(o.id)).map(o=>[o.pt.no,o.pt.name||'',o.pt.phone||'',o.pt.addr||'']); downloadXLS('samples.xls',rows,['NO','이름','연락처','주소']); }
+
+  function haversine(lat1,lon1,lat2,lon2){ const R=6371000; const toRad=x=>x*Math.PI/180; const dLat=toRad(lat2-lat1), dLon=toRad(lon2-lon1); const a=Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2; return 2*R*Math.asin(Math.sqrt(a)); }
+  function buildBestRoute(){ const pts=overlays.filter(o=>samples.has(o.id)).map(o=>o.pt); if(pts.length<2){ alert('표본이 2개 이상이어야 합니다.'); return;} let start=pts[0]; if(navigator.geolocation){ navigator.geolocation.getCurrentPosition(pos=>{ draw(startFrom({lat:pos.coords.latitude,lng:pos.coords.longitude})); }, _=>draw(startFrom(start))); } else draw(startFrom(start)); function startFrom(s){ return {start:s,list:pts.slice()}; } function draw(ctx){ let cur=ctx.start, unused=ctx.list.slice(), order=[]; while(unused.length){ let bi=0,bd=1e18; for(let i=0;i<unused.length;i++){ const d=haversine(cur.lat,cur.lng,unused[i].lat,unused[i].lng); if(d<bd){bd=d;bi=i;} } cur=unused.splice(bi,1)[0]; order.push(cur);} bestOrder=order; if(window.bestLine) bestLine.setMap(null); if(window.bestLine2) bestLine2.setMap(null); const path=order.map(p=>new kakao.maps.LatLng(p.lat,p.lng)); window.bestLine=new kakao.maps.Polyline({path,strokeWeight:6,strokeColor:'#2563eb',strokeOpacity:0.9}); window.bestLine.setMap(map); window.bestLine2=new kakao.maps.Polyline({path,strokeWeight:2,strokeColor:'#93c5fd',strokeOpacity:0.9,strokeStyle:'shortdash'}); window.bestLine2.setMap(map); placeArrowsAlong(path,1000);} }
+  function exportBestXLS(){ if(!bestOrder.length){ alert('먼저 최적경로를 생성하세요.'); return;} const rows=bestOrder.map(p=>[p.no,p.name||'',p.phone||'',p.addr||'']); downloadXLS('best_route.xls',rows,['NO','이름','연락처','주소']); }
+  function placeArrowsAlong(path,every){ if(window.arrowOverlays){ window.arrowOverlays.forEach(o=>o.setMap(null)); } window.arrowOverlays=[]; let acc=0; for(let i=1;i<path.length;i++){ const a=path[i-1],b=path[i]; const d=haversine(a.getLat(),a.getLng(),b.getLat(),b.getLng()); let segStart=acc%every; for(let m=every-segStart; m<d; m+=every){ const t=m/d; const lat=a.getLat()+(b.getLat()-a.getLat())*t; const lng=a.getLng()+(b.getLng()-a.getLng())*t; const ang=Math.atan2(b.getLat()-a.getLat(), b.getLng()-a.getLng())*180/Math.PI; const el=document.createElement('div'); el.textContent='➤'; el.style.transform=`rotate(${-ang}deg)`; const ov=new kakao.maps.CustomOverlay({position:new kakao.maps.LatLng(lat,lng),content:el,yAnchor:0.5,xAnchor:0.5}); ov.setMap(map); window.arrowOverlays.push(ov);} acc+=d; } }
+
+  function renderMemos(){ const box=document.getElementById('memoList'); const rows=(current?.memos||[]).slice().reverse(); box.innerHTML=rows.map(m=>`<div style="display:flex;gap:8px;align-items:center;padding:4px 0;border-bottom:1px dashed #eee"><span class="badge">${new Date(m.ts).toLocaleString()}</span><span style="flex:1">${escapeHtml(m.text||'')}</span></div>`).join('') || '<div style="color:#6b7280">메모가 없습니다.</div>'; }
+  function openMemoModal(){ if(!current) return; const modal=document.getElementById('memoModal'); modal.style.display='flex'; renderMemos(); document.getElementById('memoInput').value=''; }
+
+  document.addEventListener('click',(ev)=>{ const lab=ev.target.closest('.label'); if(lab){ const i=Number(lab.dataset.i); centerZoom(POINTS[i]); showCard(POINTS[i]); } const row=ev.target.closest('.slide .row'); if(row){ const i=Number(row.dataset.i); centerZoom(POINTS[i]); showCard(POINTS[i]); }});
+  document.getElementById('btnList').onclick=()=>{ const s=document.getElementById('slide'); s.style.display = s.style.display==='none'?'block':'none'; };
+  document.getElementById('btnName').onclick=()=>{ nameVisible=!nameVisible; overlays.forEach(o=>o.el.classList.toggle('hide-name', !nameVisible)); };
+  document.getElementById('btnMy').onclick=locateMe;
+  document.getElementById('btnGps').onclick=locateMe;
+  document.getElementById('closeCard').onclick=()=>{ document.getElementById('card').style.display='none'; };
+  document.querySelectorAll('.filter .btn').forEach(b=> b.onclick=()=>{ filterState=b.dataset.f; applyFilter(); });
+  document.getElementById('btnEdit').onclick=openMemoModal;
+  document.getElementById('memoClose').onclick=()=>{ document.getElementById('memoModal').style.display='none'; };
+  document.getElementById('memoSave').onclick=async ()=>{ const input=document.getElementById('memoInput'); const text=input.value.trim(); if(!text||!current) return; (current.memos=current.memos||[]).push({text,ts:Date.now()}); await saveMemo(current.id,current.memos); renderMemos(); input.value=''; };
+
+  document.getElementById('btnRoute').onclick=()=>{ if(current) openRoute(current.pt); };
+  document.getElementById('btnNavi').onclick =()=>{ if(current) openKakaoNavi(current.pt); };
+  document.getElementById('btnSample').onclick   =()=>{ if(current) toggleSample(current.id,current.pt); };
+  document.getElementById('btnSampleAll').onclick=()=> sampleAll();
+  document.getElementById('btnUnsample').onclick =()=> clearSamples();
+  document.getElementById('btnSampleXLS').onclick=()=> exportSamplesXLS();
+  document.getElementById('btnBest').onclick     =()=> buildBestRoute();
+  document.getElementById('btnBestXLS').onclick  =()=> exportBestXLS();
+
+  document.querySelectorAll('.chip').forEach(ch=> ch.addEventListener('click', async ()=>{ if(!current) return; document.querySelectorAll('.chip').forEach(k=>k.classList.remove('active')); ch.classList.add('active'); const st=ch.dataset.st; current.status=st; await saveStatus(current.id,st); applyFilter(); }));
+})();</script></body></html>
