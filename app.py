@@ -3,7 +3,10 @@ import pandas as pd
 import requests
 import folium
 from streamlit_folium import st_folium
-from st_aggrid import AgGrid, GridOptionsBuilder   # ✅ streamlit-aggrid
+from st_aggrid import AgGrid, GridOptionsBuilder
+
+# ====== 페이지 전체 와이드 레이아웃 설정 ======
+st.set_page_config(page_title="지도 프로젝트", layout="wide")
 
 # ====== vworld API Key (Secrets) ======
 VWORLD_KEY = st.secrets["VWORLD_KEY"]
@@ -81,7 +84,7 @@ if st.session_state.page == "home":
             st.session_state.projects.append(project_name)
             st.session_state.page = "list"
             st.success(f"프로젝트 '{project_name}' 생성 완료!")
-            st.rerun()  # ✅ 새 버전
+            st.rerun()
 
 # ====== 프로젝트 목록 ======
 elif st.session_state.page == "list":
@@ -92,7 +95,7 @@ elif st.session_state.page == "list":
         if st.button(f"{p} 열기", key=f"proj_{i}"):
             st.session_state.current_project = p
             st.session_state.page = "project_view"
-            st.rerun()  # ✅ 새 버전
+            st.rerun()
 
 # ====== 프로젝트 내부 ======
 elif st.session_state.page == "project_view":
@@ -102,19 +105,34 @@ elif st.session_state.page == "project_view":
 
     # --- 주소 입력 탭 ---
     with tab1:
-        st.subheader("주소 입력 (최대 500행)")
-        gb = GridOptionsBuilder.from_dataframe(st.session_state.addr_df)
-        gb.configure_default_column(editable=True)
-        grid_options = gb.build()
+        st.subheader("📋 주소 입력 (최대 500행)")
+        st.info("엑셀에서 복사한 데이터를 첫 번째 셀 클릭 후 **Ctrl+V** 하면 붙여넣기 됩니다.")
 
-        grid_response = AgGrid(
-            st.session_state.addr_df,
-            gridOptions=grid_options,
-            editable=True,
-            height=400
-        )
+        # 좌우 여백 최소화 → 중앙 넓게
+        col1, col2, col3 = st.columns([0.05, 0.9, 0.05])
+        with col2:
+            gb = GridOptionsBuilder.from_dataframe(st.session_state.addr_df)
+            gb.configure_default_column(editable=True, resizable=True)
+            gb.configure_grid_options(
+                enableRangeSelection=True,
+                enableCellTextSelection=True,
+                clipboardPaste=True,
+                getRowNodeId="NO"  # ✅ NO를 행 ID로 사용
+            )
+            grid_options = gb.build()
 
-        if st.button("완료"):
+            grid_response = AgGrid(
+                st.session_state.addr_df,
+                gridOptions=grid_options,
+                editable=True,
+                allow_unsafe_jscode=True,
+                height=650,
+                fit_columns_on_grid_load=True,
+                key="grid"
+            )
+
+        st.markdown("---")
+        if st.button("💾 완료"):
             st.session_state.addr_df = pd.DataFrame(grid_response["data"])
             st.success("주소 데이터 저장 완료!")
 
@@ -145,7 +163,7 @@ elif st.session_state.page == "project_view":
         result_df["지목"] = jimok_list
         result_df["면적"] = area_list
 
-        st.dataframe(result_df, height=500)
+        st.dataframe(result_df, height=500, use_container_width=True)
 
     # --- 지도 탭 ---
     with tab3:
@@ -162,4 +180,4 @@ elif st.session_state.page == "project_view":
                         icon=folium.Icon(color="blue")
                     ).add_to(m)
 
-        st_folium(m, width=700, height=500)
+        st_folium(m, width=1000, height=600)  # ✅ 지도도 넓게
