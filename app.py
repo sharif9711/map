@@ -1,202 +1,119 @@
 import streamlit as st
 import pandas as pd
-import requests
 import streamlit.components.v1 as components
 
-# ===== vworld API KEY =====
-VWORLD_KEY = st.secrets["VWORLD_KEY"]
+# VWorld API 키
+VWORLD_KEY = "BE552462-0744-32DB-81E7-1B7317390D68"
 
-# ===== 주소 → 좌표 & PNU =====
-def get_coord_pnu(address, api_key=VWORLD_KEY):
-    url = "https://api.vworld.kr/req/address"
-    params = {
-        "service": "address",
-        "request": "getcoord",
-        "version": "2.0",
-        "crs": "EPSG:4326",
-        "address": address,
-        "refine": "true",
-        "simple": "false",
-        "format": "json",
-        "type": "parcel",
-        "key": api_key
-    }
-    try:
-        res = requests.get(url, params=params, timeout=5).json()
-        if res.get("response", {}).get("status") == "OK":
-            x = res["response"]["result"]["point"]["x"]  # 경도
-            y = res["response"]["result"]["point"]["y"]  # 위도
-            pnu = res["response"]["refined"]["structure"]["level4L"]
-            return float(y), float(x), pnu
-    except:
-        return None, None, None
-    return None, None, None
+# 세션 상태 초기화
+if "project_name" not in st.session_state:
+    st.session_state["project_name"] = None
+if "uploaded_df" not in st.session_state:
+    st.session_state["uploaded_df"] = None
 
-
-# ===== PNU → 필지 Polygon =====
-def get_polygon_from_pnu(pnu, api_key=VWORLD_KEY):
-    url = "https://api.vworld.kr/req/data"
-    params = {
-        "service": "data",
-        "request": "GetFeature",
-        "version": "2.0",
-        "key": api_key,
-        "format": "json",
-        "size": 1,
-        "page": 1,
-        "geometry": "true",
-        "attribute": "true",
-        "crs": "EPSG:4326",
-        "data": "LP_PA_CBND_BUBUN",
-        "geomfilter": f"pnu:{pnu}"
-    }
-    try:
-        res = requests.get(url, params=params, timeout=5).json()
-        if "features" in res.get("response", {}):
-            return res["response"]["features"][0]["geometry"]["coordinates"]
-    except:
-        return None
-    return None
-
-
-# ===== VWorld 지도 HTML 생성 =====
-def render_vworld_map(df):
-    markers_js = ""
-    polygons_js = ""
-
-    for idx, row in df.iterrows():
-        if row.get("주소"):
-            lat, lon, pnu = get_coord_pnu(row["주소"])
-            if lat and lon:
-                # 마커
-                markers_js += f"""
-                var marker = L.marker([{lat}, {lon}]).addTo(map)
-                    .bindPopup("<b>{row.get('이름','')}</b><br>{row['주소']}");
-                """
-
-                # 필지 Polygon
-                if pnu:
-                    polygon = get_polygon_from_pnu(pnu)
-                    if polygon:
-                        polygons_js += f"""
-                        var polygon = L.polygon({polygon}, {{
-                            color: 'green',
-                            weight: 2,
-                            fillOpacity: 0.2
-                        }}).addTo(map);
-                        """
-
-    vworld_html = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="utf-8">
-      <title>VWorld Map</title>
-      <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"/>
-      <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
-      <style>
-        html, body, #map {{
-          width: 100%;
-          height: 600px;
-          margin: 0;
-          padding: 0;
-        }}
-      </style>
-    </head>
-    <body>
-      <div id="map"></div>
-      <script>
-        var map = L.map('map').setView([37.5665, 126.9780], 12);
-
-        L.tileLayer('https://api.vworld.kr/req/wmts/1.0.0/{VWORLD_KEY}/Base/{{z}}/{{y}}/{{x}}.png', {{
-            attribution: 'VWorld',
-            maxZoom: 19
-        }}).addTo(map);
-
-        {markers_js}
-        {polygons_js}
-      </script>
-    </body>
-    </html>
-    """
-    components.html(vworld_html, height=650)
-
-
-# ===== Streamlit 앱 구조 =====
-if "page" not in st.session_state:
-    st.session_state.page = "home"
-if "projects" not in st.session_state:
-    st.session_state.projects = []
-if "current_project" not in st.session_state:
-    st.session_state.current_project = None
-if "addr_df" not in st.session_state:
-    st.session_state.addr_df = pd.DataFrame(columns=["NO", "이름", "연락처", "주소", "비고"])
-
-
-# ===== 1. 프로젝트 생성 =====
-if st.session_state.page == "home":
+# -------------------------------
+# 프로젝트 이름 입력 화면
+# -------------------------------
+if st.session_state["project_name"] is None:
     st.title("프로젝트 생성")
     project_name = st.text_input("프로젝트 이름을 입력하세요")
-    if st.button("생성"):
-        if project_name:
-            st.session_state.projects.append(project_name)
-            st.session_state.page = "list"
-            st.success(f"프로젝트 '{project_name}' 생성 완료!")
-            st.rerun()
+    if st.button("생성") and project_name:
+        st.session_state["project_name"] = project_name
+        st.experimental_rerun()
+    st.stop()
 
-# ===== 2. 프로젝트 목록 =====
-elif st.session_state.page == "list":
-    st.title("프로젝트 목록")
-    if not st.session_state.projects:
-        st.info("아직 생성된 프로젝트가 없습니다.")
-    for i, p in enumerate(st.session_state.projects):
-        if st.button(f"{p} 열기", key=f"proj_{i}"):
-            st.session_state.current_project = p
-            st.session_state.page = "project_view"
-            st.rerun()
+# -------------------------------
+# 프로젝트 메인 화면
+# -------------------------------
+st.title(f"프로젝트: {st.session_state['project_name']}")
 
-# ===== 3. 프로젝트 내부 =====
-elif st.session_state.page == "project_view":
-    st.title(f"프로젝트: {st.session_state.current_project}")
+tab1, tab2, tab3 = st.tabs(["주소입력", "결과", "지도"])
 
-    tab1, tab2, tab3 = st.tabs(["주소입력", "결과", "지도"])
+# -------------------------------
+# 주소입력 탭
+# -------------------------------
+with tab1:
+    st.subheader("📂 주소 입력 (엑셀 업로드)")
+    st.caption("엑셀 파일 업로드 (.xlsx, .xls, .csv)")
 
-    # --- 주소입력 ---
-    with tab1:
-        st.subheader("📂 주소 입력 (엑셀 업로드)")
-        uploaded_file = st.file_uploader("엑셀 파일 업로드 (.xlsx, .xls, .csv)", type=["xlsx", "xls", "csv"])
+    uploaded_file = st.file_uploader("엑셀 업로드", type=["xlsx", "xls", "csv"])
 
-        if uploaded_file is not None:
-            try:
-                if uploaded_file.name.endswith(".csv"):
-                    df = pd.read_csv(uploaded_file)
-                else:
-                    df = pd.read_excel(uploaded_file)
+    if uploaded_file is not None:
+        try:
+            if uploaded_file.name.endswith(".csv"):
+                df = pd.read_csv(uploaded_file)
+            else:
+                df = pd.read_excel(uploaded_file, engine="openpyxl")
+            st.session_state["uploaded_df"] = df
+            st.success("업로드 성공 ✅")
+        except Exception as e:
+            st.error(f"엑셀 읽기 오류: {e}")
 
-                expected_cols = ["NO", "이름", "연락처", "주소", "비고"]
-                for col in expected_cols:
-                    if col not in df.columns:
-                        df[col] = ""
-                df = df[expected_cols]
+# -------------------------------
+# 결과 탭
+# -------------------------------
+with tab2:
+    st.subheader("📊 업로드 결과")
+    if st.session_state["uploaded_df"] is not None:
+        st.dataframe(st.session_state["uploaded_df"])
+    else:
+        st.info("아직 업로드된 데이터가 없습니다.")
 
-                st.session_state.addr_df = df
-                st.success("엑셀 데이터 업로드 완료!")
+# -------------------------------
+# 지도 탭
+# -------------------------------
+with tab3:
+    st.subheader("🗺️ VWorld 지도")
 
-            except Exception as e:
-                st.error(f"엑셀 읽기 오류: {e}")
+    if st.session_state["uploaded_df"] is None:
+        st.info("먼저 주소 데이터를 업로드하세요.")
+    else:
+        df = st.session_state["uploaded_df"]
 
-    # --- 결과 ---
-    with tab2:
-        st.subheader("📑 업로드 결과")
-        if not st.session_state.addr_df.empty:
-            st.dataframe(st.session_state.addr_df)
-        else:
-            st.info("엑셀을 먼저 업로드하세요.")
+        # 마커 JS 코드 생성
+        markers_js = ""
+        for idx, row in df.iterrows():
+            # 실제 구현에서는 geocoding API로 좌표 변환해야 함 (여기서는 예시 좌표 고정)
+            lat, lon = 37.5665 + (idx * 0.001), 126.9780 + (idx * 0.001)
+            name = row.get("이름", f"마커{idx}")
+            addr = row.get("주소", "주소없음")
+            markers_js += f"""
+                L.marker([{lat}, {lon}]).addTo(map)
+                  .bindPopup("<b>{name}</b><br>{addr}");
+            """
 
-    # --- 지도 ---
-    with tab3:
-        st.subheader("🗺 VWorld 지도")
-        if not st.session_state.addr_df.empty:
-            render_vworld_map(st.session_state.addr_df)
-        else:
-            st.info("엑셀을 먼저 업로드하세요.")
+        vworld_html = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8"/>
+            <title>VWorld Map</title>
+            <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"/>
+            <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+            <style>
+                html, body, #map {{
+                    width: 100%;
+                    height: 600px;
+                    margin: 0;
+                    padding: 0;
+                }}
+            </style>
+        </head>
+        <body>
+            <div id="map"></div>
+            <script>
+                var map = L.map('map').setView([37.5665, 126.9780], 12);
+
+                // VWorld WMTS 타일 불러오기 (HTTPS)
+                L.tileLayer('https://api.vworld.kr/req/wmts/1.0.0/{VWORLD_KEY}/Base/{{z}}/{{y}}/{{x}}.png', {{
+                    maxZoom: 19,
+                    attribution: "VWorld"
+                }}).addTo(map);
+
+                {markers_js}
+            </script>
+        </body>
+        </html>
+        """
+
+        components.html(vworld_html, height=650)
