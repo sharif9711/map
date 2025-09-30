@@ -18,7 +18,7 @@ def get_coord_pnu(address, api_key=VWORLD_KEY):
         "refine": "true",
         "simple": "false",
         "format": "json",
-        "type": "parcel",   # 지번 기준
+        "type": "parcel",
         "key": api_key
     }
     try:
@@ -53,38 +53,37 @@ def get_polygon_from_pnu(pnu, api_key=VWORLD_KEY):
     try:
         res = requests.get(url, params=params, timeout=5).json()
         if "features" in res.get("response", {}):
-            geom = res["response"]["features"][0]["geometry"]["coordinates"]
-            return geom
+            return res["response"]["features"][0]["geometry"]["coordinates"]
     except:
         return None
     return None
 
 
-# ===== 지도 HTML 생성 =====
+# ===== VWorld 지도 HTML 생성 =====
 def render_vworld_map(df):
-    overlays_js = ""
+    markers_js = ""
+    polygons_js = ""
 
     for idx, row in df.iterrows():
         if row.get("주소"):
             lat, lon, pnu = get_coord_pnu(row["주소"])
             if lat and lon:
-                # 기본 마커
-                overlays_js += f"""
-                var marker = new vworld.Marker({{lon:{lon}, lat:{lat}}});
-                marker.setInfoWindow("<b>{row.get('이름','')}</b><br>{row['주소']}");
-                vmap.addMarker(marker);
+                # 마커
+                markers_js += f"""
+                var marker = L.marker([{lat}, {lon}]).addTo(map)
+                    .bindPopup("<b>{row.get('이름','')}</b><br>{row['주소']}");
                 """
 
-                # 필지 경계
+                # 필지 Polygon
                 if pnu:
                     polygon = get_polygon_from_pnu(pnu)
                     if polygon:
-                        overlays_js += f"""
+                        polygons_js += f"""
                         var polygon = L.polygon({polygon}, {{
                             color: 'green',
                             weight: 2,
                             fillOpacity: 0.2
-                        }}).addTo(vmap);
+                        }}).addTo(map);
                         """
 
     vworld_html = f"""
@@ -93,11 +92,10 @@ def render_vworld_map(df):
     <head>
       <meta charset="utf-8">
       <title>VWorld Map</title>
-      <script src="https://map.vworld.kr/js/vworldMapInit.js.do?apiKey={VWORLD_KEY}"></script>
       <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"/>
       <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
       <style>
-        html, body, #vmap {{
+        html, body, #map {{
           width: 100%;
           height: 600px;
           margin: 0;
@@ -106,18 +104,17 @@ def render_vworld_map(df):
       </style>
     </head>
     <body>
-      <div id="vmap"></div>
+      <div id="map"></div>
       <script>
-        var vmap = new vworld.Map("vmap", "base", {{
-          basemapType: "base",
-          controlDensity: "full",
-          navigationControl: true,
-          geocodeControl: true,
-          geolocationControl: true
-        }});
-        vmap.setCenterAndZoom(127.1087, 37.4019, 7);
+        var map = L.map('map').setView([37.5665, 126.9780], 12);
 
-        {overlays_js}
+        L.tileLayer('https://api.vworld.kr/req/wmts/1.0.0/{VWORLD_KEY}/Base/{{z}}/{{y}}/{{x}}.png', {{
+            attribution: 'VWorld',
+            maxZoom: 19
+        }}).addTo(map);
+
+        {markers_js}
+        {polygons_js}
       </script>
     </body>
     </html>
