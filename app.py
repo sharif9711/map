@@ -108,7 +108,6 @@ elif st.session_state.page == "project_view":
         st.subheader("📋 주소 입력 (최대 500행)")
         st.info("엑셀에서 범위를 복사 → 첫 번째 셀 클릭 후 **Ctrl+V** 로 붙여넣으세요.")
 
-        # 좌우 여백 최소화 → 중앙 넓게
         col1, col2, col3 = st.columns([0.05, 0.9, 0.05])
         with col2:
             gb = GridOptionsBuilder.from_dataframe(st.session_state.addr_df)
@@ -120,27 +119,28 @@ elif st.session_state.page == "project_view":
                 enableCellTextSelection=True,
                 suppressClipboardPaste=False,
                 enableClipboard=True,
-                clipboardDelimiter="tab",   # 엑셀 붙여넣기 시 열 구분
+                clipboardDelimiter="tab",
                 getRowNodeId="NO"
             )
 
             grid_options = gb.build()
 
-            # ✅ 완료 버튼을 위에 배치
-            if st.button("💾 완료 (저장)"):
-                st.session_state.addr_df = pd.DataFrame(grid_response["data"])
-                st.success("주소 데이터 저장 완료!")
-
+            # ✅ AgGrid 먼저 생성
             grid_response = AgGrid(
                 st.session_state.addr_df,
                 gridOptions=grid_options,
                 editable=True,
-                allow_unsafe_jscode=True,   # JS 허용
+                allow_unsafe_jscode=True,
                 update_mode=GridUpdateMode.MODEL_CHANGED,
                 height=650,
                 fit_columns_on_grid_load=True,
                 key="grid"
             )
+
+            # ✅ grid_response 생성 후 버튼 실행
+            if st.button("💾 완료 (저장)", key="save_button"):
+                st.session_state.addr_df = pd.DataFrame(grid_response["data"])
+                st.success("주소 데이터 저장 완료!")
 
     # --- 결과 탭 ---
     with tab2:
@@ -186,4 +186,4 @@ elif st.session_state.page == "project_view":
                         icon=folium.Icon(color="blue")
                     ).add_to(m)
 
-        st_folium(m, width=1000, height=600)  # 넓은 지도
+        st_folium(m, width=1000, height=600)
