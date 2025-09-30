@@ -82,7 +82,7 @@ if st.session_state.page == "home":
             st.session_state.projects.append(project_name)
             st.session_state.page = "list"
             st.success(f"프로젝트 '{project_name}' 생성 완료!")
-            st.experimental_rerun()  # ✅ 생성 후 즉시 목록 화면으로 이동
+            st.rerun()  # ✅ 생성 후 즉시 목록 화면으로 이동
 
 # ====== 프로젝트 목록 ======
 elif st.session_state.page == "list":
