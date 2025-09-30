@@ -3,9 +3,9 @@ import pandas as pd
 import requests
 import folium
 from streamlit_folium import st_folium
-from st_aggrid import AgGrid, GridOptionsBuilder
+from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode
 
-# ====== 페이지 전체 와이드 레이아웃 설정 ======
+# ====== 페이지 와이드 모드 ======
 st.set_page_config(page_title="지도 프로젝트", layout="wide")
 
 # ====== vworld API Key (Secrets) ======
@@ -106,26 +106,31 @@ elif st.session_state.page == "project_view":
     # --- 주소 입력 탭 ---
     with tab1:
         st.subheader("📋 주소 입력 (최대 500행)")
-        st.info("엑셀에서 복사한 데이터를 첫 번째 셀 클릭 후 **Ctrl+V** 하면 붙여넣기 됩니다.")
+        st.info("엑셀에서 범위를 복사 → 첫 번째 셀 클릭 후 **Ctrl+V** 로 붙여넣으세요.")
 
         # 좌우 여백 최소화 → 중앙 넓게
         col1, col2, col3 = st.columns([0.05, 0.9, 0.05])
         with col2:
             gb = GridOptionsBuilder.from_dataframe(st.session_state.addr_df)
             gb.configure_default_column(editable=True, resizable=True)
+
+            # ✅ 붙여넣기 기능 활성화 + NO를 행 ID로 사용
             gb.configure_grid_options(
                 enableRangeSelection=True,
                 enableCellTextSelection=True,
-                clipboardPaste=True,
-                getRowNodeId="NO"  # ✅ NO를 행 ID로 사용
+                suppressClipboardPaste=False,
+                enableClipboard=True,
+                getRowNodeId="NO"
             )
+
             grid_options = gb.build()
 
             grid_response = AgGrid(
                 st.session_state.addr_df,
                 gridOptions=grid_options,
                 editable=True,
-                allow_unsafe_jscode=True,
+                allow_unsafe_jscode=True,   # JS 허용
+                update_mode=GridUpdateMode.MODEL_CHANGED,
                 height=650,
                 fit_columns_on_grid_load=True,
                 key="grid"
@@ -180,4 +185,4 @@ elif st.session_state.page == "project_view":
                         icon=folium.Icon(color="blue")
                     ).add_to(m)
 
-        st_folium(m, width=1000, height=600)  # ✅ 지도도 넓게
+        st_folium(m, width=1000, height=600)  # 넓은 지도
