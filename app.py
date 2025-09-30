@@ -3,7 +3,7 @@ import pandas as pd
 import requests
 import folium
 from streamlit_folium import st_folium
-from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode
+from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode, JsCode
 
 # ====== 페이지 와이드 모드 ======
 st.set_page_config(page_title="지도 프로젝트", layout="wide")
@@ -108,36 +108,44 @@ elif st.session_state.page == "project_view":
         st.subheader("📋 주소 입력 (최대 500행)")
         st.info("엑셀에서 범위를 복사 → 첫 번째 셀 클릭 후 **Ctrl+V** 로 붙여넣으세요.")
 
-        col1, col2, col3 = st.columns([0.05, 0.9, 0.05])
+        col1, col2, col3 = st.columns([0.02, 0.96, 0.02])
         with col2:
             gb = GridOptionsBuilder.from_dataframe(st.session_state.addr_df)
             gb.configure_default_column(editable=True, resizable=True)
 
-            # ✅ 붙여넣기 기능 활성화 + 탭 구분자 + NO를 행 ID로 사용
+            # ✅ 붙여넣기 기능 활성화 + NO를 행 ID로 사용
             gb.configure_grid_options(
                 enableRangeSelection=True,
                 enableCellTextSelection=True,
-                suppressClipboardPaste=False,
                 enableClipboard=True,
-                clipboardDelimiter="tab",
                 getRowNodeId="NO"
             )
 
+            # ✅ JS 코드로 붙여넣기 동작 강제
+            custom_js = JsCode("""
+            function(params) {
+                return {
+                    data: params.data,
+                    suppressClipboardPaste: false,
+                    allowClipboard: true,
+                    clipboardDelimiter: '\\t'
+                }
+            }
+            """)
             grid_options = gb.build()
+            grid_options["processDataFromClipboard"] = custom_js.js_code
 
-            # ✅ AgGrid 먼저 생성
             grid_response = AgGrid(
                 st.session_state.addr_df,
                 gridOptions=grid_options,
                 editable=True,
-                allow_unsafe_jscode=True,
+                allow_unsafe_jscode=True,   # JS 허용 필수
                 update_mode=GridUpdateMode.MODEL_CHANGED,
                 height=650,
                 fit_columns_on_grid_load=True,
                 key="grid"
             )
 
-            # ✅ grid_response 생성 후 버튼 실행
             if st.button("💾 완료 (저장)", key="save_button"):
                 st.session_state.addr_df = pd.DataFrame(grid_response["data"])
                 st.success("주소 데이터 저장 완료!")
