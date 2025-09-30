@@ -8,7 +8,7 @@ VWORLD_KEY = st.secrets["VWORLD_KEY"]
 
 # ===== 주소 → 좌표 & PNU =====
 def get_coord_pnu(address, api_key=VWORLD_KEY):
-    url = "http://api.vworld.kr/req/address"
+    url = "https://api.vworld.kr/req/address"
     params = {
         "service": "address",
         "request": "getcoord",
@@ -18,7 +18,7 @@ def get_coord_pnu(address, api_key=VWORLD_KEY):
         "refine": "true",
         "simple": "false",
         "format": "json",
-        "type": "parcel",   # 지번 주소
+        "type": "parcel",   # 지번 기준
         "key": api_key
     }
     try:
@@ -26,44 +26,66 @@ def get_coord_pnu(address, api_key=VWORLD_KEY):
         if res.get("response", {}).get("status") == "OK":
             x = res["response"]["result"]["point"]["x"]  # 경도
             y = res["response"]["result"]["point"]["y"]  # 위도
-            pnu = res["response"]["refined"]["structure"]["level4L"]  # PNU 코드
+            pnu = res["response"]["refined"]["structure"]["level4L"]
             return float(y), float(x), pnu
     except:
         return None, None, None
     return None, None, None
 
 
+# ===== PNU → 필지 Polygon =====
+def get_polygon_from_pnu(pnu, api_key=VWORLD_KEY):
+    url = "https://api.vworld.kr/req/data"
+    params = {
+        "service": "data",
+        "request": "GetFeature",
+        "version": "2.0",
+        "key": api_key,
+        "format": "json",
+        "size": 1,
+        "page": 1,
+        "geometry": "true",
+        "attribute": "true",
+        "crs": "EPSG:4326",
+        "data": "LP_PA_CBND_BUBUN",
+        "geomfilter": f"pnu:{pnu}"
+    }
+    try:
+        res = requests.get(url, params=params, timeout=5).json()
+        if "features" in res.get("response", {}):
+            geom = res["response"]["features"][0]["geometry"]["coordinates"]
+            return geom
+    except:
+        return None
+    return None
+
+
 # ===== 지도 HTML 생성 =====
 def render_vworld_map(df):
-    markers_js = ""
-    polygons_js = ""
+    overlays_js = ""
 
     for idx, row in df.iterrows():
         if row.get("주소"):
             lat, lon, pnu = get_coord_pnu(row["주소"])
             if lat and lon:
-                # 마커 (숫자 들어간 아이콘, 기본 예정=초록)
-                markers_js += f"""
-                var markerIcon = L.divIcon({{
-                    className: 'custom-div-icon',
-                    html: "<div style='background-color:#4CAF50;color:white;border-radius:50%;width:30px;height:30px;display:flex;align-items:center;justify-content:center;'>{idx+1}</div>",
-                    iconSize: [30,30],
-                    iconAnchor: [15,15]
-                }});
-                var marker = L.marker([{lat}, {lon}], {{icon: markerIcon}})
-                    .bindPopup("<b>{row.get('이름','')}</b><br>{row['주소']}");
-                vmap.addLayer(marker);
+                # 기본 마커
+                overlays_js += f"""
+                var marker = new vworld.Marker({{lon:{lon}, lat:{lat}}});
+                marker.setInfoWindow("<b>{row.get('이름','')}</b><br>{row['주소']}");
+                vmap.addMarker(marker);
                 """
 
-                # (필지 외곽: 샘플 — 실제는 PNU 전용 레이어 필요)
-                polygons_js += f"""
-                var circle = L.circle([{lat}, {lon}], {{
-                    color: 'green',
-                    weight: 2,
-                    fillOpacity: 0.15,
-                    radius: 50
-                }}).addTo(vmap);
-                """
+                # 필지 경계
+                if pnu:
+                    polygon = get_polygon_from_pnu(pnu)
+                    if polygon:
+                        overlays_js += f"""
+                        var polygon = L.polygon({polygon}, {{
+                            color: 'green',
+                            weight: 2,
+                            fillOpacity: 0.2
+                        }}).addTo(vmap);
+                        """
 
     vworld_html = f"""
     <!DOCTYPE html>
@@ -71,7 +93,7 @@ def render_vworld_map(df):
     <head>
       <meta charset="utf-8">
       <title>VWorld Map</title>
-      <script src="http://map.vworld.kr/js/vworldMapInit.js.do?apiKey={VWORLD_KEY}"></script>
+      <script src="https://map.vworld.kr/js/vworldMapInit.js.do?apiKey={VWORLD_KEY}"></script>
       <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"/>
       <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
       <style>
@@ -95,13 +117,11 @@ def render_vworld_map(df):
         }});
         vmap.setCenterAndZoom(127.1087, 37.4019, 7);
 
-        {markers_js}
-        {polygons_js}
+        {overlays_js}
       </script>
     </body>
     </html>
     """
-
     components.html(vworld_html, height=650)
 
 
@@ -160,7 +180,7 @@ elif st.session_state.page == "project_view":
                 for col in expected_cols:
                     if col not in df.columns:
                         df[col] = ""
-                df = df[expected_cols]  # 순서 맞춤
+                df = df[expected_cols]
 
                 st.session_state.addr_df = df
                 st.success("엑셀 데이터 업로드 완료!")
