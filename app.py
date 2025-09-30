@@ -99,70 +99,81 @@ elif st.session_state.page == "project_view":
 
     # --- 주소 입력 탭 ---
     with tab1:
-        st.subheader("📋 주소 입력 (엑셀 붙여넣기 + 편집 가능)")
+        st.subheader("📂 주소 입력 (엑셀 업로드)")
 
-        pasted = st.text_area("엑셀에서 범위를 복사한 후 여기에 Ctrl+V 하세요", height=150)
-        if st.button("붙여넣기 적용"):
-            if pasted.strip():
-                from io import StringIO
-                try:
-                    df = pd.read_csv(StringIO(pasted), sep="\t", header=None)
-                    df.columns = ["NO", "이름", "연락처", "주소", "비고"]
-                    st.session_state.addr_df = df
-                    st.success("엑셀 붙여넣기 데이터가 반영되었습니다.")
-                except Exception as e:
-                    st.error(f"붙여넣기 변환 오류: {e}")
+        uploaded_file = st.file_uploader("엑셀 파일 업로드 (.xlsx, .xls, .csv)", type=["xlsx", "xls", "csv"])
 
-        # AgGrid로 확인/편집
-        st.markdown("### 데이터 미리보기 및 편집")
-        gb = GridOptionsBuilder.from_dataframe(st.session_state.addr_df)
-        gb.configure_default_column(editable=True, resizable=True)
-        grid_options = gb.build()
+        if uploaded_file is not None:
+            try:
+                if uploaded_file.name.endswith(".csv"):
+                    df = pd.read_csv(uploaded_file)
+                else:
+                    df = pd.read_excel(uploaded_file)
 
-        grid_response = AgGrid(
-            st.session_state.addr_df,
-            gridOptions=grid_options,
-            editable=True,
-            update_mode=GridUpdateMode.MODEL_CHANGED,
-            height=500,
-            fit_columns_on_grid_load=True,
-            key="grid"
-        )
+                expected_cols = ["NO", "이름", "연락처", "주소", "비고"]
+                for col in expected_cols:
+                    if col not in df.columns:
+                        df[col] = ""
 
-        if st.button("💾 완료 (저장)", key="save_button"):
-            st.session_state.addr_df = pd.DataFrame(grid_response["data"])
-            st.success("주소 데이터 저장 완료!")
+                df = df[expected_cols]  # 순서 맞춤
+                st.session_state.addr_df = df
+                st.success("엑셀 데이터 업로드 완료!")
+
+            except Exception as e:
+                st.error(f"엑셀 읽기 오류: {e}")
+
+        # AgGrid에서 확인/편집
+        if not st.session_state.addr_df.empty:
+            st.markdown("### 데이터 미리보기 및 편집")
+            gb = GridOptionsBuilder.from_dataframe(st.session_state.addr_df)
+            gb.configure_default_column(editable=True, resizable=True)
+            grid_options = gb.build()
+
+            grid_response = AgGrid(
+                st.session_state.addr_df,
+                gridOptions=grid_options,
+                editable=True,
+                update_mode=GridUpdateMode.MODEL_CHANGED,
+                height=500,
+                fit_columns_on_grid_load=True,
+                key="grid"
+            )
+
+            if st.button("💾 완료 (저장)", key="save_button"):
+                st.session_state.addr_df = pd.DataFrame(grid_response["data"])
+                st.success("주소 데이터 저장 완료!")
 
     # --- 결과 탭 ---
     with tab2:
         st.subheader("결과 보기 (vworld API 연동)")
-        result_df = st.session_state.addr_df.copy()
+        if not st.session_state.addr_df.empty:
+            result_df = st.session_state.addr_df.copy()
 
-        pnu_list, jimok_list, area_list = [], [], []
-        for _, row in result_df.iterrows():
-            if row.get("주소"):
-                lat, lon = get_latlon_from_address(row["주소"])
-                if lat and lon:
-                    pnu, jimok, area = get_parcel_info(lat, lon)
-                    pnu_list.append(pnu)
-                    jimok_list.append(jimok)
-                    area_list.append(area)
+            pnu_list, jimok_list, area_list = [], [], []
+            for _, row in result_df.iterrows():
+                if row.get("주소"):
+                    lat, lon = get_latlon_from_address(row["주소"])
+                    if lat and lon:
+                        pnu, jimok, area = get_parcel_info(lat, lon)
+                        pnu_list.append(pnu)
+                        jimok_list.append(jimok)
+                        area_list.append(area)
+                    else:
+                        pnu_list.append("")
+                        jimok_list.append("")
+                        area_list.append("")
                 else:
                     pnu_list.append("")
                     jimok_list.append("")
                     area_list.append("")
-            else:
-                pnu_list.append("")
-                jimok_list.append("")
-                area_list.append("")
 
-        if not result_df.empty:
             result_df["PNU코드"] = pnu_list
             result_df["지목"] = jimok_list
             result_df["면적"] = area_list
+
             st.dataframe(result_df, height=500, use_container_width=True)
         else:
-            st.info("주소 데이터가 없습니다. 먼저 입력하세요.")
+            st.info("주소 데이터가 없습니다. 먼저 업로드하세요.")
 
     # --- 지도 탭 ---
     with tab3:
