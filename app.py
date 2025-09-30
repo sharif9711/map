@@ -3,7 +3,8 @@ import pandas as pd
 import requests
 import folium
 from streamlit_folium import st_folium
-from streamlit_aggrid import AgGrid, GridOptionsBuilder   # ✅ streamlit-aggrid 로 수정됨
+from st_aggrid import AgGrid, GridOptionsBuilder
+
 
 # ====== vworld API Key (Secrets) ======
 VWORLD_KEY = st.secrets["VWORLD_KEY"]
