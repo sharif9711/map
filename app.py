@@ -3,7 +3,7 @@ import pandas as pd
 import requests
 import folium
 from streamlit_folium import st_folium
-from st_aggrid import AgGrid, GridOptionsBuilder
+from streamlit_aggrid import AgGrid, GridOptionsBuilder   # ✅ streamlit-aggrid 로 수정됨
 
 # ====== vworld API Key (Secrets) ======
 VWORLD_KEY = st.secrets["VWORLD_KEY"]
@@ -79,16 +79,20 @@ if st.session_state.page == "home":
     if st.button("생성"):
         if project_name:
             st.session_state.projects.append(project_name)
-            st.success(f"프로젝트 '{project_name}' 생성 완료!")
             st.session_state.page = "list"
+            st.success(f"프로젝트 '{project_name}' 생성 완료!")
+            st.experimental_rerun()  # ✅ 생성 후 즉시 목록 화면으로 이동
 
 # ====== 프로젝트 목록 ======
 elif st.session_state.page == "list":
     st.title("프로젝트 목록")
+    if not st.session_state.projects:
+        st.info("아직 생성된 프로젝트가 없습니다.")
     for i, p in enumerate(st.session_state.projects):
         if st.button(f"{p} 열기", key=f"proj_{i}"):
             st.session_state.current_project = p
             st.session_state.page = "project_view"
+            st.experimental_rerun()
 
 # ====== 프로젝트 내부 ======
 elif st.session_state.page == "project_view":
