@@ -114,16 +114,22 @@ elif st.session_state.page == "project_view":
             gb = GridOptionsBuilder.from_dataframe(st.session_state.addr_df)
             gb.configure_default_column(editable=True, resizable=True)
 
-            # ✅ 붙여넣기 기능 활성화 + NO를 행 ID로 사용
+            # ✅ 붙여넣기 기능 활성화 + 탭 구분자 + NO를 행 ID로 사용
             gb.configure_grid_options(
                 enableRangeSelection=True,
                 enableCellTextSelection=True,
                 suppressClipboardPaste=False,
                 enableClipboard=True,
+                clipboardDelimiter="tab",   # 엑셀 붙여넣기 시 열 구분
                 getRowNodeId="NO"
             )
 
             grid_options = gb.build()
+
+            # ✅ 완료 버튼을 위에 배치
+            if st.button("💾 완료 (저장)"):
+                st.session_state.addr_df = pd.DataFrame(grid_response["data"])
+                st.success("주소 데이터 저장 완료!")
 
             grid_response = AgGrid(
                 st.session_state.addr_df,
@@ -135,11 +141,6 @@ elif st.session_state.page == "project_view":
                 fit_columns_on_grid_load=True,
                 key="grid"
             )
-
-        st.markdown("---")
-        if st.button("💾 완료"):
-            st.session_state.addr_df = pd.DataFrame(grid_response["data"])
-            st.success("주소 데이터 저장 완료!")
 
     # --- 결과 탭 ---
     with tab2:
