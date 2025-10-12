@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>지도 프로젝트 관리</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=8076943fb980909891f021720b7527a2&libraries=services"></script>
+    
+    <!-- OpenLayers for VWorld -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@v7.5.2/ol.css">
+    <script src="https://cdn.jsdelivr.net/npm/ol@v7.5.2/dist/ol.js"></script>
+    
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-200">
+    <!-- 두번째 화면: 프로젝트 목록 -->
+    <div id="projectListScreen" class="screen active"></div>
+
+    <!-- 네번째 화면: 프로젝트 내부 -->
+    <div id="projectDetailScreen" class="screen"></div>
+
+    <!-- 첫번째 화면: 프로젝트 생성 모달 -->
+    <div id="createModal" class="modal"></div>
+
+    <!-- 세번째 화면: 비밀번호 입력 모달 -->
+    <div id="passwordModal" class="modal"></div>
+
+    <!-- 중요: 스크립트 로드 순서 -->
+    <script src="js/data.js"></script>
+    <script src="js/ui-components.js"></script>
+    <script src="js/project-detail.js"></script>
+    <script src="js/project-list.js"></script>
+    <script src="js/modals.js"></script>
+    <script src="js/vworld-map-init.js"></script>
+    <script src="js/vworld-map-marker.js"></script>
+    <script src="js/vworld-map-display.js"></script>
+    <script src="js/kakao-map.js"></script>
+    <script src="js/map-controls.js"></script>
+    <script src="js/map-modal.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>
