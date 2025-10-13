@@ -325,10 +325,6 @@ function getCreateModalHTML() {
                             <input type="text" id="projectName" placeholder="프로젝트 이름을 입력하세요" class="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                         </div>
                         <div class="space-y-2">
-                            <label class="block text-sm font-medium text-slate-700">비밀번호</label>
-                            <input type="password" id="projectPassword" placeholder="비밀번호를 입력하세요" class="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                        </div>
-                        <div class="space-y-2">
                             <label class="block text-sm font-medium text-slate-700">지도 유형</label>
                             <div class="flex gap-3">
                                 <label class="flex-1 cursor-pointer">
@@ -360,42 +356,6 @@ function getCreateModalHTML() {
                         <div class="flex gap-3 pt-4">
                             <button onclick="closeCreateModal()" class="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-md hover:bg-slate-50 transition-colors">취소</button>
                             <button onclick="createProject()" class="flex-1 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-md hover:from-blue-700 hover:to-purple-700 transition-colors">완료</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    `;
-}
-
-function getPasswordModalHTML() {
-    return `
-        <div class="fixed inset-0 bg-black/50 items-center justify-center z-50 p-4">
-            <div class="bg-white rounded-lg shadow-xl max-w-sm w-full">
-                <div class="p-6">
-                    <div class="flex items-center justify-between mb-4">
-                        <div class="flex items-center gap-2">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-amber-600">
-                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-                            </svg>
-                            <h2 class="text-lg font-bold text-slate-900">비밀번호 입력</h2>
-                        </div>
-                        <button onclick="closePasswordModal()" class="p-1 hover:bg-slate-100 rounded-lg transition-colors">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <line x1="18" y1="6" x2="6" y2="18"></line>
-                                <line x1="6" y1="6" x2="18" y2="18"></line>
-                            </svg>
-                        </button>
-                    </div>
-                    <p class="text-sm text-slate-600 mb-6">
-                        <span id="passwordProjectName" class="font-semibold"></span> 프로젝트에 접속하려면 비밀번호를 입력하세요.
-                    </p>
-                    <div class="space-y-4">
-                        <input type="password" id="enteredPassword" placeholder="비밀번호" class="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent" onkeypress="if(event.key==='Enter') checkPassword()">
-                        <div class="flex gap-3">
-                            <button onclick="closePasswordModal()" class="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-md hover:bg-slate-50 transition-colors">취소</button>
-                            <button onclick="checkPassword()" class="flex-1 px-4 py-2 bg-gradient-to-r from-amber-500 to-amber-600 text-white rounded-md hover:from-amber-600 hover:to-amber-700 transition-colors">확인</button>
                         </div>
                     </div>
                 </div>
