@@ -494,3 +494,26 @@ async function fetchLandInfoForReport() {
         alert('토지정보를 수집하지 못했습니다.');
     }
 }
+
+// ✅ 엑셀(.xlsx) 다운로드 함수
+function downloadExcel() {
+    try {
+        const table = document.querySelector("table"); // 보고서 테이블 자동 인식
+        if (!table) {
+            alert("테이블을 찾을 수 없습니다.");
+            return;
+        }
+
+        // 시트 객체 생성
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.table_to_sheet(table);
+        XLSX.utils.book_append_sheet(wb, ws, "보고서");
+
+        // 파일 저장
+        const today = new Date().toISOString().slice(0, 10);
+        XLSX.writeFile(wb, `토지정보보고서_${today}.xlsx`);
+    } catch (err) {
+        console.error("엑셀 다운로드 오류:", err);
+        alert("엑셀 다운로드 중 오류가 발생했습니다.");
+    }
+}
