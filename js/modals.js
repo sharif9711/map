@@ -1,4 +1,4 @@
-// ✅ 새 프로젝트 생성 모달 (버튼형 지도 선택, 기본값 카카오맵)
+// ✅ 새 프로젝트 생성 모달 (비밀번호 제거 + 지도종류 선택)
 function openCreateModal() {
     const modal = document.getElementById('createModal');
     if (!modal) return;
@@ -47,7 +47,7 @@ function openCreateModal() {
 
     modal.style.display = 'block';
 
-    // ✅ DOM 요소 모두 로드된 뒤 이벤트 바인딩
+    // 요소 참조
     const kakaoBtn = modal.querySelector('#btnKakao');
     const vworldBtn = modal.querySelector('#btnVWorld');
     const mapTypeInput = modal.querySelector('#selectedMapType');
@@ -55,12 +55,7 @@ function openCreateModal() {
     const cancelBtn = modal.querySelector('#cancelBtn');
     const nameInput = modal.querySelector('#newProjectName');
 
-    if (!kakaoBtn || !vworldBtn || !mapTypeInput || !createBtn) {
-        console.error('필수 요소가 누락되었습니다.');
-        return;
-    }
-
-    // ✅ 지도 선택 버튼 토글
+    // 지도 선택 버튼 토글
     kakaoBtn.addEventListener('click', () => {
         mapTypeInput.value = 'kakao';
         kakaoBtn.classList.add('bg-blue-600', 'text-white', 'border-blue-600');
@@ -77,12 +72,12 @@ function openCreateModal() {
         kakaoBtn.classList.add('bg-slate-100', 'text-slate-700', 'border-slate-300');
     });
 
-    // ✅ 취소 버튼
+    // 취소 버튼
     cancelBtn.addEventListener('click', () => {
         modal.style.display = 'none';
     });
 
-    // ✅ 생성 버튼
+    // 생성 버튼
     createBtn.addEventListener('click', () => {
         const projectName = nameInput.value.trim();
         const mapType = mapTypeInput.value;
@@ -92,7 +87,7 @@ function openCreateModal() {
             return;
         }
 
-        // ✅ 프로젝트 데이터 생성
+        // 새 프로젝트 생성
         const newProject = {
             id: crypto.randomUUID(),
             projectName: projectName,
@@ -101,14 +96,12 @@ function openCreateModal() {
             data: []
         };
 
-        // ✅ 로컬스토리지 저장
+        // 로컬스토리지에 저장
         projects.unshift(newProject);
         localStorage.setItem('projects', JSON.stringify(projects));
 
-        // ✅ 리스트 갱신
+        // 리스트 갱신 및 모달 닫기
         renderProjects();
-
-        // ✅ 모달 닫기
         modal.style.display = 'none';
     });
 }
