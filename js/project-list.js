@@ -1,3 +1,4 @@
+// ✅ 프로젝트 목록 렌더링
 function renderProjects() {
     const emptyState = document.getElementById('emptyState');
     const projectsList = document.getElementById('projectsList');
@@ -5,7 +6,7 @@ function renderProjects() {
     const projectCount = document.getElementById('projectCount');
 
     if (!emptyState || !projectsList || !projectsGrid || !projectCount) {
-        console.error('Required elements not found');
+        console.error('필수 요소를 찾을 수 없습니다.');
         return;
     }
 
@@ -31,15 +32,14 @@ function renderProjects() {
                         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
                         class="text-red-600">
                         <polyline points="3 6 5 6 21 6"></polyline>
-                        <path
-                            d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2">
-                        </path>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4
+                                 a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
                         <line x1="10" y1="11" x2="10" y2="17"></line>
                         <line x1="14" y1="11" x2="14" y2="17"></line>
                     </svg>
                 </button>
 
-                <!-- ✅ 비밀번호 모달 제거 -->
+                <!-- ✅ 카드 클릭 시 프로젝트 상세 보기 -->
                 <div onclick="openProject('${project.id}')" class="p-6 cursor-pointer">
                     <div class="flex items-start justify-between pb-3">
                         <div class="p-2 rounded-lg bg-blue-100 group-hover:bg-blue-200 transition-colors">
@@ -53,11 +53,11 @@ function renderProjects() {
                         </div>
                         ${mapTypeBadge}
                     </div>
+
                     <div class="space-y-4">
                         <h3 class="text-lg font-semibold text-slate-900 line-clamp-1">${project.projectName}</h3>
                         <div class="space-y-2.5">
-                            <div
-                                class="flex items-center gap-2 text-xs text-slate-500 pt-2 border-t border-slate-200">
+                            <div class="flex items-center gap-2 text-xs text-slate-500 pt-2 border-t border-slate-200">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14"
                                     viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                                     stroke-linecap="round" stroke-linejoin="round">
@@ -85,15 +85,13 @@ function deleteProject(event, projectId) {
 
     if (confirm(`"${project.projectName}" 프로젝트를 삭제하시겠습니까?\n\n⚠️ 이 작업은 되돌릴 수 없습니다.`)) {
         const index = projects.findIndex(p => p.id === projectId);
-        if (index > -1) {
-            projects.splice(index, 1);
-        }
+        if (index > -1) projects.splice(index, 1);
         localStorage.setItem('projects', JSON.stringify(projects));
         renderProjects();
     }
 }
 
-// ✅ 프로젝트 열기 (비밀번호 없이 바로 이동)
+// ✅ 프로젝트 열기 (SPA 내부 전환)
 function openProject(projectId) {
     const project = projects.find(p => p.id === projectId);
     if (!project) {
@@ -101,15 +99,24 @@ function openProject(projectId) {
         return;
     }
 
-    // ✅ mapType에 따라 분기
-    if (project.mapType === 'vworld') {
-        window.location.href = `vworld.html?project=${projectId}`;
+    currentProject = project;
+    localStorage.setItem('currentProjectId', projectId);
+
+    // 목록 → 상세화면으로 전환
+    document.getElementById('projectListScreen').classList.remove('active');
+    document.getElementById('projectListScreen').classList.add('hidden');
+    document.getElementById('projectDetailScreen').classList.remove('hidden');
+    document.getElementById('projectDetailScreen').classList.add('active');
+
+    // 상세 화면 로드
+    if (typeof showProjectDetail === 'function') {
+        showProjectDetail();
     } else {
-        window.location.href = `kakao.html?project=${projectId}`;
+        console.warn('showProjectDetail() 함수가 아직 로드되지 않았습니다.');
     }
 }
 
-// ✅ 날짜 형식
+// ✅ 날짜 포맷
 function formatDate(dateString) {
     const date = new Date(dateString);
     return date.toLocaleString('ko-KR', {
