@@ -169,7 +169,7 @@ async function geocodeAddressVWorld(address) {
 }
 
 // ===================================================================
-// 최종 수정된 기능: 주소로 상세 토지 정보(PNU 코드 등) 가져오기
+// 디버깅용 기능: 주소로 상세 토지 정보(PNU 코드 등) 가져오기
 // ===================================================================
 
 /**
@@ -192,7 +192,6 @@ async function getAddressDetailInfo(address) {
         }
 
         // 2. VWorld 토지 검색 API를 호출합니다.
-        // service=data, request=GetFeature API를 사용하여 좌표에 해당하는 필지 정보를 조회합니다.
         const apiUrl = `https://api.vworld.kr/req/data?` +
             `service=data&request=GetFeature&data=lp_pa_cbnd_bubun&` + // 토지 지적도 레이어
             `format=json&crs=epsg:4326&` +
@@ -202,10 +201,20 @@ async function getAddressDetailInfo(address) {
 
         const data = await vworldJsonp(apiUrl);
 
-        // 3. API 응답에서 필요한 정보를 추출합니다.
+        // 3. <<< 디버깅을 위해 API 응답 전체를 콘솔에 출력합니다. >>>
+        console.log(`--- VWorld API 응답 (${address}) ---`);
+        console.log("요청 좌표:", coord);
+        console.log("전체 응답 데이터:", JSON.stringify(data, null, 2));
+        // <<< 디버깅 로그 끝 >>>
+
+        // 4. API 응답에서 필요한 정보를 추출합니다.
         if (data && data.response && data.response.status === 'OK' && data.response.result && data.response.result.features.length > 0) {
             const feature = data.response.result.features[0];
             const properties = feature.properties;
+
+            // 5. <<< 찾은 속성(properties)도 콘솔에 출력합니다. >>>
+            console.log("찾은 필지 속성:", properties);
+            // <<< 디버깅 로그 끝 >>>
 
             // API 응답 필드명을 애플리케이션 필드명에 맞게 매핑
             return {
@@ -219,7 +228,10 @@ async function getAddressDetailInfo(address) {
                 zipCode: properties.newZipCode // 새 우편번호 (5자리)
             };
         } else {
+            // 6. <<< 정보를 찾지 못한 경우에도 응답을 출력합니다. >>>
             console.warn(`토지 정보를 찾을 수 없습니다: ${address}`);
+            console.warn("실패 시 응답 데이터:", data);
+            // <<< 디버깅 로그 끝 >>>
             return null;
         }
 
