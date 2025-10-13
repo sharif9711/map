@@ -20,20 +20,29 @@ function initVWorldMap(dataList = []) {
 
   dataList.forEach(row => {
     if (row.lng && row.lat) {
+      // 상태별 색상 매핑
+      const colorMap = {
+        "예정": "#3B82F6",
+        "완료": "#22C55E",
+        "보류": "#F59E0B"
+      };
+      const color = colorMap[row.상태] || "#94A3B8"; // 기본 회색
+
+      // 마커 생성
       const marker = new ol.Feature({
         geometry: new ol.geom.Point(ol.proj.fromLonLat([parseFloat(row.lng), parseFloat(row.lat)]))
       });
       marker.setStyle(new ol.style.Style({
         image: new ol.style.Icon({
-          src: "https://cdn-icons-png.flaticon.com/512/684/684908.png",
-          scale: 0.05
+          src: createColoredMarker(color),
+          scale: 0.8
         })
       }));
       vectorSource.addFeature(marker);
 
-      // 지번경계선 표시 (PNU 기반)
+      // PNU 경계선 표시
       if (row.pnu코드) {
-        fetch(`https://api.vworld.kr/req/data?service=data&request=getfeature&data=LT_C_SPBD_BUBUN&key=BE552462-0744-32DB-81E7-1B7317390D68&geomFilter=BOX(126,37,128,39)&crs=EPSG:4326&attrFilter=pnu:like:${row.pnu코드}`)
+        fetch(`https://api.vworld.kr/req/data?service=data&request=getfeature&data=LT_C_SPBD_BUBUN&key=BE552462-0744-32DB-81E7-1B7317390D68&attrFilter=pnu:like:${row.pnu코드}`)
           .then(res => res.json())
           .then(json => {
             const feature = json?.response?.result?.featureCollection?.features?.[0];
@@ -44,8 +53,8 @@ function initVWorldMap(dataList = []) {
                 featureProjection: map.getView().getProjection()
               });
               polygon.setStyle(new ol.style.Style({
-                stroke: new ol.style.Stroke({ color: "rgba(255,0,0,0.8)", width: 2 }),
-                fill: new ol.style.Fill({ color: "rgba(255,0,0,0.15)" })
+                stroke: new ol.style.Stroke({ color, width: 2 }),
+                fill: new ol.style.Fill({ color: `${hexToRgba(color, 0.2)}` })
               }));
               vectorSource.addFeature(polygon);
             }
@@ -53,4 +62,29 @@ function initVWorldMap(dataList = []) {
       }
     }
   });
+}
+
+// 동그란 마커를 색상별로 그려주는 DataURI 함수
+function createColoredMarker(color) {
+  const canvas = document.createElement("canvas");
+  canvas.width = 30;
+  canvas.height = 30;
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.arc(15, 15, 10, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = "white";
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  return canvas.toDataURL();
+}
+
+// HEX → RGBA 변환 유틸
+function hexToRgba(hex, alpha) {
+  const bigint = parseInt(hex.slice(1), 16);
+  const r = (bigint >> 16) & 255;
+  const g = (bigint >> 8) & 255;
+  const b = bigint & 255;
+  return `rgba(${r},${g},${b},${alpha})`;
 }
