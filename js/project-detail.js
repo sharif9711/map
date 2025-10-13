@@ -130,10 +130,11 @@ async function fetchPostalCodesForReport() {
     }
 }
 
-// ✅ 개선된 JSONP 버전 (지번주소 대응)
+// ✅ JSONP 방식 + PNU코드에서 법정동코드/대장구분/본번/부번 자동 계산
 function getAddressDetailInfo(address) {
     const VWORLD_KEY = "BE552462-0744-32DB-81E7-1B7317390D68";
 
+    // 🔹 도로명 / 지번 주소 변환 시도
     function getCoord(type) {
         return new Promise((resolve, reject) => {
             $.ajax({
@@ -155,21 +156,19 @@ function getAddressDetailInfo(address) {
                         reject("NOT_FOUND");
                     }
                 },
-                error: function (err) {
-                    reject(err);
-                }
+                error: reject
             });
         });
     }
 
-    // 1️⃣ 좌표 변환 시도 (도로명 → 지번 순서)
+    // 🔹 메인 처리
     return new Promise(async (resolve, reject) => {
         try {
             let point = null;
             try {
-                point = await getCoord("road");
+                point = await getCoord("road");   // 도로명 먼저 시도
             } catch {
-                point = await getCoord("parcel");
+                point = await getCoord("parcel"); // 없으면 지번으로 시도
             }
 
             if (!point) {
@@ -180,7 +179,7 @@ function getAddressDetailInfo(address) {
             const x = point.x;
             const y = point.y;
 
-            // 2️⃣ 좌표로 토지정보 가져오기
+            // 🔹 좌표로 토지정보 조회
             $.ajax({
                 url: "https://api.vworld.kr/req/data",
                 dataType: "jsonp",
@@ -201,13 +200,40 @@ function getAddressDetailInfo(address) {
                     }
 
                     const f = landJson.response.result.featureCollection.features[0].properties;
+                    const pnu = f.pnu || "";
+
+                    // ✅ PNU 코드로 세부정보 계산
+                    let bjdCode = "";
+                    let daejang = "";
+                    let bonbun = "";
+                    let bubun = "";
+
+                    if (pnu.length >= 19) {
+                        // 1~10자리 = 법정동코드
+                        bjdCode = pnu.substring(0, 10);
+                        
+                        // 11번째 자리 = 대장구분
+                        const typeDigit = pnu.charAt(10);
+                        switch (typeDigit) {
+                            case "1": daejang = "토지"; break;
+                            case "2": daejang = "임야"; break;
+                            case "3": daejang = "하천"; break;
+                            case "4": daejang = "간척"; break;
+                            default: daejang = "기타";
+                        }
+
+                        // 12~15자리 = 본번 / 16~19자리 = 부번
+                        bonbun = pnu.substring(11, 15);
+                        bubun = pnu.substring(15, 19);
+                    }
+
                     resolve({
                         zipCode: point.zip || "",
-                        bjdCode: f.bjd_cd || "",
-                        pnuCode: f.pnu || "",
-                        대장구분: f.regstr_se_code || "",
-                        본번: f.mnnm || "",
-                        부번: f.slno || "",
+                        bjdCode: bjdCode || f.bjd_cd || "",
+                        pnuCode: pnu,
+                        대장구분: daejang,
+                        본번: bonbun || f.mnnm || "",
+                        부번: bubun || f.slno || "",
                         jimok: f.jimok || "",
                         area: f.parea || "",
                         lat: y,
