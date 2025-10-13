@@ -130,73 +130,98 @@ async function fetchPostalCodesForReport() {
     }
 }
 
-// ✅ JSONP 방식으로 VWorld API 호출 (CORS 오류 해결 버전)
+// ✅ 개선된 JSONP 버전 (지번주소 대응)
 function getAddressDetailInfo(address) {
     const VWORLD_KEY = "BE552462-0744-32DB-81E7-1B7317390D68";
 
-    return new Promise((resolve, reject) => {
-        // 1️⃣ 주소 → 좌표 변환
-        $.ajax({
-            url: "https://api.vworld.kr/req/address",
-            dataType: "jsonp",
-            data: {
-                service: "address",
-                request: "getcoord",
-                version: "2.0",
-                crs: "epsg:4326",
-                address: address,
-                type: "road",
-                key: VWORLD_KEY
-            },
-            success: function(geoJson) {
-                if (!geoJson.response || geoJson.response.status !== "OK") {
-                    reject("좌표 변환 실패");
-                    return;
+    function getCoord(type) {
+        return new Promise((resolve, reject) => {
+            $.ajax({
+                url: "https://api.vworld.kr/req/address",
+                dataType: "jsonp",
+                data: {
+                    service: "address",
+                    request: "getcoord",
+                    version: "2.0",
+                    crs: "epsg:4326",
+                    address: address,
+                    type: type,  // road / parcel
+                    key: VWORLD_KEY
+                },
+                success: function (geoJson) {
+                    if (geoJson.response && geoJson.response.status === "OK") {
+                        resolve(geoJson.response.result.point);
+                    } else {
+                        reject("NOT_FOUND");
+                    }
+                },
+                error: function (err) {
+                    reject(err);
                 }
-
-                const x = geoJson.response.result.point.x;
-                const y = geoJson.response.result.point.y;
-
-                // 2️⃣ 좌표 → 토지정보 조회
-                $.ajax({
-                    url: "https://api.vworld.kr/req/data",
-                    dataType: "jsonp",
-                    data: {
-                        service: "data",
-                        request: "getfeature",
-                        key: VWORLD_KEY,
-                        format: "json",
-                        size: 1,
-                        page: 1,
-                        data: "LP_PA_CBND_BUBUN",
-                        geomFilter: `point(${x} ${y})`
-                    },
-                    success: function(landJson) {
-                        if (!landJson.response || landJson.response.status !== "OK") {
-                            reject("토지정보 조회 실패");
-                            return;
-                        }
-                        const f = landJson.response.result.featureCollection.features[0].properties;
-                        resolve({
-                            zipCode: geoJson.response.result.point.zip || "",
-                            bjdCode: f.bjd_cd || "",
-                            pnuCode: f.pnu || "",
-                            대장구분: f.regstr_se_code || "",
-                            본번: f.mnnm || "",
-                            부번: f.slno || "",
-                            jimok: f.jimok || "",
-                            area: f.parea || "",
-                            lat: y,
-                            lon: x
-                        });
-                    },
-                    error: reject
-                });
-            },
-            error: reject
+            });
         });
+    }
+
+    // 1️⃣ 좌표 변환 시도 (도로명 → 지번 순서)
+    return new Promise(async (resolve, reject) => {
+        try {
+            let point = null;
+            try {
+                point = await getCoord("road");
+            } catch {
+                point = await getCoord("parcel");
+            }
+
+            if (!point) {
+                reject("좌표 변환 실패");
+                return;
+            }
+
+            const x = point.x;
+            const y = point.y;
+
+            // 2️⃣ 좌표로 토지정보 가져오기
+            $.ajax({
+                url: "https://api.vworld.kr/req/data",
+                dataType: "jsonp",
+                data: {
+                    service: "data",
+                    request: "getfeature",
+                    key: VWORLD_KEY,
+                    format: "json",
+                    size: 1,
+                    page: 1,
+                    data: "LP_PA_CBND_BUBUN",
+                    geomFilter: `point(${x} ${y})`
+                },
+                success: function (landJson) {
+                    if (!landJson.response || landJson.response.status !== "OK") {
+                        reject("토지정보 조회 실패");
+                        return;
+                    }
+
+                    const f = landJson.response.result.featureCollection.features[0].properties;
+                    resolve({
+                        zipCode: point.zip || "",
+                        bjdCode: f.bjd_cd || "",
+                        pnuCode: f.pnu || "",
+                        대장구분: f.regstr_se_code || "",
+                        본번: f.mnnm || "",
+                        부번: f.slno || "",
+                        jimok: f.jimok || "",
+                        area: f.parea || "",
+                        lat: y,
+                        lon: x
+                    });
+                },
+                error: reject
+            });
+        } catch (err) {
+            reject(err);
+        }
     });
 }
+
 
 function renderDataInputTable() {
     const tbody = document.getElementById('dataInputTable');
