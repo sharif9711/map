@@ -1,5 +1,3 @@
-// 모달 관련 함수
-
 // ✅ 새 프로젝트 생성 모달 (버튼형 지도 선택, 기본값 카카오맵)
 function openCreateModal() {
     const modal = document.getElementById('createModal');
@@ -49,14 +47,20 @@ function openCreateModal() {
 
     modal.style.display = 'block';
 
-    // ✅ 버튼 요소 가져오기
-    const kakaoBtn = document.getElementById('btnKakao');
-    const vworldBtn = document.getElementById('btnVWorld');
-    const mapTypeInput = document.getElementById('selectedMapType');
-    const createBtn = document.getElementById('createBtn');
-    const cancelBtn = document.getElementById('cancelBtn');
+    // ✅ DOM 요소 모두 로드된 뒤 이벤트 바인딩
+    const kakaoBtn = modal.querySelector('#btnKakao');
+    const vworldBtn = modal.querySelector('#btnVWorld');
+    const mapTypeInput = modal.querySelector('#selectedMapType');
+    const createBtn = modal.querySelector('#createBtn');
+    const cancelBtn = modal.querySelector('#cancelBtn');
+    const nameInput = modal.querySelector('#newProjectName');
 
-    // ✅ 지도 선택 토글 기능
+    if (!kakaoBtn || !vworldBtn || !mapTypeInput || !createBtn) {
+        console.error('필수 요소가 누락되었습니다.');
+        return;
+    }
+
+    // ✅ 지도 선택 버튼 토글
     kakaoBtn.addEventListener('click', () => {
         mapTypeInput.value = 'kakao';
         kakaoBtn.classList.add('bg-blue-600', 'text-white', 'border-blue-600');
@@ -73,14 +77,13 @@ function openCreateModal() {
         kakaoBtn.classList.add('bg-slate-100', 'text-slate-700', 'border-slate-300');
     });
 
-    // ✅ 닫기
+    // ✅ 취소 버튼
     cancelBtn.addEventListener('click', () => {
         modal.style.display = 'none';
     });
 
-    // ✅ 생성 버튼 클릭 시 프로젝트 생성 함수 호출
+    // ✅ 생성 버튼
     createBtn.addEventListener('click', () => {
-        const nameInput = document.getElementById('newProjectName');
         const projectName = nameInput.value.trim();
         const mapType = mapTypeInput.value;
 
@@ -89,6 +92,7 @@ function openCreateModal() {
             return;
         }
 
+        // ✅ 프로젝트 데이터 생성
         const newProject = {
             id: crypto.randomUUID(),
             projectName: projectName,
@@ -97,66 +101,20 @@ function openCreateModal() {
             data: []
         };
 
+        // ✅ 로컬스토리지 저장
         projects.unshift(newProject);
         localStorage.setItem('projects', JSON.stringify(projects));
 
+        // ✅ 리스트 갱신
         renderProjects();
+
+        // ✅ 모달 닫기
         modal.style.display = 'none';
     });
 }
 
-
-function createProject() {
-    const name = document.getElementById('projectName').value;
-    const password = document.getElementById('projectPassword').value;
-    const mapType = document.querySelector('input[name="mapType"]:checked').value;
-
-    if (!name || !password) {
-        alert('프로젝트 이름과 비밀번호를 입력해주세요.');
-        return;
-    }
-
-    const project = createProjectData(name, password, mapType);
-    projects.unshift(project);
-    closeCreateModal();
-    renderProjects();
-}
-
-function openPasswordModal(projectId) {
-    selectedProjectId = projectId;
-    const project = projects.find(p => p.id === projectId);
-    if (project) {
-        document.getElementById('passwordProjectName').textContent = project.projectName;
-        document.getElementById('passwordModal').classList.add('active');
-        setTimeout(() => {
-            document.getElementById('enteredPassword').focus();
-        }, 100);
-    }
-}
-
-function closePasswordModal() {
-    document.getElementById('passwordModal').classList.remove('active');
-    document.getElementById('enteredPassword').value = '';
-    selectedProjectId = null;
-}
-
-function checkPassword() {
-    const password = document.getElementById('enteredPassword').value;
-    const project = projects.find(p => p.id === selectedProjectId);
-
-    if (project && password === project.password) {
-        currentProject = project;
-        closePasswordModal();
-        
-        // showProjectDetail 함수가 정의되어 있는지 확인
-        if (typeof showProjectDetail === 'function') {
-            showProjectDetail();
-        } else {
-            console.error('showProjectDetail function is not defined');
-            alert('프로젝트를 열 수 없습니다. 페이지를 새로고침해주세요.');
-        }
-    } else {
-        alert('비밀번호가 올바르지 않습니다.');
-        document.getElementById('enteredPassword').value = '';
-    }
+// ✅ 모달 닫기 함수
+function closeCreateModal() {
+    const modal = document.getElementById('createModal');
+    if (modal) modal.style.display = 'none';
 }
