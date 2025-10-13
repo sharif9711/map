@@ -78,3 +78,35 @@ function deleteProject(event, projectId) {
         renderProjects();
     }
 }
+
+// ✅ 새 프로젝트 생성 (비밀번호 없이)
+function createProject() {
+    const nameInput = document.getElementById('newProjectName');
+    const contactInput = document.getElementById('newProjectContact');
+
+    const projectName = nameInput.value.trim();
+    const contact = contactInput.value.trim();
+
+    if (!projectName) {
+        alert('프로젝트 이름을 입력해주세요.');
+        return;
+    }
+
+    const newProject = {
+        id: crypto.randomUUID(),
+        projectName: projectName,
+        name: projectName,
+        contact: contact,
+        createdAt: new Date(),
+        mapType: 'vworld', // 기본 지도 타입
+        data: []
+    };
+
+    // 로컬 저장소에 추가
+    projects.unshift(newProject);
+    localStorage.setItem('projects', JSON.stringify(projects));
+
+    // UI 갱신
+    renderProjects();
+    closeCreateModal();
+}
