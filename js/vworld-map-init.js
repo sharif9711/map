@@ -168,12 +168,14 @@ async function geocodeAddressVWorld(address) {
     return null;
 }
 
+
 // ===================================================================
 // 최종 수정된 기능: 주소로 상세 토지 정보(PNU 코드 등) 가져오기
 // ===================================================================
 
 /**
- * 주소를 기반으로 VWorld 토지(필지) 검색 API를 호출하여 상세 정보를 가져옵니다.
+ * 주소를 기반으로 VWorld API를 호출하여 상세 토지 정보를 가져옵니다.
+ * 이 함수는 PNU 코드를 포함한 가능한 모든 정보를 반환합니다.
  * @param {string} address - 검색할 주소
  * @returns {Promise<object|null>} 토지 정보 객체 또는 null
  */
@@ -183,53 +185,45 @@ async function getAddressDetailInfo(address) {
     }
 
     try {
-        // 1. 주소를 좌표(위도, 경도)로 변환합니다.
-        const coord = await geocodeAddressVWorld(address);
-        if (!coord) {
-            console.warn(`좌표 변환 실패: ${address}`);
+        // 1️⃣ 주소 → 좌표 변환
+        const geoUrl = `https://api.vworld.kr/req/address?service=address&request=getcoord&version=2.0&crs=epsg:4326&address=${encodeURIComponent(address)}&type=road&key=${VWORLD_API_KEY}`;
+        const geoJson = await vworldJsonp(geoUrl);
+
+        if (!geoJson.response || geoJson.response.status !== "OK") {
+            console.warn("좌표 변환 실패:", address);
             return null;
         }
 
-        // 2. VWorld 토지 검색 API를 호출합니다.
-        const apiUrl = `https://api.vworld.kr/req/data?` +
-            `service=data&request=GetFeature&data=lp_pa_cbnd_bubun&` + // 토지 지적도 레이어
-            `format=json&crs=epsg:4326&` +
-            `geomfilter=POINT(${coord.lon} ${coord.lat})&` + // 해당 좌표의 필지를 필터링
-            `geometry=false&attribute=true&` +
-            `key=${VWORLD_API_KEY}`;
+        const x = geoJson.response.result.point.x;
+        const y = geoJson.response.result.point.y;
 
-        const data = await vworldJsonp(apiUrl);
+        // 2️⃣ 좌표 → 토지정보 조회
+        const landUrl = `https://api.vworld.kr/req/data?service=data&request=getfeature&format=json&size=1&page=1&data=LP_PA_CBND_BUBUN&geomFilter=POINT(${x} ${y})&key=${VWORLD_API_KEY}`;
+        const landJson = await vworldJsonp(landUrl);
 
-        // 3. <<< 중요: API 응답 경로를 올바르게 수정했습니다. >>>
-        if (data && data.response && data.response.status === 'OK' && data.response.result && data.response.result.featureCollection && data.response.result.featureCollection.features.length > 0) {
-            const feature = data.response.result.featureCollection.features[0];
-            const properties = feature.properties;
-
-            // 4. <<< API가 제공하는 필드에 맞춰 정보를 매핑합니다. >>>
-            const pnu = properties.pnu;
-            let bjdCode = null;
-            if (pnu && pnu.length >= 10) {
-                bjdCode = pnu.substring(0, 10); // PNU 코드 앞 10자리가 법정동코드
-            }
-
-            // API 응답 필드명을 애플리케이션 필드명에 맞게 매핑
-            return {
-                pnuCode: pnu, // PNU 코드
-                bjdCode: bjdCode, // PNU에서 추출한 법정동코드
-                대장구분: properties.jibun && properties.jibun.includes('대') ? '토지대장' : '임야대장', // '대' 또는 '임'으로 구분
-                본번: properties.bonbun, // 본번
-                부번: properties.bubun, // 부번
-                지목: null, // 이 API에서는 지목 정보를 제공하지 않음
-                면적: null, // 이 API에서는 면적 정보를 제공하지 않음
-                zipCode: null // 이 API에서는 우편번호 정보를 제공하지 않음
-            };
-        } else {
-            console.warn(`토지 정보를 찾을 수 없습니다: ${address}`);
+        if (!landJson.response || landJson.response.status !== "OK" || !landJson.response.result.featureCollection.features.length) {
+            console.warn("토지정보 조회 실패:", address);
             return null;
         }
+
+        const f = landJson.response.result.featureCollection.features[0].properties;
+        
+        // 3️⃣ 정보 매핑 및 반환
+        return {
+            zipCode: geoJson.response.result.point.zip || "", // 첫 번째 API 응답의 우편번호
+            bjdCode: f.pnu ? f.pnu.substring(0, 10) : "", // PNU 코드 앞 10자리
+            pnuCode: f.pnu || "",
+            대장구분: f.jibun && f.jibun.includes('대') ? '토지대장' : '임야대장', // '대' 또는 '임'으로 구분
+            본번: f.bonbun || "",
+            부번: f.bubun || "",
+            지목: null, // 이 API에서는 제공하지 않음
+            면적: null, // 이 API에서는 제공하지 않음
+            lat: y,
+            lon: x
+        };
 
     } catch (error) {
-        console.error(`토지 정보 조회 오류 (${address}):`, error);
+        console.error(`토지 정보 전체 조회 오류 (${address}):`, error);
         return null;
     }
 }
