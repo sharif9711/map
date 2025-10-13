@@ -564,25 +564,44 @@ async function fetchLandInfoForReport() {
     }
 }
 
-// ✅ 엑셀(.xlsx) 다운로드 함수
+// ✅ 보고서 테이블을 Excel (.xlsx) 파일로 다운로드
 function downloadExcel() {
     try {
-        const table = document.querySelector("table"); // 보고서 테이블 자동 인식
+        const table = document.getElementById('reportTable');
         if (!table) {
-            alert("테이블을 찾을 수 없습니다.");
+            alert('보고서 테이블을 찾을 수 없습니다.');
             return;
         }
 
-        // 시트 객체 생성
+        // 엑셀 워크북 & 워크시트 생성
         const wb = XLSX.utils.book_new();
         const ws = XLSX.utils.table_to_sheet(table);
-        XLSX.utils.book_append_sheet(wb, ws, "보고서");
 
-        // 파일 저장
-        const today = new Date().toISOString().slice(0, 10);
-        XLSX.writeFile(wb, `토지정보보고서_${today}.xlsx`);
+        // 열 너비 자동 조정 (한글 데이터 깨짐 방지)
+        const colWidths = [];
+        const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
+        rows.forEach(row => {
+            row.forEach((cell, i) => {
+                const width = cell ? cell.toString().length + 2 : 10;
+                colWidths[i] = Math.max(colWidths[i] || 10, width);
+            });
+        });
+        ws['!cols'] = colWidths.map(w => ({ width: w }));
+
+        // 워크북에 시트 추가
+        XLSX.utils.book_append_sheet(wb, ws, '보고서');
+
+        // 파일명 생성
+        const fileName = `${currentProject.projectName || '프로젝트'}_보고서_${new Date()
+            .toISOString()
+            .slice(0, 10)}.xlsx`;
+
+        // 파일 다운로드
+        XLSX.writeFile(wb, fileName);
+
+        alert(`"${fileName}" 파일이 다운로드되었습니다.`);
     } catch (err) {
-        console.error("엑셀 다운로드 오류:", err);
-        alert("엑셀 다운로드 중 오류가 발생했습니다.");
+        console.error('엑셀 다운로드 오류:', err);
+        alert('엑셀 다운로드 중 오류가 발생했습니다.');
     }
 }
