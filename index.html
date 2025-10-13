@@ -1,151 +1,78 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>지도 프로젝트 관리</title>
 
-  <!-- Tailwind CSS -->
+  <!-- TailwindCSS -->
   <script src="https://cdn.tailwindcss.com"></script>
-
-  <!-- Kakao Maps SDK -->
-  <script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=8076943fb980909891f021720b7527a2&libraries=services"></script>
-
-  <!-- VWorld (OpenLayers) -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@v7.5.2/ol.css">
-  <script src="https://cdn.jsdelivr.net/npm/ol@v7.5.2/dist/ol.js"></script>
-
-  <!-- XLSX for Excel Download -->
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-
-  <link rel="stylesheet" href="css/styles.css">
 </head>
 
-<body class="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-200">
-
-  <!-- 🧱 프로젝트 목록 화면 -->
-  <div id="projectListScreen" class="screen active p-6">
-    <div class="flex justify-between items-center mb-6">
-      <h1 class="text-2xl font-bold text-slate-800">프로젝트 목록</h1>
-      <button onclick="openCreateModal()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+<body class="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+  <!-- Header -->
+  <header class="border-b border-gray-200 bg-white/80 backdrop-blur-sm sticky top-0 z-10">
+    <div class="container mx-auto px-4 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <span class="text-2xl">🗺️</span>
+        <h1 class="text-xl font-semibold text-gray-800">지도 프로젝트 관리</h1>
+      </div>
+      <button
+        class="bg-indigo-600 text-white px-4 py-2 rounded-lg shadow hover:bg-indigo-700 transition"
+        onclick="openCreateModal()">
         + 새 프로젝트 만들기
       </button>
     </div>
+  </header>
 
-    <div id="emptyState" class="hidden flex flex-col items-center justify-center h-64 text-slate-500">
-      <p>등록된 프로젝트가 없습니다.</p>
+  <!-- Main -->
+  <main class="container mx-auto px-4 py-10">
+    <h2 class="text-lg font-semibold text-gray-800 mb-3">프로젝트 목록</h2>
+    <p id="projectCount" class="text-sm text-gray-500 mb-6">총 0개 프로젝트</p>
+
+    <!-- 프로젝트 카드 리스트 -->
+    <div id="projectsGrid"
+      class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 text-gray-700">
+      <!-- JS에서 카드 추가됨 -->
     </div>
 
-    <div id="projectsList">
-      <p class="text-slate-600 mb-3 text-sm">총 <span id="projectCount">0</span>개 프로젝트</p>
-      <div id="projectsGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5"></div>
+    <!-- 비어 있을 때 메시지 -->
+    <div id="emptyMessage" class="text-center text-gray-400 mt-16 hidden">
+      <div class="text-5xl mb-3">🗺️</div>
+      <p>아직 프로젝트가 없습니다</p>
+      <p class="text-sm">첫 번째 프로젝트를 만들어서 지도 작업을 시작해보세요</p>
+    </div>
+  </main>
+
+  <!-- 모달 (새 프로젝트 생성) -->
+  <div id="createProjectModal"
+    class="hidden fixed inset-0 flex items-center justify-center bg-black/40 z-50">
+    <div class="bg-white p-6 rounded-xl shadow-lg w-full max-w-sm">
+      <h3 class="text-lg font-semibold text-gray-800 mb-4">새 프로젝트 만들기</h3>
+      <label class="block text-sm mb-1">프로젝트 이름</label>
+      <input id="projectNameInput"
+        type="text"
+        class="w-full border rounded-md px-3 py-2 mb-4"
+        placeholder="예: 수완동 지도작업" />
+
+      <label class="block text-sm mb-1">지도 종류</label>
+      <div class="flex gap-2 mb-5">
+        <button id="mapTypeKakao" class="flex-1 border px-3 py-2 rounded-md bg-indigo-600 text-white"
+          onclick="selectMapType('kakao')">카카오맵</button>
+        <button id="mapTypeVworld" class="flex-1 border px-3 py-2 rounded-md"
+          onclick="selectMapType('vworld')">VWorld</button>
+      </div>
+
+      <div class="flex justify-end gap-2">
+        <button onclick="closeModal()"
+          class="px-4 py-2 rounded-md border text-gray-600 hover:bg-gray-100">취소</button>
+        <button onclick="createProject()"
+          class="px-4 py-2 rounded-md bg-indigo-600 text-white hover:bg-indigo-700">생성</button>
+      </div>
     </div>
   </div>
 
-  <!-- 🧩 프로젝트 상세 화면 -->
-  <div id="projectDetailScreen" class="screen hidden">
-    <header class="flex justify-between items-center bg-white px-5 py-4 border-b border-slate-200 shadow-sm">
-      <div class="flex items-center gap-3">
-        <button onclick="backToList()" class="p-2 rounded-lg hover:bg-slate-100">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none"
-               stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="15 18 9 12 15 6"></polyline>
-          </svg>
-        </button>
-        <h2 id="currentProjectName" class="text-xl font-semibold text-slate-800"></h2>
-      </div>
-
-      <div class="flex items-center gap-3">
-        <button id="mapViewButton"
-          class="flex items-center gap-2 px-3 py-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-sm text-slate-700 transition">
-          지도
-        </button>
-        <button onclick="downloadExcel()"
-          class="flex items-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm text-white transition">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none"
-               stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 5v14m-6-4l6 4 6-4M6 5V1h12v4"/>
-          </svg>
-          엑셀 다운로드
-        </button>
-      </div>
-    </header>
-
-    <!-- 🗂 탭 버튼 -->
-    <nav class="flex border-b bg-white">
-      <button id="tab-자료입력" onclick="switchTab('자료입력')"
-        class="flex-1 text-center py-3 text-sm font-medium text-blue-600 border-b-2 border-blue-600">자료입력</button>
-      <button id="tab-보고서" onclick="switchTab('보고서')"
-        class="flex-1 text-center py-3 text-sm font-medium text-slate-600 hover:text-slate-900">보고서</button>
-      <button id="tab-연결" onclick="switchTab('연결')"
-        class="flex-1 text-center py-3 text-sm font-medium text-slate-600 hover:text-slate-900">연결</button>
-    </nav>
-
-    <!-- 📋 콘텐츠 영역 -->
-    <div id="content-자료입력" class="p-4 bg-white">
-      <table class="w-full text-sm border border-slate-300">
-        <thead class="bg-slate-100">
-          <tr>
-            <th class="border px-3 py-2 text-center">순번</th>
-            <th class="border px-3 py-2 text-center">이름</th>
-            <th class="border px-3 py-2 text-center">연락처</th>
-            <th class="border px-3 py-2 text-center">주소</th>
-          </tr>
-        </thead>
-        <tbody id="dataInputTable"></tbody>
-      </table>
-    </div>
-
-    <div id="content-보고서" class="hidden p-4 bg-white">
-      <div class="flex justify-between items-center mb-4">
-        <h3 class="text-slate-700 font-semibold text-sm">보고서 데이터</h3>
-        <button onclick="fetchLandInfoForReport()"
-          class="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none"
-               stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-          </svg>
-          토지정보 수집
-        </button>
-      </div>
-
-      <div class="overflow-x-auto border border-slate-300 rounded-lg shadow-sm">
-        <table class="min-w-full text-sm">
-          <thead class="bg-slate-100">
-            <tr>
-              <th class="border px-2 py-2">순번</th>
-              <th class="border px-2 py-2">이름</th>
-              <th class="border px-2 py-2">연락처</th>
-              <th class="border px-2 py-2">주소</th>
-              <th class="border px-2 py-2">우편번호</th>
-              <th class="border px-2 py-2">상태</th>
-              <th class="border px-2 py-2">법정동코드</th>
-              <th class="border px-2 py-2">PNU코드</th>
-              <th class="border px-2 py-2">대장구분</th>
-              <th class="border px-2 py-2">본번</th>
-              <th class="border px-2 py-2">부번</th>
-              <th class="border px-2 py-2">지목</th>
-              <th class="border px-2 py-2">면적</th>
-              <th class="border px-2 py-2">기록사항</th>
-            </tr>
-          </thead>
-          <tbody id="reportTable"></tbody>
-        </table>
-      </div>
-    </div>
-
-    <div id="content-연결" class="hidden p-6 bg-white text-center text-slate-500">
-      <p>📡 지도 공유 / QR 코드 기능이 곧 추가될 예정입니다.</p>
-    </div>
-
-    <!-- 지도 영역 -->
-    <div id="mapContainer" class="hidden h-[600px] bg-slate-200 mt-4 rounded-lg"></div>
-  </div>
-
-  <!-- ✅ 모달 영역 -->
-  <div id="createModal" class="modal"></div>
-
-  <!-- ✅ 스크립트 로드 순서 중요 -->
+  <!-- ✅ JS 로드 순서 중요 -->
   <script src="js/data.js"></script>
   <script src="js/ui-components.js"></script>
   <script src="js/project-list.js"></script>
