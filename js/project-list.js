@@ -79,13 +79,13 @@ function deleteProject(event, projectId) {
     }
 }
 
-// ✅ 새 프로젝트 생성 (비밀번호 없이)
+// ✅ 새 프로젝트 생성 (이름 + 지도종류)
 function createProject() {
     const nameInput = document.getElementById('newProjectName');
-    const contactInput = document.getElementById('newProjectContact');
+    const mapTypeSelect = document.getElementById('newMapType');
 
     const projectName = nameInput.value.trim();
-    const contact = contactInput.value.trim();
+    const mapType = mapTypeSelect.value || 'kakao';
 
     if (!projectName) {
         alert('프로젝트 이름을 입력해주세요.');
@@ -95,18 +95,14 @@ function createProject() {
     const newProject = {
         id: crypto.randomUUID(),
         projectName: projectName,
-        name: projectName,
-        contact: contact,
         createdAt: new Date(),
-        mapType: 'vworld', // 기본 지도 타입
+        mapType: mapType,
         data: []
     };
 
-    // 로컬 저장소에 추가
     projects.unshift(newProject);
     localStorage.setItem('projects', JSON.stringify(projects));
 
-    // UI 갱신
     renderProjects();
     closeCreateModal();
 }
