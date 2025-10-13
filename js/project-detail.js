@@ -78,6 +78,10 @@ function switchTab(tabName) {
       btn.classList.remove("text-blue-600", "border-b-2", "border-blue-600");
       content.classList.add("hidden");
     }
+    if (tab === "지도") {
+  setTimeout(() => initMap(), 300);
+}
+
   });
 }
 
