@@ -5,7 +5,6 @@ function showProjectDetail() {
     document.getElementById('projectDetailScreen').classList.add('active');
     document.getElementById('currentProjectName').textContent = currentProject.projectName;
     
-    // 지도 버튼 텍스트 업데이트
     const mapBtn = document.getElementById('mapViewButton');
     if (mapBtn) {
         const mapTypeText = currentProject.mapType === 'vworld' ? 'VWorld' : '카카오맵';
@@ -131,47 +130,72 @@ async function fetchPostalCodesForReport() {
     }
 }
 
-// ✅ VWorld API 호출 함수 (토지정보 수집 핵심)
-async function getAddressDetailInfo(address) {
+// ✅ JSONP 방식으로 VWorld API 호출 (CORS 오류 해결 버전)
+function getAddressDetailInfo(address) {
     const VWORLD_KEY = "BE552462-0744-32DB-81E7-1B7317390D68";
 
-    try {
+    return new Promise((resolve, reject) => {
         // 1️⃣ 주소 → 좌표 변환
-        const geoRes = await fetch(
-            `https://api.vworld.kr/req/address?service=address&request=getcoord&version=2.0&crs=epsg:4326&address=${encodeURIComponent(address)}&type=road&key=${VWORLD_KEY}`
-        );
-        const geoJson = await geoRes.json();
-        if (geoJson.response.status !== "OK") throw new Error("좌표 변환 실패");
-        
-        const x = geoJson.response.result.point.x;
-        const y = geoJson.response.result.point.y;
+        $.ajax({
+            url: "https://api.vworld.kr/req/address",
+            dataType: "jsonp",
+            data: {
+                service: "address",
+                request: "getcoord",
+                version: "2.0",
+                crs: "epsg:4326",
+                address: address,
+                type: "road",
+                key: VWORLD_KEY
+            },
+            success: function(geoJson) {
+                if (!geoJson.response || geoJson.response.status !== "OK") {
+                    reject("좌표 변환 실패");
+                    return;
+                }
 
-        // 2️⃣ 좌표로 토지정보 가져오기
-        const landRes = await fetch(
-            `https://api.vworld.kr/req/data?service=data&request=getfeature&key=${VWORLD_KEY}&format=json&size=1&page=1&data=LP_PA_CBND_BUBUN&geomFilter=point(${x} ${y})`
-        );
-        const landJson = await landRes.json();
-        if (landJson.response.status !== "OK") throw new Error("토지정보 조회 실패");
+                const x = geoJson.response.result.point.x;
+                const y = geoJson.response.result.point.y;
 
-        const feature = landJson.response.result.featureCollection.features[0].properties;
-
-        // 3️⃣ 결과 매핑
-        return {
-            zipCode: geoJson.response.result.point.zip || "",
-            bjdCode: feature.bjd_cd || "",
-            pnuCode: feature.pnu || "",
-            대장구분: feature.regstr_se_code || "",
-            본번: feature.mnnm || "",
-            부번: feature.slno || "",
-            jimok: feature.jimok || "",
-            area: feature.parea || "",
-            lat: y,
-            lon: x
-        };
-    } catch (error) {
-        console.error("VWorld API 오류:", error);
-        return null;
-    }
+                // 2️⃣ 좌표 → 토지정보 조회
+                $.ajax({
+                    url: "https://api.vworld.kr/req/data",
+                    dataType: "jsonp",
+                    data: {
+                        service: "data",
+                        request: "getfeature",
+                        key: VWORLD_KEY,
+                        format: "json",
+                        size: 1,
+                        page: 1,
+                        data: "LP_PA_CBND_BUBUN",
+                        geomFilter: `point(${x} ${y})`
+                    },
+                    success: function(landJson) {
+                        if (!landJson.response || landJson.response.status !== "OK") {
+                            reject("토지정보 조회 실패");
+                            return;
+                        }
+                        const f = landJson.response.result.featureCollection.features[0].properties;
+                        resolve({
+                            zipCode: geoJson.response.result.point.zip || "",
+                            bjdCode: f.bjd_cd || "",
+                            pnuCode: f.pnu || "",
+                            대장구분: f.regstr_se_code || "",
+                            본번: f.mnnm || "",
+                            부번: f.slno || "",
+                            jimok: f.jimok || "",
+                            area: f.parea || "",
+                            lat: y,
+                            lon: x
+                        });
+                    },
+                    error: reject
+                });
+            },
+            error: reject
+        });
+    });
 }
 
 function renderDataInputTable() {
@@ -280,62 +304,6 @@ function handlePaste(event, rowIndex, field) {
     updateMapCount();
 }
 
-function downloadExcel() {
-    if (!currentProject) {
-        alert('프로젝트가 선택되지 않았습니다.');
-        return;
-    }
-
-    const filteredData = currentProject.data.filter(row => row.이름 || row.연락처 || row.주소);
-    
-    if (filteredData.length === 0) {
-        alert('다운로드할 데이터가 없습니다.');
-        return;
-    }
-
-    const headers = ['순번', '이름', '연락처', '주소', '우편번호', '상태', '법정동코드', 'PNU코드', '대장구분', '본번', '부번', '지목', '면적', '기록사항'];
-    const csvContent = [
-        headers.join(','),
-        ...filteredData.map(row => {
-            const 본번 = row.본번 ? String(row.본번).padStart(4, '0') : '0000';
-            const 부번 = row.부번 ? String(row.부번).padStart(4, '0') : '0000';
-            
-            return [
-                row.순번,
-                `"${row.이름 || ''}"`,
-                `"${row.연락처 || ''}"`,
-                `"${row.주소 || ''}"`,
-                `"${row.우편번호 || ''}"`,
-                row.상태,
-                `"${row.법정동코드 || ''}"`,
-                `"${row.pnu코드 || ''}"`,
-                `"${row.대장구분 || ''}"`,
-                본번,
-                부번,
-                `"${row.지목 || ''}"`,
-                `"${row.면적 || ''}"`,
-                `"${(row.기록사항 || '').replace(/\n/g, ' ')}"`
-            ].join(',');
-        })
-    ].join('\n');
-
-    const BOM = '\uFEFF';
-    const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
-    
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    const fileName = `${currentProject.projectName}_보고서_${new Date().toISOString().slice(0, 10)}.csv`;
-    
-    link.setAttribute('href', url);
-    link.setAttribute('download', fileName);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
-    alert(`"${fileName}" 파일이 다운로드되었습니다.`);
-}
-
 async function fetchLandInfoForReport() {
     if (!currentProject) {
         alert('프로젝트가 선택되지 않았습니다.');
@@ -382,7 +350,7 @@ async function fetchLandInfoForReport() {
         }
         
         loadingMsg.textContent = `토지정보 수집 중... (${i + 1}/${rowsWithAddress.length})`;
-        await new Promise(resolve => setTimeout(resolve, 1200));
+        await new Promise(resolve => setTimeout(resolve, 1000));
     }
     
     const projectIndex = projects.findIndex(p => p.id === currentProject.id);
