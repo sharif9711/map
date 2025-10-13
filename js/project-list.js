@@ -39,7 +39,7 @@ function renderProjects() {
                     </svg>
                 </button>
 
-                <!-- ✅ 비밀번호 모달 제거 → 바로 프로젝트 열기 -->
+                <!-- ✅ 비밀번호 모달 제거 -->
                 <div onclick="openProject('${project.id}')" class="p-6 cursor-pointer">
                     <div class="flex items-start justify-between pb-3">
                         <div class="p-2 rounded-lg bg-blue-100 group-hover:bg-blue-200 transition-colors">
@@ -101,7 +101,7 @@ function openProject(projectId) {
         return;
     }
 
-    // ✅ 지도 페이지로 이동 (mapType 따라 분기 가능)
+    // ✅ mapType에 따라 분기
     if (project.mapType === 'vworld') {
         window.location.href = `vworld.html?project=${projectId}`;
     } else {
@@ -109,7 +109,7 @@ function openProject(projectId) {
     }
 }
 
-// ✅ 날짜 형식 변환
+// ✅ 날짜 형식
 function formatDate(dateString) {
     const date = new Date(dateString);
     return date.toLocaleString('ko-KR', {
