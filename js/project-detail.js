@@ -5,7 +5,6 @@ function showProjectDetail() {
     document.getElementById('projectDetailScreen').classList.add('active');
     document.getElementById('currentProjectName').textContent = currentProject.projectName;
     
-    // 지도 버튼 텍스트 업데이트
     const mapBtn = document.getElementById('mapViewButton');
     if (mapBtn) {
         const mapTypeText = currentProject.mapType === 'vworld' ? 'VWorld' : '카카오맵';
@@ -94,9 +93,7 @@ async function fetchPostalCodesForReport() {
                         } else if (result[0].address && result[0].address.zip_code) {
                             zipCode = result[0].address.zip_code;
                         }
-                        if (zipCode) {
-                            row.우편번호 = zipCode;
-                        }
+                        if (zipCode) row.우편번호 = zipCode;
                     }
                     
                     if (!row.lat || !row.lng) {
@@ -104,42 +101,18 @@ async function fetchPostalCodesForReport() {
                         row.lng = parseFloat(result[0].x);
                     }
                     
-                    if (typeof getAddressDetailInfo === 'function') {
-                        try {
-                            const detailInfo = await getAddressDetailInfo(row.주소);
-                            if (detailInfo) {
-                                if (!row.법정동코드 && detailInfo.bjdCode) {
-                                    row.법정동코드 = detailInfo.bjdCode;
-                                }
-                                
-                                if (!row.pnu코드 && detailInfo.pnuCode) {
-                                    row.pnu코드 = detailInfo.pnuCode;
-                                }
-                                
-                                if (!row.대장구분 && detailInfo.대장구분) {
-                                    row.대장구분 = detailInfo.대장구분;
-                                }
-                                
-                                if (!row.본번 && detailInfo.본번) {
-                                    row.본번 = detailInfo.본번;
-                                }
-                                if (!row.부번 && detailInfo.부번) {
-                                    row.부번 = detailInfo.부번;
-                                }
-                                
-                                if (!row.지목 && detailInfo.jimok) {
-                                    row.지목 = detailInfo.jimok;
-                                }
-                                
-                                if (!row.면적 && detailInfo.area) {
-                                    row.면적 = detailInfo.area;
-                                }
-                            }
-                        } catch (error) {
-                            console.error('VWorld API 조회 오류:', error);
-                        }
+                    // vworld-map-init.js에 있는 함수를 호출합니다.
+                    const detailInfo = await getAddressDetailInfo(row.주소);
+                    if (detailInfo) {
+                        row.법정동코드 = detailInfo.bjdCode || row.법정동코드;
+                        row.pnu코드 = detailInfo.pnuCode || row.pnu코드;
+                        row.대장구분 = detailInfo.대장구분 || row.대장구분;
+                        row.본번 = detailInfo.본번 || row.본번;
+                        row.부번 = detailInfo.부번 || row.부번;
+                        row.지목 = detailInfo.지목 || row.지목;
+                        row.면적 = detailInfo.면적 || row.면적;
                     }
-                    
+
                     if (typeof renderReportTable === 'function') {
                         renderReportTable();
                     }
@@ -264,62 +237,6 @@ function handlePaste(event, rowIndex, field) {
     updateMapCount();
 }
 
-function downloadExcel() {
-    if (!currentProject) {
-        alert('프로젝트가 선택되지 않았습니다.');
-        return;
-    }
-
-    const filteredData = currentProject.data.filter(row => row.이름 || row.연락처 || row.주소);
-    
-    if (filteredData.length === 0) {
-        alert('다운로드할 데이터가 없습니다.');
-        return;
-    }
-
-    const headers = ['순번', '이름', '연락처', '주소', '우편번호', '상태', '법정동코드', 'PNU코드', '대장구분', '본번', '부번', '지목', '면적', '기록사항'];
-    const csvContent = [
-        headers.join(','),
-        ...filteredData.map(row => {
-            const 본번 = row.본번 ? String(row.본번).padStart(4, '0') : '0000';
-            const 부번 = row.부번 ? String(row.부번).padStart(4, '0') : '0000';
-            
-            return [
-                row.순번,
-                `"${row.이름 || ''}"`,
-                `"${row.연락처 || ''}"`,
-                `"${row.주소 || ''}"`,
-                `"${row.우편번호 || ''}"`,
-                row.상태,
-                `"${row.법정동코드 || ''}"`,
-                `"${row.pnu코드 || ''}"`,
-                `"${row.대장구분 || ''}"`,
-                본번,
-                부번,
-                `"${row.지목 || ''}"`,
-                `"${row.면적 || ''}"`,
-                `"${(row.기록사항 || '').replace(/\n/g, ' ')}"`
-            ].join(',');
-        })
-    ].join('\n');
-
-    const BOM = '\uFEFF';
-    const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
-    
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    const fileName = `${currentProject.projectName}_보고서_${new Date().toISOString().slice(0, 10)}.csv`;
-    
-    link.setAttribute('href', url);
-    link.setAttribute('download', fileName);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
-    alert(`"${fileName}" 파일이 다운로드되었습니다.`);
-}
-
 async function fetchLandInfoForReport() {
     if (!currentProject) {
         alert('프로젝트가 선택되지 않았습니다.');
@@ -347,32 +264,27 @@ async function fetchLandInfoForReport() {
         const row = rowsWithAddress[i];
         
         try {
-            if (typeof getAddressDetailInfo === 'function') {
-                const detailInfo = await getAddressDetailInfo(row.주소);
-                
-                if (detailInfo) {
-                    if (detailInfo.zipCode) row.우편번호 = detailInfo.zipCode;
-                    if (detailInfo.bjdCode) row.법정동코드 = detailInfo.bjdCode;
-                    if (detailInfo.pnuCode) row.pnu코드 = detailInfo.pnuCode;
-                    if (detailInfo.대장구분) row.대장구분 = detailInfo.대장구분;
-                    if (detailInfo.본번) row.본번 = detailInfo.본번;
-                    if (detailInfo.부번) row.부번 = detailInfo.부번;
-                    if (detailInfo.jimok) row.지목 = detailInfo.jimok;
-                    if (detailInfo.area) row.면적 = detailInfo.area;
-                    if (detailInfo.lat && detailInfo.lon) {
-                        row.lat = detailInfo.lat;
-                        row.lng = detailInfo.lon;
-                    }
-                    
-                    successCount++;
-                }
+            // vworld-map-init.js에 있는 함수를 호출합니다.
+            const detailInfo = await getAddressDetailInfo(row.주소);
+            if (detailInfo) {
+                row.우편번호 = detailInfo.zipCode;
+                row.법정동코드 = detailInfo.bjdCode;
+                row.pnu코드 = detailInfo.pnuCode;
+                row.대장구분 = detailInfo.대장구분;
+                row.본번 = detailInfo.본번;
+                row.부번 = detailInfo.부번;
+                row.지목 = detailInfo.지목;
+                row.면적 = detailInfo.면적;
+                row.lat = detailInfo.lat;
+                row.lng = detailInfo.lon;
+                successCount++;
             }
         } catch (error) {
             console.error('토지정보 수집 오류:', error);
         }
         
         loadingMsg.textContent = `토지정보 수집 중... (${i + 1}/${rowsWithAddress.length})`;
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        await new Promise(resolve => setTimeout(resolve, 1000));
     }
     
     const projectIndex = projects.findIndex(p => p.id === currentProject.id);
