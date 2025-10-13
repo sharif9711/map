@@ -82,10 +82,15 @@ function deleteProject(event, projectId) {
 // ✅ 새 프로젝트 생성 (이름 + 지도종류)
 function createProject() {
     const nameInput = document.getElementById('newProjectName');
-    const mapTypeSelect = document.getElementById('newMapType');
+    const mapTypeInput = document.getElementById('selectedMapType');
+
+    if (!nameInput) {
+        alert('프로젝트 이름 입력창을 찾을 수 없습니다.');
+        return;
+    }
 
     const projectName = nameInput.value.trim();
-    const mapType = mapTypeSelect.value || 'kakao';
+    const mapType = mapTypeInput ? mapTypeInput.value : 'kakao';
 
     if (!projectName) {
         alert('프로젝트 이름을 입력해주세요.');
