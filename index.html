@@ -4,15 +4,23 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>지도 프로젝트 관리</title>
+
+    <!-- ✅ Tailwind -->
     <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- ✅ Kakao Map SDK -->
     <script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=8076943fb980909891f021720b7527a2&libraries=services"></script>
     
-    <!-- OpenLayers for VWorld -->
+    <!-- ✅ OpenLayers for VWorld -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@v7.5.2/ol.css">
     <script src="https://cdn.jsdelivr.net/npm/ol@v7.5.2/dist/ol.js"></script>
+
+    <!-- ✅ jQuery (JSONP 방식 호출용) -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     
     <link rel="stylesheet" href="css/styles.css">
 </head>
+
 <body class="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-200">
     <!-- 두번째 화면: 프로젝트 목록 -->
     <div id="projectListScreen" class="screen active"></div>
@@ -26,7 +34,17 @@
     <!-- 세번째 화면: 비밀번호 입력 모달 -->
     <div id="passwordModal" class="modal"></div>
 
-    <!-- 중요: 스크립트 로드 순서 -->
+    <!-- ✅ 토지정보 수집 버튼 (전역 위치에 추가) -->
+    <div id="landInfoButtonContainer" class="fixed bottom-6 right-6 z-50">
+        <button 
+            id="btnLandInfoCollect"
+            onclick="fetchLandInfoForReport()"
+            class="px-5 py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-lg hover:bg-blue-700 transition">
+            토지정보 수집
+        </button>
+    </div>
+
+    <!-- ✅ 스크립트 로드 순서 유지 -->
     <script src="js/data.js"></script>
     <script src="js/ui-components.js"></script>
     <script src="js/project-detail.js"></script>
