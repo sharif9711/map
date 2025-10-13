@@ -1,85 +1,43 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>지도 프로젝트 관리</title>
-
-  <!-- TailwindCSS -->
   <script src="https://cdn.tailwindcss.com"></script>
+  <script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=8076943fb980909891f021720b7527a2&libraries=services"></script>
+
+  <!-- OpenLayers for VWorld -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@v7.5.2/ol.css">
+  <script src="https://cdn.jsdelivr.net/npm/ol@v7.5.2/dist/ol.js"></script>
+
+  <!-- XLSX for Excel -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <link rel="stylesheet" href="css/styles.css">
 </head>
+<body class="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-200">
+  <!-- 두번째 화면: 프로젝트 목록 -->
+  <div id="projectListScreen" class="screen active"></div>
 
-<body class="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-  <!-- Header -->
-  <header class="border-b border-gray-200 bg-white/80 backdrop-blur-sm sticky top-0 z-10">
-    <div class="container mx-auto px-4 py-4 flex items-center justify-between">
-      <div class="flex items-center gap-2">
-        <span class="text-2xl">🗺️</span>
-        <h1 class="text-xl font-semibold text-gray-800">지도 프로젝트 관리</h1>
-      </div>
-      <button
-        class="bg-indigo-600 text-white px-4 py-2 rounded-lg shadow hover:bg-indigo-700 transition"
-        onclick="openCreateModal()">
-        + 새 프로젝트 만들기
-      </button>
-    </div>
-  </header>
+  <!-- 네번째 화면: 프로젝트 내부 -->
+  <div id="projectDetailScreen" class="screen"></div>
 
-  <!-- Main -->
-  <main class="container mx-auto px-4 py-10">
-    <h2 class="text-lg font-semibold text-gray-800 mb-3">프로젝트 목록</h2>
-    <p id="projectCount" class="text-sm text-gray-500 mb-6">총 0개 프로젝트</p>
+  <!-- 첫번째 화면: 프로젝트 생성 모달 -->
+  <div id="createModal" class="modal"></div>
 
-    <!-- 프로젝트 카드 리스트 -->
-    <div id="projectsGrid"
-      class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 text-gray-700">
-      <!-- JS에서 카드 추가됨 -->
-    </div>
+  <!-- 세번째 화면: 비밀번호 입력 모달 (삭제됨) -->
+  <div id="passwordModal" class="modal hidden"></div>
 
-    <!-- 비어 있을 때 메시지 -->
-    <div id="emptyMessage" class="text-center text-gray-400 mt-16 hidden">
-      <div class="text-5xl mb-3">🗺️</div>
-      <p>아직 프로젝트가 없습니다</p>
-      <p class="text-sm">첫 번째 프로젝트를 만들어서 지도 작업을 시작해보세요</p>
-    </div>
-  </main>
-
-  <!-- 모달 (새 프로젝트 생성) -->
-  <div id="createProjectModal"
-    class="hidden fixed inset-0 flex items-center justify-center bg-black/40 z-50">
-    <div class="bg-white p-6 rounded-xl shadow-lg w-full max-w-sm">
-      <h3 class="text-lg font-semibold text-gray-800 mb-4">새 프로젝트 만들기</h3>
-      <label class="block text-sm mb-1">프로젝트 이름</label>
-      <input id="projectNameInput"
-        type="text"
-        class="w-full border rounded-md px-3 py-2 mb-4"
-        placeholder="예: 수완동 지도작업" />
-
-      <label class="block text-sm mb-1">지도 종류</label>
-      <div class="flex gap-2 mb-5">
-        <button id="mapTypeKakao" class="flex-1 border px-3 py-2 rounded-md bg-indigo-600 text-white"
-          onclick="selectMapType('kakao')">카카오맵</button>
-        <button id="mapTypeVworld" class="flex-1 border px-3 py-2 rounded-md"
-          onclick="selectMapType('vworld')">VWorld</button>
-      </div>
-
-      <div class="flex justify-end gap-2">
-        <button onclick="closeModal()"
-          class="px-4 py-2 rounded-md border text-gray-600 hover:bg-gray-100">취소</button>
-        <button onclick="createProject()"
-          class="px-4 py-2 rounded-md bg-indigo-600 text-white hover:bg-indigo-700">생성</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ✅ JS 로드 순서 중요 -->
+  <!-- 중요: 스크립트 로드 순서 -->
   <script src="js/data.js"></script>
   <script src="js/ui-components.js"></script>
+  <script src="js/modals.js"></script>
   <script src="js/project-list.js"></script>
   <script src="js/project-detail.js"></script>
-  <script src="js/modals.js"></script>
-  <script src="js/kakao-map.js"></script>
-  <script src="js/vworld-map-init.js"></script>
+  <script src="js/report.js"></script>
+  <script src="js/vworld-api.js"></script>
+  <script src="js/excel-export.js"></script>
   <script src="js/main.js"></script>
 </body>
 </html>
