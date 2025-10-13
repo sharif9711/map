@@ -564,23 +564,24 @@ async function fetchLandInfoForReport() {
     }
 }
 
-// ✅ 보고서 테이블을 Excel (.xlsx) 파일로 다운로드
+// ✅ 화면에 표시된 보고서 테이블을 그대로 Excel(.xlsx)로 다운로드
 function downloadExcel() {
     try {
+        // 보고서 테이블 가져오기
         const table = document.getElementById('reportTable');
         if (!table) {
             alert('보고서 테이블을 찾을 수 없습니다.');
             return;
         }
 
-        // 엑셀 워크북 & 워크시트 생성
+        // 화면에 보이는 모든 행을 그대로 복사
         const wb = XLSX.utils.book_new();
-        const ws = XLSX.utils.table_to_sheet(table);
+        const ws = XLSX.utils.table_to_sheet(table, { raw: true });
 
-        // 열 너비 자동 조정 (한글 데이터 깨짐 방지)
+        // ✅ 열 너비 자동 조정 (한글 깨짐 및 잘림 방지)
         const colWidths = [];
-        const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
-        rows.forEach(row => {
+        const data = XLSX.utils.sheet_to_json(ws, { header: 1 });
+        data.forEach(row => {
             row.forEach((cell, i) => {
                 const width = cell ? cell.toString().length + 2 : 10;
                 colWidths[i] = Math.max(colWidths[i] || 10, width);
@@ -588,20 +589,20 @@ function downloadExcel() {
         });
         ws['!cols'] = colWidths.map(w => ({ width: w }));
 
-        // 워크북에 시트 추가
-        XLSX.utils.book_append_sheet(wb, ws, '보고서');
+        // ✅ 시트 이름과 파일명 설정
+        const sheetName = '보고서';
+        XLSX.utils.book_append_sheet(wb, ws, sheetName);
 
-        // 파일명 생성
-        const fileName = `${currentProject.projectName || '프로젝트'}_보고서_${new Date()
-            .toISOString()
-            .slice(0, 10)}.xlsx`;
+        const today = new Date().toISOString().slice(0, 10);
+        const projectName = currentProject?.projectName || '프로젝트';
+        const fileName = `${projectName}_보고서_${today}.xlsx`;
 
-        // 파일 다운로드
+        // ✅ 파일 다운로드
         XLSX.writeFile(wb, fileName);
 
-        alert(`"${fileName}" 파일이 다운로드되었습니다.`);
-    } catch (err) {
-        console.error('엑셀 다운로드 오류:', err);
+        alert(`"${fileName}" 파일이 정상적으로 다운로드되었습니다.`);
+    } catch (error) {
+        console.error('엑셀 다운로드 오류:', error);
         alert('엑셀 다운로드 중 오류가 발생했습니다.');
     }
 }
