@@ -1,15 +1,47 @@
 // 모달 관련 함수
 
+// ✅ 새 프로젝트 생성 모달 (비밀번호 제거 버전)
 function openCreateModal() {
-    document.getElementById('createModal').classList.add('active');
+    const modal = document.getElementById('createModal');
+    if (!modal) return;
+
+    modal.innerHTML = `
+        <div class="fixed inset-0 flex items-center justify-center bg-black/40 z-50">
+            <div class="bg-white rounded-2xl shadow-xl p-6 w-96">
+                <h2 class="text-lg font-semibold text-slate-800 mb-4">새 프로젝트 만들기</h2>
+                
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-sm text-slate-700 mb-1">프로젝트 이름</label>
+                        <input id="newProjectName" type="text"
+                            class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                            placeholder="예: 2025년도 지번조사">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm text-slate-700 mb-1">연락처</label>
+                        <input id="newProjectContact" type="text"
+                            class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                            placeholder="예: 010-1234-5678">
+                    </div>
+                </div>
+
+                <div class="flex justify-end gap-3 mt-6">
+                    <button onclick="closeCreateModal()"
+                        class="px-4 py-2 rounded-lg text-slate-600 hover:bg-slate-100 transition">취소</button>
+                    <button onclick="createProject()"
+                        class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">생성</button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    modal.style.display = 'block';
 }
 
 function closeCreateModal() {
-    document.getElementById('createModal').classList.remove('active');
-    document.getElementById('projectName').value = '';
-    document.getElementById('projectPassword').value = '';
-    // 카카오맵을 기본값으로 체크
-    document.getElementById('mapTypeKakao').checked = true;
+    const modal = document.getElementById('createModal');
+    if (modal) modal.style.display = 'none';
 }
 
 function createProject() {
