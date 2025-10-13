@@ -214,4 +214,22 @@ async function getAddressDetailInfo(address) {
 
             // API 응답 필드명을 애플리케이션 필드명에 맞게 매핑
             return {
-                pnuCode: pnu, // P
+                pnuCode: pnu, // PNU 코드
+                bjdCode: bjdCode, // PNU에서 추출한 법정동코드
+                대장구분: properties.jibun && properties.jibun.includes('대') ? '토지대장' : '임야대장', // '대' 또는 '임'으로 구분
+                본번: properties.bonbun, // 본번
+                부번: properties.bubun, // 부번
+                지목: null, // 이 API에서는 지목 정보를 제공하지 않음
+                면적: null, // 이 API에서는 면적 정보를 제공하지 않음
+                zipCode: null // 이 API에서는 우편번호 정보를 제공하지 않음
+            };
+        } else {
+            console.warn(`토지 정보를 찾을 수 없습니다: ${address}`);
+            return null;
+        }
+
+    } catch (error) {
+        console.error(`토지 정보 조회 오류 (${address}):`, error);
+        return null;
+    }
+}
