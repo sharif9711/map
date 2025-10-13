@@ -1,53 +1,165 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>지도 프로젝트 관리</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>지도 프로젝트 관리 v3.9.0</title>
+  <script src="https://cdn.tailwindcss.com"></script>
 
-    <!-- ✅ Tailwind -->
-    <script src="https://cdn.tailwindcss.com"></script>
+  <!-- ✅ Kakao Map SDK -->
+  <script type="text/javascript"
+    src="//dapi.kakao.com/v2/maps/sdk.js?appkey=8076943fb980909891f021720b7527a2&libraries=services">
+  </script>
 
-    <!-- ✅ Kakao Map SDK -->
-    <script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=8076943fb980909891f021720b7527a2&libraries=services"></script>
-    
-    <!-- ✅ OpenLayers for VWorld -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@v7.5.2/ol.css">
-    <script src="https://cdn.jsdelivr.net/npm/ol@v7.5.2/dist/ol.js"></script>
+  <!-- ✅ OpenLayers (VWorld용) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@v7.5.2/ol.css">
+  <script src="https://cdn.jsdelivr.net/npm/ol@v7.5.2/dist/ol.js"></script>
 
-    <!-- ✅ jQuery (JSONP 방식 호출용) -->
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    
-    <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/styles.css">
 </head>
 
 <body class="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-200">
-    <!-- 두번째 화면: 프로젝트 목록 -->
-    <div id="projectListScreen" class="screen active"></div>
 
-    <!-- 네번째 화면: 프로젝트 내부 -->
-    <div id="projectDetailScreen" class="screen"></div>
+  <!-- ✅ 프로젝트 목록 화면 -->
+  <div id="projectListScreen" class="screen active">
+    <!-- 비어있을 때 상태 -->
+    <div id="emptyState" class="hidden flex flex-col items-center justify-center py-20">
+      <h2 class="text-2xl font-semibold text-slate-700 mb-4">프로젝트가 없습니다</h2>
+      <button onclick="openCreateModal()"
+        class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow transition">
+        + 새 프로젝트 만들기
+      </button>
+    </div>
 
-    <!-- 첫번째 화면: 프로젝트 생성 모달 -->
-    <div id="createModal" class="modal"></div>
+    <!-- 프로젝트 리스트 -->
+    <div id="projectsList" class="p-6">
+      <div class="flex justify-between items-center mb-6">
+        <h2 class="text-xl font-bold text-slate-800">프로젝트 목록</h2>
+        <button onclick="openCreateModal()"
+          class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+          + 새 프로젝트 만들기
+        </button>
+      </div>
 
-    <!-- 세번째 화면: 비밀번호 입력 모달 -->
-    <div id="passwordModal" class="modal"></div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6" id="projectsGrid"></div>
+      <div class="mt-6 text-slate-500 text-sm">총 <span id="projectCount">0</span>개 프로젝트</div>
+    </div>
+  </div>
 
+  <!-- ✅ 프로젝트 상세 화면 -->
+  <div id="projectDetailScreen" class="screen hidden">
+    <header class="sticky top-0 bg-white border-b border-slate-200 z-20">
+      <div class="flex justify-between items-center p-4">
+        <div class="flex items-center gap-3">
+          <button onclick="backToList()"
+            class="p-2 rounded-full hover:bg-slate-100 transition">
+            ⬅
+          </button>
+          <h2 id="currentProjectName" class="text-xl font-semibold text-slate-800"></h2>
+        </div>
+        <button id="mapViewButton"
+          class="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+          지도 보기
+        </button>
+      </div>
 
+      <!-- 탭 메뉴 -->
+      <nav class="flex border-b border-slate-200">
+        <button id="tab-자료입력" onclick="switchTab('자료입력')"
+          class="flex-1 py-3 text-center text-sm font-medium text-blue-600 border-b-2 border-blue-600">
+          자료입력
+        </button>
+        <button id="tab-보고서" onclick="switchTab('보고서')"
+          class="flex-1 py-3 text-center text-sm font-medium text-slate-600 hover:text-slate-900">
+          보고서
+        </button>
+        <button id="tab-연결" onclick="switchTab('연결')"
+          class="flex-1 py-3 text-center text-sm font-medium text-slate-600 hover:text-slate-900">
+          연결
+        </button>
+      </nav>
+    </header>
 
-    <!-- ✅ 스크립트 로드 순서 유지 -->
-    <script src="js/data.js"></script>
-    <script src="js/ui-components.js"></script>
-    <script src="js/project-detail.js"></script>
-    <script src="js/project-list.js"></script>
-    <script src="js/modals.js"></script>
-    <script src="js/vworld-map-init.js"></script>
-    <script src="js/vworld-map-marker.js"></script>
-    <script src="js/vworld-map-display.js"></script>
-    <script src="js/kakao-map.js"></script>
-    <script src="js/map-controls.js"></script>
-    <script src="js/map-modal.js"></script>
-    <script src="js/main.js"></script><script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- ✅ 탭 콘텐츠 -->
+    <main class="p-4 space-y-4">
+      <!-- 자료입력 탭 -->
+      <section id="content-자료입력">
+        <table class="w-full border border-slate-300 bg-white rounded-lg text-sm">
+          <thead class="bg-slate-100">
+            <tr>
+              <th class="border border-slate-300 px-3 py-2 w-16">순번</th>
+              <th class="border border-slate-300 px-3 py-2 w-40">이름</th>
+              <th class="border border-slate-300 px-3 py-2 w-48">연락처</th>
+              <th class="border border-slate-300 px-3 py-2">주소</th>
+            </tr>
+          </thead>
+          <tbody id="dataInputTable"></tbody>
+        </table>
+      </section>
+
+      <!-- 보고서 탭 -->
+      <section id="content-보고서" class="hidden">
+        <div class="flex justify-between items-center mb-3">
+          <h3 class="text-lg font-semibold text-slate-800">보고서</h3>
+          <div class="flex gap-2">
+            <button onclick="fetchLandInfoForReport()"
+              class="flex items-center gap-1 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+              🔍 토지정보 수집
+            </button>
+            <button onclick="downloadExcel()"
+              class="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition">
+              ⬇ 엑셀 다운로드
+            </button>
+          </div>
+        </div>
+        <table class="w-full border border-slate-300 bg-white rounded-lg text-sm">
+          <thead class="bg-slate-100">
+            <tr>
+              <th class="border px-2 py-2">순번</th>
+              <th class="border px-2 py-2">이름</th>
+              <th class="border px-2 py-2">연락처</th>
+              <th class="border px-2 py-2">주소</th>
+              <th class="border px-2 py-2">우편번호</th>
+              <th class="border px-2 py-2">상태</th>
+              <th class="border px-2 py-2">법정동코드</th>
+              <th class="border px-2 py-2">PNU코드</th>
+              <th class="border px-2 py-2">대장구분</th>
+              <th class="border px-2 py-2">본번</th>
+              <th class="border px-2 py-2">부번</th>
+              <th class="border px-2 py-2">지목</th>
+              <th class="border px-2 py-2">면적</th>
+              <th class="border px-2 py-2">기록사항</th>
+            </tr>
+          </thead>
+          <tbody id="reportTable"></tbody>
+        </table>
+      </section>
+
+      <!-- 연결 탭 -->
+      <section id="content-연결" class="hidden">
+        <div class="text-center py-10 text-slate-500">
+          🔗 추후 QR코드 / 공유 기능이 추가될 예정입니다.
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- ✅ 모달 영역 -->
+  <div id="createModal" class="modal"></div>
+  <div id="passwordModal" class="modal hidden"></div>
+
+  <!-- ✅ JS 로드 순서 -->
+  <script src="js/data.js"></script>
+  <script src="js/ui-components.js"></script>
+  <script src="js/modals.js"></script>
+  <script src="js/project-list.js"></script>
+  <script src="js/project-detail.js"></script>
+  <script src="js/kakao-map.js"></script>
+  <script src="js/vworld-map-init.js"></script>
+  <script src="js/vworld-map-marker.js"></script>
+  <script src="js/vworld-map-display.js"></script>
+  <script src="js/map-controls.js"></script>
+  <script src="js/map-modal.js"></script>
+  <script src="js/main.js"></script>
 </body>
 </html>
