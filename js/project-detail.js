@@ -57,14 +57,15 @@ function switchTab(tabName) {
     });
 }
 
+// ✅ 보고서 메뉴 진입 시 전체 토지정보 자동 수집 (10건 제한 제거)
 async function fetchPostalCodesForReport() {
     if (!currentProject) return;
-    
+
     if (typeof kakao === 'undefined' || typeof kakao.maps === 'undefined') {
         console.log('Kakao Maps API not loaded yet');
         return;
     }
-    
+
     if (!geocoder) {
         try {
             geocoder = new kakao.maps.services.Geocoder();
@@ -73,19 +74,37 @@ async function fetchPostalCodesForReport() {
             return;
         }
     }
-    
-    const rowsWithAddress = currentProject.data.filter(row => 
-        row.주소 && row.주소.trim() !== ''
+
+    const rowsWithAddress = currentProject.data.filter(
+        row => row.주소 && row.주소.trim() !== ''
     );
-    
+
     if (rowsWithAddress.length === 0) return;
-    
-    for (let i = 0; i < Math.min(rowsWithAddress.length, 10); i++) {
+
+    // ✅ 로딩 메시지 표시
+    const loadingMsg = document.createElement('div');
+    loadingMsg.id = 'postalLoading';
+    loadingMsg.className =
+        'fixed top-4 left-1/2 transform -translate-x-1/2 z-50 px-6 py-3 bg-blue-600 text-white rounded-lg shadow-lg';
+    loadingMsg.textContent = `토지정보 수집 중... (0/${rowsWithAddress.length})`;
+    document.body.appendChild(loadingMsg);
+
+    let processed = 0;
+
+    for (let i = 0; i < rowsWithAddress.length; i++) {
         const row = rowsWithAddress[i];
-        
+
+        // 이미 조회된 경우 스킵
+        if (row.우편번호 && row.pnu코드 && row.면적 && row.지목) {
+            processed++;
+            loadingMsg.textContent = `토지정보 수집 중... (${processed}/${rowsWithAddress.length})`;
+            continue;
+        }
+
         try {
-            geocoder.addressSearch(row.주소, async function(result, status) {
+            geocoder.addressSearch(row.주소, async function (result, status) {
                 if (status === kakao.maps.services.Status.OK) {
+                    // ✅ 우편번호 처리
                     if (!row.우편번호) {
                         let zipCode = '';
                         if (result[0].road_address && result[0].road_address.zone_no) {
@@ -95,40 +114,60 @@ async function fetchPostalCodesForReport() {
                         }
                         if (zipCode) row.우편번호 = zipCode;
                     }
-                    
+
+                    // ✅ 좌표 저장
                     if (!row.lat || !row.lng) {
                         row.lat = parseFloat(result[0].y);
                         row.lng = parseFloat(result[0].x);
                     }
-                    
-                    const detailInfo = await getAddressDetailInfo(row.주소);
-                    if (detailInfo) {
-                        row.법정동코드 = detailInfo.bjdCode || row.법정동코드;
-                        row.pnu코드 = detailInfo.pnuCode || row.pnu코드;
-                        row.대장구분 = detailInfo.대장구분 || row.대장구분;
-                        row.본번 = detailInfo.본번 || row.본번;
-                        row.부번 = detailInfo.부번 || row.부번;
-                        row.지목 = detailInfo.jimok || row.지목;
-                        row.면적 = detailInfo.area || row.면적;
+
+                    // ✅ VWorld 상세정보
+                    if (typeof getAddressDetailInfo === 'function') {
+                        try {
+                            const detailInfo = await getAddressDetailInfo(row.주소);
+                            if (detailInfo) {
+                                row.법정동코드 = detailInfo.bjdCode || row.법정동코드;
+                                row.pnu코드 = detailInfo.pnuCode || row.pnu코드;
+                                row.대장구분 = detailInfo.대장구분 || row.대장구분;
+                                row.본번 = detailInfo.본번 || row.본번;
+                                row.부번 = detailInfo.부번 || row.부번;
+                                row.지목 = detailInfo.jimok || row.지목;
+                                row.면적 = detailInfo.area || row.면적;
+                            }
+                        } catch (error) {
+                            console.error('VWorld API 조회 오류:', error);
+                        }
                     }
 
+                    // ✅ 테이블 갱신
                     if (typeof renderReportTable === 'function') {
                         renderReportTable();
                     }
+                }
+
+                processed++;
+                loadingMsg.textContent = `토지정보 수집 중... (${processed}/${rowsWithAddress.length})`;
+
+                if (processed === rowsWithAddress.length) {
+                    document.body.removeChild(loadingMsg);
+                    alert(`토지정보 수집 완료: ${rowsWithAddress.length}건`);
                 }
             });
         } catch (error) {
             console.error('Geocoding error:', error);
         }
-        
-        await new Promise(resolve => setTimeout(resolve, 500));
+
+        // API 호출 간격 (Kakao API 호출 제한 방지)
+        await new Promise(resolve => setTimeout(resolve, 800));
     }
-    
+
+    // ✅ 최종 데이터 저장
     const projectIndex = projects.findIndex(p => p.id === currentProject.id);
     if (projectIndex !== -1) {
         projects[projectIndex] = currentProject;
     }
 }
+
 
 
 // ✅ 주소 → 우편번호 + 법정동코드 + PNU + 지목 + 면적 전체 조회
