@@ -1,6 +1,6 @@
 // 모달 관련 함수
 
-// ✅ 새 프로젝트 생성 모달 (비밀번호 제거 버전)
+// ✅ 새 프로젝트 생성 모달 (프로젝트 이름 + 지도종류 선택)
 function openCreateModal() {
     const modal = document.getElementById('createModal');
     if (!modal) return;
@@ -10,7 +10,7 @@ function openCreateModal() {
             <div class="bg-white rounded-2xl shadow-xl p-6 w-96">
                 <h2 class="text-lg font-semibold text-slate-800 mb-4">새 프로젝트 만들기</h2>
                 
-                <div class="space-y-3">
+                <div class="space-y-4">
                     <div>
                         <label class="block text-sm text-slate-700 mb-1">프로젝트 이름</label>
                         <input id="newProjectName" type="text"
@@ -19,10 +19,12 @@ function openCreateModal() {
                     </div>
 
                     <div>
-                        <label class="block text-sm text-slate-700 mb-1">연락처</label>
-                        <input id="newProjectContact" type="text"
-                            class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                            placeholder="예: 010-1234-5678">
+                        <label class="block text-sm text-slate-700 mb-1">지도 종류</label>
+                        <select id="newMapType"
+                            class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                            <option value="kakao" selected>카카오맵</option>
+                            <option value="vworld">VWorld</option>
+                        </select>
                     </div>
                 </div>
 
@@ -43,6 +45,7 @@ function closeCreateModal() {
     const modal = document.getElementById('createModal');
     if (modal) modal.style.display = 'none';
 }
+
 
 function createProject() {
     const name = document.getElementById('projectName').value;
