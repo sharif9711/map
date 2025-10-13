@@ -130,7 +130,7 @@ async function fetchPostalCodesForReport() {
     }
 }
 
-// ✅ JSONP 방식 + PNU코드에서 법정동코드/대장구분/본번/부번 자동 계산
+// ✅ JSONP 방식 + 모든 토지정보 자동 수집 (CORS 완전 대응)
 function getAddressDetailInfo(address) {
     const VWORLD_KEY = "BE552462-0744-32DB-81E7-1B7317390D68";
 
@@ -161,6 +161,40 @@ function getAddressDetailInfo(address) {
         });
     }
 
+    // 🔹 PNU코드 기반 지목/면적 조회
+    function getLandUseAndArea(pnuOrCoord) {
+        return new Promise((resolve, reject) => {
+            $.ajax({
+                url: "https://api.vworld.kr/req/data",
+                dataType: "jsonp",
+                data: {
+                    service: "data",
+                    request: "getfeature",
+                    key: VWORLD_KEY,
+                    format: "json",
+                    data: "LP_PA_CBND_BUBUN",
+                    geomFilter: `pnu:${pnuOrCoord}`,
+                    size: 1
+                },
+                success: function (res) {
+                    if (!res.response || res.response.status !== "OK") {
+                        reject("토지정보 조회 실패");
+                        return;
+                    }
+
+                    const f = res.response.result.featureCollection.features[0].properties;
+                    resolve({
+                        jimok: f.jimok || "",
+                        area: f.parea ? parseFloat(f.parea).toFixed(2) + "㎡" : ""
+                    });
+                },
+                error: function (err) {
+                    reject("요청 실패: " + err.statusText);
+                }
+            });
+        });
+    }
+
     // 🔹 메인 처리
     return new Promise(async (resolve, reject) => {
         try {
@@ -179,7 +213,7 @@ function getAddressDetailInfo(address) {
             const x = point.x;
             const y = point.y;
 
-            // 🔹 좌표로 토지정보 조회
+            // 좌표 → PNU 조회
             $.ajax({
                 url: "https://api.vworld.kr/req/data",
                 dataType: "jsonp",
@@ -193,7 +227,7 @@ function getAddressDetailInfo(address) {
                     data: "LP_PA_CBND_BUBUN",
                     geomFilter: `point(${x} ${y})`
                 },
-                success: function (landJson) {
+                success: async function (landJson) {
                     if (!landJson.response || landJson.response.status !== "OK") {
                         reject("토지정보 조회 실패");
                         return;
@@ -202,17 +236,14 @@ function getAddressDetailInfo(address) {
                     const f = landJson.response.result.featureCollection.features[0].properties;
                     const pnu = f.pnu || "";
 
-                    // ✅ PNU 코드로 세부정보 계산
+                    // ✅ PNU 코드에서 주요 항목 계산
                     let bjdCode = "";
                     let daejang = "";
                     let bonbun = "";
                     let bubun = "";
 
                     if (pnu.length >= 19) {
-                        // 1~10자리 = 법정동코드
                         bjdCode = pnu.substring(0, 10);
-                        
-                        // 11번째 자리 = 대장구분
                         const typeDigit = pnu.charAt(10);
                         switch (typeDigit) {
                             case "1": daejang = "토지"; break;
@@ -221,21 +252,31 @@ function getAddressDetailInfo(address) {
                             case "4": daejang = "간척"; break;
                             default: daejang = "기타";
                         }
-
-                        // 12~15자리 = 본번 / 16~19자리 = 부번
                         bonbun = pnu.substring(11, 15);
                         bubun = pnu.substring(15, 19);
                     }
 
+                    // ✅ 지목과 면적 추가 조회
+                    let jimok = "";
+                    let area = "";
+                    try {
+                        const landInfo = await getLandUseAndArea(pnu);
+                        jimok = landInfo.jimok;
+                        area = landInfo.area;
+                    } catch (e) {
+                        console.warn("지목/면적 조회 실패:", e);
+                    }
+
+                    // ✅ 최종 반환
                     resolve({
                         zipCode: point.zip || "",
-                        bjdCode: bjdCode || f.bjd_cd || "",
+                        bjdCode,
                         pnuCode: pnu,
                         대장구분: daejang,
-                        본번: bonbun || f.mnnm || "",
-                        부번: bubun || f.slno || "",
-                        jimok: f.jimok || "",
-                        area: f.parea || "",
+                        본번: bonbun,
+                        부번: bubun,
+                        jimok,
+                        area,
                         lat: y,
                         lon: x
                     });
@@ -247,6 +288,7 @@ function getAddressDetailInfo(address) {
         }
     });
 }
+
 
 
 function renderDataInputTable() {
