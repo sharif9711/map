@@ -564,24 +564,47 @@ async function fetchLandInfoForReport() {
     }
 }
 
-// ✅ 화면에 표시된 보고서 테이블을 그대로 Excel(.xlsx)로 다운로드
+// ✅ 보고서 테이블을 제목 포함 Excel(.xlsx)로 다운로드
 function downloadExcel() {
     try {
-        // 보고서 테이블 가져오기
         const table = document.getElementById('reportTable');
         if (!table) {
             alert('보고서 테이블을 찾을 수 없습니다.');
             return;
         }
 
-        // 화면에 보이는 모든 행을 그대로 복사
-        const wb = XLSX.utils.book_new();
-        const ws = XLSX.utils.table_to_sheet(table, { raw: true });
+        // 📘 프로젝트명 + 날짜로 제목 생성
+        const projectName = currentProject?.projectName || '프로젝트';
+        const today = new Date().toISOString().slice(0, 10);
+        const titleRow = [`${projectName} 보고서`];
+        const dateRow = [`생성일자: ${today}`];
 
-        // ✅ 열 너비 자동 조정 (한글 깨짐 및 잘림 방지)
+        // HTML 테이블을 배열로 변환
+        const wsData = [];
+        wsData.push(titleRow);
+        wsData.push(dateRow);
+        wsData.push([]); // 빈 줄 한 줄 추가
+
+        // 📋 실제 보고서 테이블의 헤더 + 본문을 그대로 복사
+        const headers = Array.from(table.querySelectorAll("thead th")).map(th =>
+            th.textContent.trim()
+        );
+        wsData.push(headers);
+
+        const rows = Array.from(table.querySelectorAll("tbody tr")).map(tr =>
+            Array.from(tr.querySelectorAll("td")).map(td =>
+                td.textContent.trim()
+            )
+        );
+        wsData.push(...rows);
+
+        // 📗 시트 생성
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+        // ✅ 열 너비 자동 계산 (한글 깨짐 방지)
         const colWidths = [];
-        const data = XLSX.utils.sheet_to_json(ws, { header: 1 });
-        data.forEach(row => {
+        wsData.forEach(row => {
             row.forEach((cell, i) => {
                 const width = cell ? cell.toString().length + 2 : 10;
                 colWidths[i] = Math.max(colWidths[i] || 10, width);
@@ -589,17 +612,17 @@ function downloadExcel() {
         });
         ws['!cols'] = colWidths.map(w => ({ width: w }));
 
-        // ✅ 시트 이름과 파일명 설정
-        const sheetName = '보고서';
-        XLSX.utils.book_append_sheet(wb, ws, sheetName);
+        // ✅ 스타일: 제목은 굵게, 가운데 정렬
+        ws['A1'].s = {
+            font: { bold: true, sz: 14 },
+            alignment: { horizontal: 'center', vertical: 'center' }
+        };
 
-        const today = new Date().toISOString().slice(0, 10);
-        const projectName = currentProject?.projectName || '프로젝트';
+        // 시트와 파일 생성
+        XLSX.utils.book_append_sheet(wb, ws, '보고서');
         const fileName = `${projectName}_보고서_${today}.xlsx`;
 
-        // ✅ 파일 다운로드
         XLSX.writeFile(wb, fileName);
-
         alert(`"${fileName}" 파일이 정상적으로 다운로드되었습니다.`);
     } catch (error) {
         console.error('엑셀 다운로드 오류:', error);
