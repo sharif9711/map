@@ -1,58 +1,36 @@
-// js/main.js
-// 🌐 메인 초기화 및 화면 렌더링 제어
+let currentProject = null;
 
-document.addEventListener("DOMContentLoaded", () => {
-  console.log("✅ main.js 로드 완료");
+window.onload = () => {
+  renderProjects();
+};
 
-  // 프로젝트 불러오기
-  if (typeof loadProjects === "function") {
-    loadProjects();
+function renderProjects() {
+  const container = document.getElementById("projectListScreen");
+  if (!projects.length) {
+    container.innerHTML = `
+      <div class="flex flex-col items-center justify-center h-screen text-center">
+        <h2 class="text-xl font-semibold text-slate-700 mb-4">아직 프로젝트가 없습니다.</h2>
+        <button onclick="openCreateModal()" class="px-5 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">+ 새 프로젝트 만들기</button>
+      </div>
+    `;
   } else {
-    console.error("❌ loadProjects 함수가 정의되지 않았습니다. data.js 순서 확인!");
-  }
-
-  // 프로젝트 렌더링
-  if (typeof renderProjects === "function") {
-    renderProjects();
-  } else {
-    console.error("❌ renderProjects 함수가 없습니다. project-list.js 확인!");
-  }
-
-  // 새 프로젝트 버튼 연결
-  const createBtn = document.querySelector('button[onclick="openCreateModal()"]');
-  if (createBtn) {
-    createBtn.addEventListener("click", openCreateModal);
-  }
-
-  console.log("📦 초기화 완료 - 프로젝트 목록 렌더링 준비");
-});
-
-
-// ✅ 지도 초기화 함수 (프로젝트 상세 화면에서 사용)
-function initSelectedMap(mapType) {
-  const mapContainer = document.getElementById("mapContainer");
-  if (!mapContainer) {
-    console.warn("⚠️ mapContainer 요소를 찾을 수 없습니다.");
-    return;
-  }
-
-  mapContainer.classList.remove("hidden");
-
-  if (mapType === "vworld") {
-    console.log("🌏 VWorld 지도 초기화 실행");
-    initVWorldMap("mapContainer");
-  } else {
-    console.log("🗺️ Kakao 지도 초기화 실행");
-    initKakaoMap("mapContainer");
-  }
-}
-
-
-// ✅ 프로젝트 리스트 렌더링 트리거 함수 (프로젝트 생성 이후에도 사용됨)
-function refreshProjectList() {
-  if (typeof renderProjects === "function") {
-    renderProjects();
-  } else {
-    console.error("❌ renderProjects 함수가 정의되지 않았습니다.");
+    container.innerHTML = `
+      <div class="p-6">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-xl font-semibold">프로젝트 목록</h2>
+          <button onclick="openCreateModal()" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">+ 새 프로젝트</button>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          ${projects.map(p => `
+            <div class="bg-white rounded-lg shadow-md hover:shadow-lg transition-all p-4 cursor-pointer"
+              onclick="showProjectDetail('${p.id}')">
+              <h3 class="text-lg font-semibold">${p.projectName}</h3>
+              <p class="text-sm text-slate-500 mt-1">${p.mapType === 'vworld' ? 'VWorld' : '카카오맵'}</p>
+              <p class="text-xs text-slate-400 mt-2">${new Date(p.createdAt).toLocaleString()}</p>
+            </div>
+          `).join("")}
+        </div>
+      </div>
+    `;
   }
 }
