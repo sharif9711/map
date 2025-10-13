@@ -169,12 +169,11 @@ async function geocodeAddressVWorld(address) {
 }
 
 // ===================================================================
-// 디버깅용 기능: 주소로 상세 토지 정보(PNU 코드 등) 가져오기
+// 최종 수정된 기능: 주소로 상세 토지 정보(PNU 코드 등) 가져오기
 // ===================================================================
 
 /**
  * 주소를 기반으로 VWorld 토지(필지) 검색 API를 호출하여 상세 정보를 가져옵니다.
- * 이 함수는 PNU 코드를 포함한 모든 필요한 정보를 한 번에 가져옵니다.
  * @param {string} address - 검색할 주소
  * @returns {Promise<object|null>} 토지 정보 객체 또는 null
  */
@@ -201,42 +200,18 @@ async function getAddressDetailInfo(address) {
 
         const data = await vworldJsonp(apiUrl);
 
-        // 3. <<< 디버깅을 위해 API 응답 전체를 콘솔에 출력합니다. >>>
-        console.log(`--- VWorld API 응답 (${address}) ---`);
-        console.log("요청 좌표:", coord);
-        console.log("전체 응답 데이터:", JSON.stringify(data, null, 2));
-        // <<< 디버깅 로그 끝 >>>
-
-        // 4. API 응답에서 필요한 정보를 추출합니다.
-        if (data && data.response && data.response.status === 'OK' && data.response.result && data.response.result.features.length > 0) {
-            const feature = data.response.result.features[0];
+        // 3. <<< 중요: API 응답 경로를 올바르게 수정했습니다. >>>
+        if (data && data.response && data.response.status === 'OK' && data.response.result && data.response.result.featureCollection && data.response.result.featureCollection.features.length > 0) {
+            const feature = data.response.result.featureCollection.features[0];
             const properties = feature.properties;
 
-            // 5. <<< 찾은 속성(properties)도 콘솔에 출력합니다. >>>
-            console.log("찾은 필지 속성:", properties);
-            // <<< 디버깅 로그 끝 >>>
+            // 4. <<< API가 제공하는 필드에 맞춰 정보를 매핑합니다. >>>
+            const pnu = properties.pnu;
+            let bjdCode = null;
+            if (pnu && pnu.length >= 10) {
+                bjdCode = pnu.substring(0, 10); // PNU 코드 앞 10자리가 법정동코드
+            }
 
             // API 응답 필드명을 애플리케이션 필드명에 맞게 매핑
             return {
-                pnuCode: properties.pnu, // PNU 코드 (가장 중요)
-                bjdCode: properties.bjdcd, // 법정동코드
-                대장구분: properties.jibun === '1' ? '토지대장' : '임야대장', // 대장구분 (1:토지, 2:임야)
-                본번: properties.bun, // 본번
-                부번: properties.ji, // 부번
-                지목: properties.jimok, // 지목
-                면적: properties.area, // 면적 (m²)
-                zipCode: properties.newZipCode // 새 우편번호 (5자리)
-            };
-        } else {
-            // 6. <<< 정보를 찾지 못한 경우에도 응답을 출력합니다. >>>
-            console.warn(`토지 정보를 찾을 수 없습니다: ${address}`);
-            console.warn("실패 시 응답 데이터:", data);
-            // <<< 디버깅 로그 끝 >>>
-            return null;
-        }
-
-    } catch (error) {
-        console.error(`토지 정보 조회 오류 (${address}):`, error);
-        return null;
-    }
-}
+                pnuCode: pnu, // P
