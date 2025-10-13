@@ -1,113 +1,66 @@
-// ✅ 새 프로젝트 생성 모달 (비밀번호 제거 + 지도종류 선택)
 function openCreateModal() {
-    const modal = document.getElementById('createModal');
-    if (!modal) return;
+  const modal = document.getElementById("createModal");
+  modal.innerHTML = `
+    <div class="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+      <div class="bg-white rounded-lg shadow-lg w-96 p-6">
+        <h2 class="text-lg font-semibold text-slate-800 mb-4">새 프로젝트 만들기</h2>
+        <label class="block text-sm font-medium text-slate-600 mb-1">프로젝트 이름</label>
+        <input id="projectNameInput" type="text" class="w-full mb-4 border rounded px-3 py-2 focus:ring-2 focus:ring-blue-400" placeholder="예: 제3구역 현장조사">
 
-    modal.innerHTML = `
-        <div class="fixed inset-0 flex items-center justify-center bg-black/40 z-50">
-            <div class="bg-white rounded-2xl shadow-xl p-6 w-96">
-                <h2 class="text-lg font-semibold text-slate-800 mb-4">새 프로젝트 만들기</h2>
-
-                <div class="space-y-5">
-                    <!-- 프로젝트 이름 -->
-                    <div>
-                        <label class="block text-sm text-slate-700 mb-1">프로젝트 이름</label>
-                        <input id="newProjectName" type="text"
-                            class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                            placeholder="예: 2025년도 지적조사">
-                    </div>
-
-                    <!-- 지도 선택 -->
-                    <div>
-                        <label class="block text-sm text-slate-700 mb-2">지도 종류</label>
-                        <div class="flex justify-between gap-3">
-                            <button id="btnKakao" type="button"
-                                class="flex-1 px-3 py-2 rounded-lg font-medium bg-blue-600 text-white border border-blue-600 hover:bg-blue-700 transition">
-                                카카오맵
-                            </button>
-                            <button id="btnVWorld" type="button"
-                                class="flex-1 px-3 py-2 rounded-lg font-medium bg-slate-100 text-slate-700 border border-slate-300 hover:bg-slate-200 transition">
-                                VWorld
-                            </button>
-                        </div>
-                        <input type="hidden" id="selectedMapType" value="kakao">
-                    </div>
-                </div>
-
-                <!-- 하단 버튼 -->
-                <div class="flex justify-end gap-3 mt-6">
-                    <button id="cancelBtn"
-                        class="px-4 py-2 rounded-lg text-slate-600 hover:bg-slate-100 transition">취소</button>
-                    <button id="createBtn"
-                        class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">생성</button>
-                </div>
-            </div>
+        <label class="block text-sm font-medium text-slate-600 mb-2">지도 종류</label>
+        <div class="flex justify-between mb-6">
+          <button id="kakaoBtn" class="w-1/2 border border-blue-500 text-blue-600 font-medium rounded-l-lg py-2 bg-blue-50">카카오맵</button>
+          <button id="vworldBtn" class="w-1/2 border border-blue-500 text-slate-600 font-medium rounded-r-lg py-2">VWorld</button>
         </div>
-    `;
 
-    modal.style.display = 'block';
+        <div class="flex justify-end gap-2">
+          <button onclick="closeCreateModal()" class="px-4 py-2 rounded bg-slate-100 hover:bg-slate-200 text-slate-700">취소</button>
+          <button onclick="createProject()" class="px-4 py-2 rounded bg-blue-600 hover:bg-blue-700 text-white">생성</button>
+        </div>
+      </div>
+    </div>
+  `;
 
-    // 요소 참조
-    const kakaoBtn = modal.querySelector('#btnKakao');
-    const vworldBtn = modal.querySelector('#btnVWorld');
-    const mapTypeInput = modal.querySelector('#selectedMapType');
-    const createBtn = modal.querySelector('#createBtn');
-    const cancelBtn = modal.querySelector('#cancelBtn');
-    const nameInput = modal.querySelector('#newProjectName');
+  modal.classList.add("active");
 
-    // 지도 선택 버튼 토글
-    kakaoBtn.addEventListener('click', () => {
-        mapTypeInput.value = 'kakao';
-        kakaoBtn.classList.add('bg-blue-600', 'text-white', 'border-blue-600');
-        kakaoBtn.classList.remove('bg-slate-100', 'text-slate-700');
-        vworldBtn.classList.remove('bg-blue-600', 'text-white', 'border-blue-600');
-        vworldBtn.classList.add('bg-slate-100', 'text-slate-700', 'border-slate-300');
-    });
+  const kakaoBtn = document.getElementById("kakaoBtn");
+  const vworldBtn = document.getElementById("vworldBtn");
 
-    vworldBtn.addEventListener('click', () => {
-        mapTypeInput.value = 'vworld';
-        vworldBtn.classList.add('bg-blue-600', 'text-white', 'border-blue-600');
-        vworldBtn.classList.remove('bg-slate-100', 'text-slate-700', 'border-slate-300');
-        kakaoBtn.classList.remove('bg-blue-600', 'text-white', 'border-blue-600');
-        kakaoBtn.classList.add('bg-slate-100', 'text-slate-700', 'border-slate-300');
-    });
+  let selected = "kakao";
+  kakaoBtn.onclick = () => {
+    selected = "kakao";
+    kakaoBtn.classList.add("bg-blue-50", "text-blue-600");
+    vworldBtn.classList.remove("bg-blue-50", "text-blue-600");
+  };
+  vworldBtn.onclick = () => {
+    selected = "vworld";
+    vworldBtn.classList.add("bg-blue-50", "text-blue-600");
+    kakaoBtn.classList.remove("bg-blue-50", "text-blue-600");
+  };
 
-    // 취소 버튼
-    cancelBtn.addEventListener('click', () => {
-        modal.style.display = 'none';
-    });
-
-    // 생성 버튼
-    createBtn.addEventListener('click', () => {
-        const projectName = nameInput.value.trim();
-        const mapType = mapTypeInput.value;
-
-        if (!projectName) {
-            alert('프로젝트 이름을 입력해주세요.');
-            return;
-        }
-
-        // 새 프로젝트 생성
-        const newProject = {
-            id: crypto.randomUUID(),
-            projectName: projectName,
-            createdAt: new Date(),
-            mapType: mapType,
-            data: []
-        };
-
-        // 로컬스토리지에 저장
-        projects.unshift(newProject);
-        localStorage.setItem('projects', JSON.stringify(projects));
-
-        // 리스트 갱신 및 모달 닫기
-        renderProjects();
-        modal.style.display = 'none';
-    });
+  window.selectedMapType = selected;
 }
 
-// ✅ 모달 닫기 함수
 function closeCreateModal() {
-    const modal = document.getElementById('createModal');
-    if (modal) modal.style.display = 'none';
+  document.getElementById("createModal").classList.remove("active");
+  document.getElementById("createModal").innerHTML = "";
+}
+
+function createProject() {
+  const name = document.getElementById("projectNameInput")?.value.trim();
+  if (!name) return alert("프로젝트 이름을 입력하세요.");
+
+  const mapType = window.selectedMapType || "kakao";
+  const newProj = {
+    id: crypto.randomUUID(),
+    projectName: name,
+    mapType,
+    createdAt: new Date(),
+    data: []
+  };
+
+  projects.unshift(newProj);
+  saveProjects();
+  closeCreateModal();
+  renderProjects();
 }
