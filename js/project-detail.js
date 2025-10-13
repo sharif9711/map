@@ -94,9 +94,7 @@ async function fetchPostalCodesForReport() {
                         } else if (result[0].address && result[0].address.zip_code) {
                             zipCode = result[0].address.zip_code;
                         }
-                        if (zipCode) {
-                            row.우편번호 = zipCode;
-                        }
+                        if (zipCode) row.우편번호 = zipCode;
                     }
                     
                     if (!row.lat || !row.lng) {
@@ -104,42 +102,17 @@ async function fetchPostalCodesForReport() {
                         row.lng = parseFloat(result[0].x);
                     }
                     
-                    if (typeof getAddressDetailInfo === 'function') {
-                        try {
-                            const detailInfo = await getAddressDetailInfo(row.주소);
-                            if (detailInfo) {
-                                if (!row.법정동코드 && detailInfo.bjdCode) {
-                                    row.법정동코드 = detailInfo.bjdCode;
-                                }
-                                
-                                if (!row.pnu코드 && detailInfo.pnuCode) {
-                                    row.pnu코드 = detailInfo.pnuCode;
-                                }
-                                
-                                if (!row.대장구분 && detailInfo.대장구분) {
-                                    row.대장구분 = detailInfo.대장구분;
-                                }
-                                
-                                if (!row.본번 && detailInfo.본번) {
-                                    row.본번 = detailInfo.본번;
-                                }
-                                if (!row.부번 && detailInfo.부번) {
-                                    row.부번 = detailInfo.부번;
-                                }
-                                
-                                if (!row.지목 && detailInfo.jimok) {
-                                    row.지목 = detailInfo.jimok;
-                                }
-                                
-                                if (!row.면적 && detailInfo.area) {
-                                    row.면적 = detailInfo.area;
-                                }
-                            }
-                        } catch (error) {
-                            console.error('VWorld API 조회 오류:', error);
-                        }
+                    const detailInfo = await getAddressDetailInfo(row.주소);
+                    if (detailInfo) {
+                        row.법정동코드 = detailInfo.bjdCode || row.법정동코드;
+                        row.pnu코드 = detailInfo.pnuCode || row.pnu코드;
+                        row.대장구분 = detailInfo.대장구분 || row.대장구분;
+                        row.본번 = detailInfo.본번 || row.본번;
+                        row.부번 = detailInfo.부번 || row.부번;
+                        row.지목 = detailInfo.jimok || row.지목;
+                        row.면적 = detailInfo.area || row.면적;
                     }
-                    
+
                     if (typeof renderReportTable === 'function') {
                         renderReportTable();
                     }
@@ -155,6 +128,49 @@ async function fetchPostalCodesForReport() {
     const projectIndex = projects.findIndex(p => p.id === currentProject.id);
     if (projectIndex !== -1) {
         projects[projectIndex] = currentProject;
+    }
+}
+
+// ✅ VWorld API 호출 함수 (토지정보 수집 핵심)
+async function getAddressDetailInfo(address) {
+    const VWORLD_KEY = "BE552462-0744-32DB-81E7-1B7317390D68";
+
+    try {
+        // 1️⃣ 주소 → 좌표 변환
+        const geoRes = await fetch(
+            `https://api.vworld.kr/req/address?service=address&request=getcoord&version=2.0&crs=epsg:4326&address=${encodeURIComponent(address)}&type=road&key=${VWORLD_KEY}`
+        );
+        const geoJson = await geoRes.json();
+        if (geoJson.response.status !== "OK") throw new Error("좌표 변환 실패");
+        
+        const x = geoJson.response.result.point.x;
+        const y = geoJson.response.result.point.y;
+
+        // 2️⃣ 좌표로 토지정보 가져오기
+        const landRes = await fetch(
+            `https://api.vworld.kr/req/data?service=data&request=getfeature&key=${VWORLD_KEY}&format=json&size=1&page=1&data=LP_PA_CBND_BUBUN&geomFilter=point(${x} ${y})`
+        );
+        const landJson = await landRes.json();
+        if (landJson.response.status !== "OK") throw new Error("토지정보 조회 실패");
+
+        const feature = landJson.response.result.featureCollection.features[0].properties;
+
+        // 3️⃣ 결과 매핑
+        return {
+            zipCode: geoJson.response.result.point.zip || "",
+            bjdCode: feature.bjd_cd || "",
+            pnuCode: feature.pnu || "",
+            대장구분: feature.regstr_se_code || "",
+            본번: feature.mnnm || "",
+            부번: feature.slno || "",
+            jimok: feature.jimok || "",
+            area: feature.parea || "",
+            lat: y,
+            lon: x
+        };
+    } catch (error) {
+        console.error("VWorld API 오류:", error);
+        return null;
     }
 }
 
@@ -347,32 +363,26 @@ async function fetchLandInfoForReport() {
         const row = rowsWithAddress[i];
         
         try {
-            if (typeof getAddressDetailInfo === 'function') {
-                const detailInfo = await getAddressDetailInfo(row.주소);
-                
-                if (detailInfo) {
-                    if (detailInfo.zipCode) row.우편번호 = detailInfo.zipCode;
-                    if (detailInfo.bjdCode) row.법정동코드 = detailInfo.bjdCode;
-                    if (detailInfo.pnuCode) row.pnu코드 = detailInfo.pnuCode;
-                    if (detailInfo.대장구분) row.대장구분 = detailInfo.대장구분;
-                    if (detailInfo.본번) row.본번 = detailInfo.본번;
-                    if (detailInfo.부번) row.부번 = detailInfo.부번;
-                    if (detailInfo.jimok) row.지목 = detailInfo.jimok;
-                    if (detailInfo.area) row.면적 = detailInfo.area;
-                    if (detailInfo.lat && detailInfo.lon) {
-                        row.lat = detailInfo.lat;
-                        row.lng = detailInfo.lon;
-                    }
-                    
-                    successCount++;
-                }
+            const detailInfo = await getAddressDetailInfo(row.주소);
+            if (detailInfo) {
+                row.우편번호 = detailInfo.zipCode;
+                row.법정동코드 = detailInfo.bjdCode;
+                row.pnu코드 = detailInfo.pnuCode;
+                row.대장구분 = detailInfo.대장구분;
+                row.본번 = detailInfo.본번;
+                row.부번 = detailInfo.부번;
+                row.지목 = detailInfo.jimok;
+                row.면적 = detailInfo.area;
+                row.lat = detailInfo.lat;
+                row.lng = detailInfo.lon;
+                successCount++;
             }
         } catch (error) {
             console.error('토지정보 수집 오류:', error);
         }
         
         loadingMsg.textContent = `토지정보 수집 중... (${i + 1}/${rowsWithAddress.length})`;
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        await new Promise(resolve => setTimeout(resolve, 1200));
     }
     
     const projectIndex = projects.findIndex(p => p.id === currentProject.id);
