@@ -167,3 +167,62 @@ async function geocodeAddressVWorld(address) {
     
     return null;
 }
+
+// ===================================================================
+// 추가된 기능: 주소로 상세 토지 정보(PNU 코드 등) 가져오기
+// ===================================================================
+
+/**
+ * 주소를 기반으로 VWorld 토지(필지) 검색 API를 호출하여 상세 정보를 가져옵니다.
+ * @param {string} address - 검색할 주소
+ * @returns {Promise<object|null>} 토지 정보 객체 또는 null
+ */
+async function getAddressDetailInfo(address) {
+    if (!address || address.trim() === '') {
+        return null;
+    }
+
+    try {
+        // 1. 주소를 좌표(위도, 경도)로 변환합니다.
+        const coord = await geocodeAddressVWorld(address);
+        if (!coord) {
+            console.warn(`좌표 변환 실패: ${address}`);
+            return null;
+        }
+
+        // 2. VWorld 토지 검색 API를 호출합니다.
+        // service=data, request=GetFeature API를 사용하여 좌표에 해당하는 필지 정보를 조회합니다.
+        const apiUrl = `https://api.vworld.kr/req/data?` +
+            `service=data&request=GetFeature&data=lp_pa_cbnd_bubun&` + // 토지 지적도 레이어
+            `format=json&crs=epsg:4326&` +
+            `geomfilter=POINT(${coord.lon} ${coord.lat})&` + // 해당 좌표의 필지를 필터링
+            `geometry=false&attribute=true&` +
+            `key=${VWORLD_API_KEY}`;
+
+        const data = await vworldJsonp(apiUrl);
+
+        // 3. API 응답에서 필요한 정보를 추출합니다.
+        if (data && data.response && data.response.status === 'OK' && data.response.result && data.response.result.features.length > 0) {
+            const feature = data.response.result.features[0];
+            const properties = feature.properties;
+
+            return {
+                pnuCode: properties.pnu, // PNU 코드
+                bjdCode: properties.bjdcd, // 법정동코드
+                jimok: properties.jimok, // 지목
+                area: properties.area, // 면적 (m²)
+                본번: properties.bun, // 본번
+                부번: properties.ji, // 부번
+                대장구분: properties.jibun === '1' ? '토지대장' : '임야대장', // 대장구분 (간단히 분류)
+                zipCode: properties.newZipCode // 새 우편번호 (5자리)
+            };
+        } else {
+            console.warn(`토지 정보를 찾을 수 없습니다: ${address}`);
+            return null;
+        }
+
+    } catch (error) {
+        console.error(`토지 정보 조회 오류 (${address}):`, error);
+        return null;
+    }
+}
