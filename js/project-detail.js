@@ -57,7 +57,7 @@ function switchTab(tabName) {
     });
 }
 
-// ✅ 보고서 메뉴 진입 시 전체 토지정보 자동 수집 (10건 제한 제거)
+// ✅ 진행 게이지바 포함 전체 토지정보 자동 수집
 async function fetchPostalCodesForReport() {
     if (!currentProject) return;
 
@@ -78,50 +78,61 @@ async function fetchPostalCodesForReport() {
     const rowsWithAddress = currentProject.data.filter(
         row => row.주소 && row.주소.trim() !== ''
     );
-
     if (rowsWithAddress.length === 0) return;
 
-    // ✅ 로딩 메시지 표시
-    const loadingMsg = document.createElement('div');
-    loadingMsg.id = 'postalLoading';
-    loadingMsg.className =
-        'fixed top-4 left-1/2 transform -translate-x-1/2 z-50 px-6 py-3 bg-blue-600 text-white rounded-lg shadow-lg';
-    loadingMsg.textContent = `토지정보 수집 중... (0/${rowsWithAddress.length})`;
-    document.body.appendChild(loadingMsg);
+    // ✅ 진행창 생성
+    let overlay = document.createElement('div');
+    overlay.id = 'progressOverlay';
+    overlay.className =
+        'fixed top-0 left-0 w-full h-full flex flex-col justify-center items-center bg-black/40 z-50';
+
+    overlay.innerHTML = `
+        <div class="bg-white rounded-xl shadow-xl p-6 w-96 text-center">
+            <h2 class="text-lg font-semibold mb-3 text-slate-800">토지정보 수집 중...</h2>
+            <div class="w-full bg-slate-200 rounded-full h-4 mb-2 overflow-hidden">
+                <div id="progressBar" class="bg-blue-600 h-4 rounded-full transition-all duration-300 ease-out" style="width: 0%;"></div>
+            </div>
+            <p id="progressText" class="text-sm text-slate-600">0 / ${rowsWithAddress.length}</p>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+
+    const progressBar = document.getElementById('progressBar');
+    const progressText = document.getElementById('progressText');
 
     let processed = 0;
 
     for (let i = 0; i < rowsWithAddress.length; i++) {
         const row = rowsWithAddress[i];
 
-        // 이미 조회된 경우 스킵
+        // 이미 수집된 항목은 스킵
         if (row.우편번호 && row.pnu코드 && row.면적 && row.지목) {
             processed++;
-            loadingMsg.textContent = `토지정보 수집 중... (${processed}/${rowsWithAddress.length})`;
+            const percent = Math.round((processed / rowsWithAddress.length) * 100);
+            progressBar.style.width = `${percent}%`;
+            progressText.textContent = `${processed} / ${rowsWithAddress.length}`;
             continue;
         }
 
         try {
             geocoder.addressSearch(row.주소, async function (result, status) {
                 if (status === kakao.maps.services.Status.OK) {
-                    // ✅ 우편번호 처리
                     if (!row.우편번호) {
                         let zipCode = '';
-                        if (result[0].road_address && result[0].road_address.zone_no) {
+                        if (result[0].road_address?.zone_no) {
                             zipCode = result[0].road_address.zone_no;
-                        } else if (result[0].address && result[0].address.zip_code) {
+                        } else if (result[0].address?.zip_code) {
                             zipCode = result[0].address.zip_code;
                         }
                         if (zipCode) row.우편번호 = zipCode;
                     }
 
-                    // ✅ 좌표 저장
                     if (!row.lat || !row.lng) {
                         row.lat = parseFloat(result[0].y);
                         row.lng = parseFloat(result[0].x);
                     }
 
-                    // ✅ VWorld 상세정보
+                    // ✅ VWorld 상세정보 추가
                     if (typeof getAddressDetailInfo === 'function') {
                         try {
                             const detailInfo = await getAddressDetailInfo(row.주소);
@@ -139,34 +150,39 @@ async function fetchPostalCodesForReport() {
                         }
                     }
 
-                    // ✅ 테이블 갱신
                     if (typeof renderReportTable === 'function') {
                         renderReportTable();
                     }
                 }
 
                 processed++;
-                loadingMsg.textContent = `토지정보 수집 중... (${processed}/${rowsWithAddress.length})`;
+                const percent = Math.round((processed / rowsWithAddress.length) * 100);
+                progressBar.style.width = `${percent}%`;
+                progressText.textContent = `${processed} / ${rowsWithAddress.length}`;
 
+                // ✅ 모든 행 완료 시
                 if (processed === rowsWithAddress.length) {
-                    document.body.removeChild(loadingMsg);
-                    alert(`토지정보 수집 완료: ${rowsWithAddress.length}건`);
+                    setTimeout(() => {
+                        overlay.remove();
+                        alert(`토지정보 수집 완료: ${rowsWithAddress.length}건`);
+                    }, 400);
                 }
             });
         } catch (error) {
             console.error('Geocoding error:', error);
         }
 
-        // API 호출 간격 (Kakao API 호출 제한 방지)
+        // API 호출 간격 (과도한 요청 방지)
         await new Promise(resolve => setTimeout(resolve, 800));
     }
 
-    // ✅ 최종 데이터 저장
+    // ✅ 프로젝트 데이터 업데이트
     const projectIndex = projects.findIndex(p => p.id === currentProject.id);
     if (projectIndex !== -1) {
         projects[projectIndex] = currentProject;
     }
 }
+
 
 
 
