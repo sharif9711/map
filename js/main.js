@@ -5,7 +5,6 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('projectListScreen').innerHTML = getProjectListHTML();
     document.getElementById('projectDetailScreen').innerHTML = getProjectDetailHTML();
     document.getElementById('createModal').innerHTML = getCreateModalHTML();
-    document.getElementById('passwordModal').innerHTML = getPasswordModalHTML();
     
     // 초기 렌더링
     renderProjects();
