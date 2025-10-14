@@ -162,7 +162,7 @@ async function getAddressDetailInfo(address) {
             return;
         }
 
-        // ✅ 주소 → 좌표 변환 요청
+        // ✅ 좌표 요청
         function requestCoord(address, type, callback) {
             $.ajax({
                 type: "get",
@@ -175,7 +175,7 @@ async function getAddressDetailInfo(address) {
                     version: "2.0",
                     crs: "epsg:4326",
                     address: address,
-                    type: type, // "road" 또는 "parcel"
+                    type: type,
                     key: VWORLD_API_KEY
                 },
                 success: (data) => callback(data),
@@ -183,7 +183,7 @@ async function getAddressDetailInfo(address) {
             });
         }
 
-        // ✅ 좌표 → PNU 코드 요청
+        // ✅ PNU 요청
         function requestPNU(x, y, callback) {
             $.ajax({
                 type: "get",
@@ -204,12 +204,12 @@ async function getAddressDetailInfo(address) {
             });
         }
 
-        // ✅ PNU → 지목 / 면적 요청
+        // ✅ 토지특성 요청 (지목 / 면적)
         function requestLandCharacteristics(pnu, callback) {
             $.ajax({
                 type: "get",
                 dataType: "jsonp",
-                jsonp: "callback", // 🔸 JSONP 필수
+                jsonp: "callback",
                 url: "https://api.vworld.kr/ned/data/getLandCharacteristics",
                 data: {
                     key: VWORLD_API_KEY,
@@ -220,40 +220,46 @@ async function getAddressDetailInfo(address) {
                     numOfRows: 1,
                     pageNo: 1
                 },
-                success: (data) => {
+                success: (res) => {
                     try {
-                        // 🔸 응답 구조가 다를 경우 대비
-                        const feature =
-                            data?.response?.result?.featureCollection?.features?.[0] ||
-                            data?.response?.result?.featureCollection?.[0]?.features?.[0];
+                        if (!res?.response?.result) {
+                            console.warn(`⚠️ [${pnu}] response.result 없음 (데이터 없음)`);
+                            callback({ success: false });
+                            return;
+                        }
 
-                        if (feature && feature.properties) {
+                        const feature =
+                            res.response.result.featureCollection?.features?.[0] ||
+                            res.response.result.featureCollection?.[0]?.features?.[0] ||
+                            res.response.result?.featureCollection?.features?.[0];
+
+                        if (feature?.properties) {
                             const props = feature.properties;
+                            console.log(`✅ [성공] PNU:${pnu}`, props);
                             callback({
                                 success: true,
                                 lndcgrCodeNm: props.lndcgrCodeNm || "-",
                                 lndpclAr: props.lndpclAr || "-"
                             });
                         } else {
-                            console.warn("⚠️ getLandCharacteristics 응답에 feature 없음:", data);
+                            console.warn(`⚠️ [${pnu}] feature 없음 (토지특성 미등록)`);
                             callback({ success: false });
                         }
-                    } catch (err) {
-                        console.error("❌ getLandCharacteristics 파싱 오류:", err);
+                    } catch (e) {
+                        console.error(`❌ [${pnu}] 파싱 오류:`, e);
                         callback({ success: false });
                     }
                 },
-                error: () => {
-                    console.error("❌ getLandCharacteristics 요청 실패");
+                error: (xhr, status, error) => {
+                    console.error(`❌ [${pnu}] 요청 실패:`, error);
                     callback({ success: false });
                 }
             });
         }
 
-        // ✅ 좌표 요청 단계
+        // ✅ 1️⃣ 주소 → 좌표 변환
         requestCoord(address, "road", (geo) => {
             if (!geo?.response?.result?.point) {
-                // 도로명 실패 → 지번주소로 재시도
                 requestCoord(address, "parcel", (geo2) => {
                     if (!geo2?.response?.result?.point) {
                         console.warn("⚠️ 주소 변환 실패:", address);
@@ -267,7 +273,7 @@ async function getAddressDetailInfo(address) {
             }
         });
 
-        // ✅ 좌표 처리 및 토지정보 조회
+        // ✅ 2️⃣ 좌표 → PNU → 토지특성 순서대로 처리
         function processCoord(point) {
             const x = point.x;
             const y = point.y;
@@ -297,15 +303,13 @@ async function getAddressDetailInfo(address) {
                     lon: x
                 };
 
-                // ✅ PNU 코드로 토지정보 조회
+                // ✅ 3️⃣ 토지특성 정보까지 다 얻은 후 resolve
                 requestLandCharacteristics(pnu, (info) => {
                     if (info && info.success) {
                         result.지목 = info.lndcgrCodeNm;
                         result.면적 = info.lndpclAr;
-                        console.log(`✅ [성공] ${address} → 법정동:${bjdCode}, PNU:${pnu}, 지목:${result.지목}, 면적:${result.면적}`);
-                    } else {
-                        console.warn(`⚠️ [보조실패] ${address} → PNU:${pnu} (지목/면적 없음)`);
                     }
+                    console.log(`📍 [최종] ${address} → 지목:${result.지목}, 면적:${result.면적}`);
                     resolve(result);
                 });
             });
