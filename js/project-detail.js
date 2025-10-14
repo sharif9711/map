@@ -134,21 +134,6 @@ async function fetchPostalCodesForReport() {
     }
 }
 
-// ===================================================================
-// PNU 코드를 가져오는 핵심 함수 (순수 자바스크립트 최종 버전)
-// ===================================================================
-
-/**
- * 주소로부터 PNU 코드를 포함한 상세 토지 정보를 가져오는 함수 (순수 자바스크립트 버전)
- * @param {string} address - 검색할 주소
- * @returns {Promise<object|null>} 토지 정보 객체 또는 null
- */
-
-/**
- * 주소로부터 PNU 코드를 포함한 상세 토지 정보를 가져오는 함수 (경쟁 상태 해결 버전)
- * @param {string} address - 검색할 주소
- * @returns {Promise<object|null>} 토지 정보 객체 또는 null
- */
 function getAddressDetailInfo(address) {
     console.log(`🔍 [시작] 주소로 토지 정보 검색: ${address}`);
     const VWORLD_API_KEY = 'BE552462-0744-32DB-81E7-1B7317390D68';
@@ -162,16 +147,13 @@ function getAddressDetailInfo(address) {
 
         let callbackCount = 0;
 
-        // 콜백 함수를 동적으로 생성하고, 완료 후 스스스로 정리하는 헬퍼 함수
         const createCallback = (callbackName, successHandler, errorHandler) => {
             window[callbackName] = (data) => {
-                // 성공 시 콜백 함수와 스크립트 태그를 정리
                 delete window[callbackName];
                 const script = document.getElementById(callbackName);
                 if (script) script.remove();
                 successHandler(data);
             };
-            // 에러 핸들러 (스크립트 로드 실패 등)
             window[callbackName + '_error'] = () => {
                 delete window[callbackName + '_error'];
                 const script = document.getElementById(callbackName);
@@ -180,12 +162,10 @@ function getAddressDetailInfo(address) {
             };
         };
 
-        // 1. 주소 -> 좌표 변환 (도로명 우선, 실패 시 지번)
         const geoCallbackName = `geoCallback_${Date.now()}_${++callbackCount}`;
         createCallback(geoCallbackName, (geoJson) => {
             if (!geoJson || !geoJson.response || geoJson.response.status !== "OK") {
                 console.warn("⚠️ [실패] 도로명 주소 변환. 지번 주소로 재시도...");
-                // 지번 주소로 재시도
                 const parcelCallbackName = `parcelCallback_${Date.now()}_${++callbackCount}`;
                 createCallback(parcelCallbackName, (parcelJson) => {
                     if (!parcelJson || !parcelJson.response || parcelJson.response.status !== "OK") {
@@ -195,8 +175,7 @@ function getAddressDetailInfo(address) {
                     }
                     const point = parcelJson.response.result.point;
                     console.log(`✅ [성공] 지번 주소 변환: (${point.x}, ${point.y})`);
-                    // 좌표를 얻었으니 토지 정보 조회 시작
-                    fetchLandInfo(point.x, point.y, geoJson.response.result.point.zip);
+                    fetchLandInfo(point.x, point.y, parcelJson.response.result.point.zip);
                 }, (err) => {
                     console.error(`❌ [오류] 지번 주소 변환 중 문제 발생: ${address}`, err);
                     resolve(null);
@@ -217,7 +196,6 @@ function getAddressDetailInfo(address) {
             document.body.appendChild(geoScript);
         });
 
-        // 2. 좌표 -> 토지 정보 조회
         const fetchLandInfo = (x, y, zip) => {
             const landCallbackName = `landCallback_${Date.now()}_${++callbackCount}`;
             createCallback(landCallbackName, (landJson) => {
@@ -226,16 +204,12 @@ function getAddressDetailInfo(address) {
                     resolve(null);
                     return;
                 }
-
                 const f = landJson.response.result.featureCollection.features[0].properties;
                 const pnu = f.pnu || "";
-
-                // PNU 코드 파싱
                 let bjdCode = "";
                 let daejang = "";
                 let bonbun = "";
                 let bubun = "";
-
                 if (pnu.length >= 19) {
                     bjdCode = pnu.substring(0, 10);
                     const typeDigit = pnu.charAt(10);
@@ -249,7 +223,6 @@ function getAddressDetailInfo(address) {
                     bonbun = pnu.substring(11, 15).replace(/^0+/, '') || "0";
                     bubun = pnu.substring(15, 19).replace(/^0+/, '') || "0";
                 }
-
                 const result = {
                     zipCode: zip || "",
                     bjdCode: bjdCode,
@@ -262,7 +235,6 @@ function getAddressDetailInfo(address) {
                     lat: y,
                     lon: x
                 };
-                
                 console.log(`✅ [최종 성공] PNU 코드 획득: ${result.pnuCode}`);
                 resolve(result);
             }, (err) => {
@@ -277,6 +249,7 @@ function getAddressDetailInfo(address) {
         };
     });
 }
+
 
 function renderDataInputTable() {
     const tbody = document.getElementById('dataInputTable');
