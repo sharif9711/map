@@ -146,7 +146,7 @@ async function fetchPostalCodesForReport() {
 async function getAddressDetailInfo(address) {
     console.log(`🔍 [시작] 주소로 토지 정보 검색: ${address}`);
     const VWORLD_API_KEY = 'BE552462-0744-32DB-81E7-1B7317390D68';
-    const DOMAIN = 'sharif9711.github.io'; // 실제 배포 도메인에 맞게 수정하세요.
+    const DOMAIN = 'sharif9711.github.io';
 
     return new Promise((resolve) => {
         if (!address || address.trim() === '') {
@@ -177,7 +177,7 @@ async function getAddressDetailInfo(address) {
         const geoCallbackName = `geo_${Date.now()}_${++callbackCount}`;
         createCallback(geoCallbackName, (geoJson) => {
             if (!geoJson || !geoJson.response || geoJson.response.status !== "OK") {
-                console.warn("⚠️ 도로명 실패 → 지번주소 재시도");
+                console.warn("⚠️ 도로명 주소 변환 실패 → 지번 주소로 재시도");
                 const parcelCallbackName = `parcel_${Date.now()}_${++callbackCount}`;
                 createCallback(parcelCallbackName, (parcelJson) => {
                     if (!parcelJson?.response?.result?.point) {
@@ -208,7 +208,7 @@ async function getAddressDetailInfo(address) {
             createCallback(landCallbackName, (landJson) => {
                 const features = landJson?.response?.result?.featureCollection?.features || [];
                 if (!features.length) {
-                    console.error(`❌ 토지 정보 없음: ${address}`);
+                    console.error(`❌ 토지정보 없음: ${address}`);
                     safeResolve(null);
                     return;
                 }
@@ -219,7 +219,7 @@ async function getAddressDetailInfo(address) {
                 const typeMap = { "1": "토지", "2": "임야", "3": "하천", "4": "간척" };
                 const daejang = typeMap[typeDigit] || "기타";
 
-                // 기본값
+                // ✅ 기본정보
                 let result = {
                     zipCode: zip || "",
                     bjdCode: pnu.substring(0, 10),
@@ -233,27 +233,42 @@ async function getAddressDetailInfo(address) {
                     lon: x
                 };
 
-                // ✅ 3️⃣ JSONP 방식으로 getLandCharacteristics 호출
+                // ✅ jQuery JSONP 방식으로 getLandCharacteristics 호출
                 const year = new Date().getFullYear();
-                const charCallbackName = `char_${Date.now()}_${++callbackCount}`;
-                createCallback(charCallbackName, (charData) => {
-                    try {
-                        const props = charData?.response?.result?.featureCollection?.features?.[0]?.properties;
-                        if (props) {
-                            result.지목 = props.lndcgrCodeNm || result.지목;
-                            result.면적 = props.lndpclAr || result.면적;
-                        }
-                        console.log(`✅ [성공] ${address} → PNU:${pnu}, 지목:${result.지목}, 면적:${result.면적}`);
-                    } catch (err) {
-                        console.warn("⚠️ getLandCharacteristics 데이터 없음:", err);
-                    }
-                    safeResolve(result);
-                });
 
-                const charScript = document.createElement('script');
-                charScript.id = charCallbackName;
-                charScript.src = `https://api.vworld.kr/ned/data/getLandCharacteristics?key=${VWORLD_API_KEY}&domain=${DOMAIN}&pnu=${pnu}&stdrYear=${year}&format=json&pageNo=1&numOfRows=1&callback=${charCallbackName}`;
-                document.body.appendChild(charScript);
+                $.ajax({
+                    type: "get",
+                    dataType: "jsonp",
+                    url: "https://api.vworld.kr/ned/data/getLandCharacteristics",
+                    data: {
+                        key: VWORLD_API_KEY,
+                        domain: DOMAIN,
+                        pnu: pnu,
+                        stdrYear: year,
+                        format: "json",
+                        numOfRows: 1,
+                        pageNo: 1
+                    },
+                    async: true,
+                    success: function (data) {
+                        try {
+                            const props = data?.response?.result?.featureCollection?.features?.[0]?.properties;
+                            if (props) {
+                                result.지목 = props.lndcgrCodeNm || result.지목;
+                                result.면적 = props.lndpclAr || result.면적;
+                            }
+                            console.log(`✅ [성공] ${address} → PNU:${pnu}, 지목:${result.지목}, 면적:${result.면적}`);
+                            safeResolve(result);
+                        } catch (err) {
+                            console.warn("⚠️ getLandCharacteristics 데이터 없음:", err);
+                            safeResolve(result);
+                        }
+                    },
+                    error: function (xhr, stat, err) {
+                        console.error("❌ JSONP 통신 오류:", err);
+                        safeResolve(result);
+                    }
+                });
             });
 
             const landScript = document.createElement('script');
@@ -263,6 +278,7 @@ async function getAddressDetailInfo(address) {
         };
     });
 }
+
 
 
 
