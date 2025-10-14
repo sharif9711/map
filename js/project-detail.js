@@ -143,12 +143,10 @@ async function fetchPostalCodesForReport() {
     }
 }
 
-/**
- * 주소로부터 PNU 코드와 상세 토지정보를 가져오는 함수
- */
-function getAddressDetailInfo(address) {
+async function getAddressDetailInfo(address) {
     console.log(`🔍 [시작] 주소로 토지 정보 검색: ${address}`);
     const VWORLD_API_KEY = 'BE552462-0744-32DB-81E7-1B7317390D68';
+    const DOMAIN = 'sharif9711.github.io'; // 🔧 실제 서비스 도메인으로 변경하세요.
 
     return new Promise((resolve) => {
         if (!address || address.trim() === '') {
@@ -175,12 +173,11 @@ function getAddressDetailInfo(address) {
             };
         };
 
-        // 1️⃣ 주소 → 좌표 변환 (도로명 우선, 실패 시 지번)
+        // ✅ 1️⃣ 주소 → 좌표 변환 (도로명 우선, 실패 시 지번)
         const geoCallbackName = `geoCallback_${Date.now()}_${++callbackCount}`;
         createCallback(geoCallbackName, (geoJson) => {
             if (!geoJson || !geoJson.response || geoJson.response.status !== "OK") {
                 console.warn("⚠️ 도로명 주소 변환 실패 → 지번 주소로 재시도");
-                // 지번 주소로 재시도
                 const parcelCallbackName = `parcelCallback_${Date.now()}_${++callbackCount}`;
                 createCallback(parcelCallbackName, (parcelJson) => {
                     if (!parcelJson || !parcelJson.response || parcelJson.response.status !== "OK") {
@@ -213,10 +210,10 @@ function getAddressDetailInfo(address) {
         geoScript.onerror = () => window[geoCallbackName + '_error']();
         document.body.appendChild(geoScript);
 
-        // 2️⃣ 좌표 → 토지정보 조회
+        // ✅ 2️⃣ 좌표 → PNU 코드 조회
         const fetchLandInfo = (x, y, zip) => {
             const landCallbackName = `landCallback_${Date.now()}_${++callbackCount}`;
-            createCallback(landCallbackName, (landJson) => {
+            createCallback(landCallbackName, async (landJson) => {
                 const features = landJson?.response?.result?.featureCollection?.features || [];
                 if (!features.length) {
                     console.error(`❌ 토지정보 없음: ${address}`);
@@ -236,24 +233,47 @@ function getAddressDetailInfo(address) {
                     default: daejang = "기타";
                 }
 
-                const result = {
+                // ✅ 기본 데이터 구성
+                let result = {
                     zipCode: zip || "",
                     bjdCode: pnu.substring(0, 10),
                     pnuCode: pnu,
                     대장구분: daejang,
                     본번: pnu.substring(11, 15).replace(/^0+/, '') || "0",
                     부번: pnu.substring(15, 19).replace(/^0+/, '') || "0",
-                    지목: f.jimok || null,
-                    면적: f.parea || null,
+                    지목: f.jimok || "-",
+                    면적: f.parea || "-",
                     lat: y,
                     lon: x
                 };
-                console.log(`✅ [성공] ${address} → PNU ${result.pnuCode}`);
+
+                // ✅ 3️⃣ PNU 코드 기반으로 지목/면적 보강 (getLandCharacteristics API 호출)
+                try {
+                    const year = new Date().getFullYear(); // 최신 연도 자동
+                    const url = `https://api.vworld.kr/ned/data/getLandCharacteristics?key=${VWORLD_API_KEY}&domain=${DOMAIN}&pnu=${pnu}&stdrYear=${year}&format=json&pageNo=1&numOfRows=1`;
+
+                    const res = await fetch(url);
+                    if (res.ok) {
+                        const data = await res.json();
+                        const info = data?.response?.result?.featureCollection?.features?.[0]?.properties;
+                        if (info) {
+                            result.지목 = info.lndcgrCodeNm || result.지목;
+                            result.면적 = info.lndpclAr || result.면적;
+                        }
+                    } else {
+                        console.warn(`⚠️ [보강 실패] getLandCharacteristics 응답 오류 (${res.status})`);
+                    }
+                } catch (e) {
+                    console.error("❌ VWorld getLandCharacteristics 호출 실패:", e);
+                }
+
+                console.log(`✅ [성공] ${address} → PNU ${result.pnuCode}, 지목:${result.지목}, 면적:${result.면적}`);
                 safeResolve(result);
             }, (err) => {
                 console.error(`❌ [오류] 토지정보 조회 실패: ${address}`, err);
                 safeResolve(null);
             });
+
             const landScript = document.createElement('script');
             landScript.id = landCallbackName;
             landScript.src = `https://api.vworld.kr/req/data?service=data&request=getfeature&format=json&size=1&page=1&data=LP_PA_CBND_BUBUN&geomFilter=POINT(${x} ${y})&key=${VWORLD_API_KEY}&callback=${landCallbackName}`;
@@ -262,6 +282,7 @@ function getAddressDetailInfo(address) {
         };
     });
 }
+
 
 
 
