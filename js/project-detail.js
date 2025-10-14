@@ -149,6 +149,8 @@ async function fetchPostalCodesForReport() {
 
 // jQuery가 반드시 로드되어 있어야 합니다.
 
+// jQuery 필요: <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
 async function getAddressDetailInfo(address) {
     const VWORLD_API_KEY = "BE552462-0744-32DB-81E7-1B7317390D68";
     const DOMAIN = "sharif9711.github.io";
@@ -234,7 +236,7 @@ async function getAddressDetailInfo(address) {
             }
         });
 
-        // 3️⃣ 좌표 → PNU 코드 → 지목·면적
+        // 3️⃣ 좌표 → PNU 코드 → 지목·면적·법정동코드
         function processCoord(point) {
             const x = point.x;
             const y = point.y;
@@ -250,11 +252,17 @@ async function getAddressDetailInfo(address) {
                 const daejangMap = { "1": "토지", "2": "임야", "3": "하천", "4": "간척" };
                 const daejang = daejangMap[pnu.charAt(10)] || "기타";
 
+                // ✅ 법정동코드 추출
+                const bjdCode = pnu.substring(0, 10);
+
                 const result = {
                     pnuCode: pnu,
+                    법정동코드: bjdCode,
                     대장구분: daejang,
                     본번: pnu.substring(11, 15).replace(/^0+/, "") || "0",
                     부번: pnu.substring(15, 19).replace(/^0+/, "") || "0",
+                    지목: "-",
+                    면적: "-",
                     lat: y,
                     lon: x
                 };
@@ -265,7 +273,7 @@ async function getAddressDetailInfo(address) {
                     if (props) {
                         result.지목 = props.lndcgrCodeNm || "-";
                         result.면적 = props.lndpclAr || "-";
-                        console.log(`✅ [성공] ${address} → PNU:${pnu}, 지목:${result.지목}, 면적:${result.면적}`);
+                        console.log(`✅ [성공] ${address} → 법정동:${bjdCode}, PNU:${pnu}, 지목:${result.지목}, 면적:${result.면적}`);
                     } else {
                         console.warn(`⚠️ [보조실패] ${address} → PNU:${pnu} (지목/면적 없음)`);
                         result.지목 = "-";
@@ -277,6 +285,7 @@ async function getAddressDetailInfo(address) {
         }
     });
 }
+
 
 
 
