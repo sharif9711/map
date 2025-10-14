@@ -146,6 +146,9 @@ async function fetchPostalCodesForReport() {
 
 // jQuery가 반드시 로드되어 있어야 합니다.
 
+
+// jQuery가 반드시 로드되어 있어야 합니다.
+
 async function getAddressDetailInfo(address) {
     const VWORLD_API_KEY = "BE552462-0744-32DB-81E7-1B7317390D68";
     const DOMAIN = "sharif9711.github.io";
