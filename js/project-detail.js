@@ -134,135 +134,133 @@ async function fetchPostalCodesForReport() {
 }
 
 // ===================================================================
-// PNU 코드를 가져오는 핵심 함수 (참고 코드 기반 최종 버전)
+// PNU 코드를 가져오는 핵심 함수 (최종 안정화 버전)
 // ===================================================================
 
 /**
- * 주소로부터 PNU 코드를 포함한 상세 토지 정보를 가져옵니다.
- * 참고 코드의 로직(도로명/지번 시도, PNU 파싱)을 적용하여 안정성을 높였습니다.
+ * 주소로부터 PNU 코드를 포함한 상세 토지 정보를 가져오는 함수 (최종 안정화 버전)
  * @param {string} address - 검색할 주소
  * @returns {Promise<object|null>} 토지 정보 객체 또는 null
  */
 function getAddressDetailInfo(address) {
+    console.log(`🔍 [시작] 주소로 토지 정보 검색: ${address}`);
     const VWORLD_API_KEY = 'BE552462-0744-32DB-81E7-1B7317390D68';
 
     return new Promise(async (resolve, reject) => {
         if (!address || address.trim() === '') {
+            console.log("❌ [중단] 주소가 비어있습니다.");
             resolve(null);
             return;
         }
 
-        // 🔹 도로명 / 지번 주소 변환 시도 (참고 코드 로직)
-        const getCoord = (type) => {
+        // VWorld API 호출을 위한 공통 함수
+        const callVWorldApi = (url, callbackName) => {
             return new Promise((resolve, reject) => {
-                const callbackName = `geoCallback_${Date.now()}_${Math.random()}`;
-                window[callbackName] = (geoJson) => {
+                window[callbackName] = (data) => {
                     delete window[callbackName];
                     const script = document.getElementById(callbackName);
                     if (script) script.remove();
-
-                    if (geoJson.response && geoJson.response.status === "OK") {
-                        resolve(geoJson.response.result.point);
-                    } else {
-                        reject("NOT_FOUND");
-                    }
+                    resolve(data);
                 };
                 const script = document.createElement('script');
                 script.id = callbackName;
-                script.src = `https://api.vworld.kr/req/address?service=address&request=getcoord&version=2.0&crs=epsg:4326&address=${encodeURIComponent(address)}&type=${type}&key=${VWORLD_API_KEY}&callback=${callbackName}`;
-                script.onerror = () => reject("NETWORK_ERROR");
+                script.src = url;
+                script.onerror = () => {
+                    console.error(`API 스크립트 로드 실패: ${url}`);
+                    reject(new Error('Script load error'));
+                };
                 document.body.appendChild(script);
             });
         };
 
+        // 1. 주소 -> 좌표 변환 (도로명 우선, 실패 시 지번)
+        let point = null;
         try {
-            let point = null;
-            try {
-                point = await getCoord("road");   // 도로명 먼저 시도
-                console.log(`도로명 주소 검색 성공: ${address}`);
-            } catch {
-                point = await getCoord("parcel"); // 없으면 지번으로 시도
-                console.log(`지번 주소 검색 성공: ${address}`);
+            console.log("1단계: 도로명 주소로 좌표 변환 시도...");
+            const geoUrl = `https://api.vworld.kr/req/address?service=address&request=getcoord&version=2.0&crs=epsg:4326&address=${encodeURIComponent(address)}&type=road&key=${VWORLD_API_KEY}&callback=geoCallback_${Date.now()}`;
+            const geoJson = await callVWorldApi(geoUrl.split('callback=')[0] + 'callback=' + geoUrl.split('callback=')[1]);
+            if (geoJson.response && geoJson.response.status === "OK") {
+                point = geoJson.response.result.point;
+                console.log(`✅ [성공] 도로명 주소 변환: (${point.x}, ${point.y})`);
+            } else {
+                throw new Error('도로명 주소 변환 실패');
             }
+        } catch (roadError) {
+            console.warn("⚠️ [실패] 도로명 주소 변환. 지번 주소로 재시도...");
+            try {
+                const parcelUrl = `https://api.vworld.kr/req/address?service=address&request=getcoord&version=2.0&crs=epsg:4326&address=${encodeURIComponent(address)}&type=parcel&key=${VWORLD_API_KEY}&callback=parcelCallback_${Date.now()}`;
+                const parcelJson = await callVWorldApi(parcelUrl.split('callback=')[0] + 'callback=' + parcelUrl.split('callback=')[1]);
+                if (parcelJson.response && parcelJson.response.status === "OK") {
+                    point = parcelJson.response.result.point;
+                    console.log(`✅ [성공] 지번 주소 변환: (${point.x}, ${point.y})`);
+                } else {
+                    throw new Error('지번 주소 변환 실패');
+                }
+            } catch (parcelError) {
+                console.error(`❌ [최종 실패] 좌표 변환 실패: ${address}`);
+                resolve(null);
+                return;
+            }
+        }
 
-            if (!point) {
-                console.error(`좌표 변환 최종 실패: ${address}`);
+        if (!point) {
+            resolve(null);
+            return;
+        }
+
+        // 2. 좌표 -> 토지 정보 조회
+        try {
+            console.log("2단계: 좌표로 토지 정보 조회...");
+            const landUrl = `https://api.vworld.kr/req/data?service=data&request=getfeature&format=json&size=1&page=1&data=LP_PA_CBND_BUBUN&geomFilter=POINT(${point.x} ${point.y})&key=${VWORLD_API_KEY}&callback=landCallback_${Date.now()}`;
+            const landJson = await callVWorldApi(landUrl.split('callback=')[0] + 'callback=' + landUrl.split('callback=')[1]);
+
+            if (!landJson || !landJson.response || landJson.response.status !== "OK" || !landJson.response.result.featureCollection.features.length) {
+                console.error(`❌ [실패] 토지 정보 없음: ${address}`);
                 resolve(null);
                 return;
             }
 
-            const x = point.x;
-            const y = point.y;
+            const f = landJson.response.result.featureCollection.features[0].properties;
+            const pnu = f.pnu || "";
 
-            // 🔹 좌표로 토지정보 조회
-            const landCallbackName = `landCallback_${Date.now()}_${Math.random()}`;
-            window[landCallbackName] = (landJson) => {
-                delete window[landCallbackName];
-                const script = document.getElementById(landCallbackName);
-                if (script) script.remove();
+            // 3. PNU 코드 파싱 (가장 중요하고 안정적인 부분)
+            let bjdCode = "";
+            let daejang = "";
+            let bonbun = "";
+            let bubun = "";
 
-                if (!landJson.response || landJson.response.status !== "OK") {
-                    console.error(`토지정보 조회 실패: ${address}`);
-                    resolve(null);
-                    return;
+            if (pnu.length >= 19) {
+                bjdCode = pnu.substring(0, 10);
+                const typeDigit = pnu.charAt(10);
+                switch (typeDigit) {
+                    case "1": daejang = "토지대장"; break;
+                    case "2": daejang = "임야대장"; break;
+                    case "3": daejang = "하천"; break;
+                    case "4": daejang = "간척"; break;
+                    default: daejang = "기타";
                 }
+                bonbun = pnu.substring(11, 15).replace(/^0+/, '') || "0";
+                bubun = pnu.substring(15, 19).replace(/^0+/, '') || "0";
+            }
 
-                const f = landJson.response.result.featureCollection.features[0].properties;
-                const pnu = f.pnu || "";
-
-                // ✅ PNU 코드로 세부정보 계산 (참고 코드 로직)
-                let bjdCode = "";
-                let daejang = "";
-                let bonbun = "";
-                let bubun = "";
-
-                if (pnu.length >= 19) {
-                    // 1~10자리 = 법정동코드
-                    bjdCode = pnu.substring(0, 10);
-                    
-                    // 11번째 자리 = 대장구분
-                    const typeDigit = pnu.charAt(10);
-                    switch (typeDigit) {
-                        case "1": daejang = "토지대장"; break;
-                        case "2": daejang = "임야대장"; break;
-                        case "3": daejang = "하천"; break;
-                        case "4": daejang = "간척"; break;
-                        default: daejang = "기타";
-                    }
-
-                    // 12~15자리 = 본번 / 16~19자리 = 부번
-                    bonbun = pnu.substring(11, 15).replace(/^0+/, '') || "0";
-                    bubun = pnu.substring(15, 19).replace(/^0+/, '') || "0";
-                }
-
-                const result = {
-                    zipCode: point.zip || "",
-                    bjdCode: bjdCode || f.bjd_cd || "",
-                    pnuCode: pnu,
-                    대장구분: daejang,
-                    본번: bonbun || f.bonbun || "",
-                    부번: bubun || f.bubun || "",
-                    지목: f.jimok || null,
-                    면적: f.parea || null,
-                    lat: y,
-                    lon: x
-                };
-                
-                console.log(`✅ 최종 성공: ${address} -> PNU: ${result.pnuCode}`);
-                resolve(result);
+            const result = {
+                zipCode: point.zip || "",
+                bjdCode: bjdCode,
+                pnuCode: pnu,
+                대장구분: daejang,
+                본번: bonbun,
+                부번: bubun,
+                지목: f.jimok || null,
+                면적: f.parea || null,
+                lat: point.y,
+                lon: point.x
             };
             
-            const landScript = document.createElement('script');
-            landScript.id = landCallbackName;
-            landScript.src = `https://api.vworld.kr/req/data?service=data&request=getfeature&key=${VWORLD_API_KEY}&format=json&size=1&page=1&data=LP_PA_CBND_BUBUN&geomFilter=POINT(${x} ${y})&callback=${landCallbackName}`;
-            landScript.onerror = () => {
-                console.error("토지정보 스크립트 로드 실패");
-                resolve(null);
-            };
-            document.body.appendChild(landScript);
+            console.log(`✅ [최종 성공] PNU 코드 획득: ${result.pnuCode}`);
+            resolve(result);
 
-        } catch (err) {
-            console.error(`전체 처리 오류 (${address}):`, err);
+        } catch (error) {
+            console.error(`❌ [오류] 토지 정보 조회 중 문제 발생: ${address}`, error);
             resolve(null);
         }
     });
