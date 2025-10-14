@@ -1,4 +1,3 @@
-alert("새로운 코드가 로드되었습니다! 이 메시지가 보이면 파일은 정상입니다.");
 // project-detail.js 파일이 로드되었는지 확인하는 로그
 console.log("✅ js/project-detail.js loaded successfully.");
 
@@ -134,6 +133,15 @@ async function fetchPostalCodesForReport() {
     }
 }
 
+// ===================================================================
+// PNU 코드를 가져오는 핵심 함수 (경쟁 상태 해결 버전)
+// ===================================================================
+
+/**
+ * 주소로부터 PNU 코드를 포함한 상세 토지 정보를 가져오는 함수 (경쟁 상태 해결 버전)
+ * @param {string} address - 검색할 주소
+ * @returns {Promise<object|null>} 토지 정보 객체 또는 null
+ */
 function getAddressDetailInfo(address) {
     console.log(`🔍 [시작] 주소로 토지 정보 검색: ${address}`);
     const VWORLD_API_KEY = 'BE552462-0744-32DB-81E7-1B7317390D68';
@@ -147,6 +155,7 @@ function getAddressDetailInfo(address) {
 
         let callbackCount = 0;
 
+        // 콜백 함수를 동적으로 생성하고, 완료 후 스스스로 정리하는 헬퍼 함수
         const createCallback = (callbackName, successHandler, errorHandler) => {
             window[callbackName] = (data) => {
                 delete window[callbackName];
@@ -162,10 +171,12 @@ function getAddressDetailInfo(address) {
             };
         };
 
+        // 1. 주소 -> 좌표 변환 (도로명 우선, 실패 시 지번)
         const geoCallbackName = `geoCallback_${Date.now()}_${++callbackCount}`;
         createCallback(geoCallbackName, (geoJson) => {
             if (!geoJson || !geoJson.response || geoJson.response.status !== "OK") {
                 console.warn("⚠️ [실패] 도로명 주소 변환. 지번 주소로 재시도...");
+                // 지번 주소로 재시도
                 const parcelCallbackName = `parcelCallback_${Date.now()}_${++callbackCount}`;
                 createCallback(parcelCallbackName, (parcelJson) => {
                     if (!parcelJson || !parcelJson.response || parcelJson.response.status !== "OK") {
@@ -175,6 +186,7 @@ function getAddressDetailInfo(address) {
                     }
                     const point = parcelJson.response.result.point;
                     console.log(`✅ [성공] 지번 주소 변환: (${point.x}, ${point.y})`);
+                    // 좌표를 얻었으니 토지 정보 조회 시작
                     fetchLandInfo(point.x, point.y, parcelJson.response.result.point.zip);
                 }, (err) => {
                     console.error(`❌ [오류] 지번 주소 변환 중 문제 발생: ${address}`, err);
@@ -196,6 +208,7 @@ function getAddressDetailInfo(address) {
             document.body.appendChild(geoScript);
         });
 
+        // 2. 좌표 -> 토지 정보 조회
         const fetchLandInfo = (x, y, zip) => {
             const landCallbackName = `landCallback_${Date.now()}_${++callbackCount}`;
             createCallback(landCallbackName, (landJson) => {
@@ -249,7 +262,6 @@ function getAddressDetailInfo(address) {
         };
     });
 }
-
 
 function renderDataInputTable() {
     const tbody = document.getElementById('dataInputTable');
