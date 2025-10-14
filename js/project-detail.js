@@ -133,135 +133,83 @@ async function fetchPostalCodesForReport() {
     }
 }
 
-// ===================================================================
-// PNU 코드를 가져오는 핵심 함수 (경쟁 상태 해결 버전)
-// ===================================================================
 
-/**
- * 주소로부터 PNU 코드를 포함한 상세 토지 정보를 가져오는 함수 (경쟁 상태 해결 버전)
- * @param {string} address - 검색할 주소
- * @returns {Promise<object|null>} 토지 정보 객체 또는 null
- */
-function getAddressDetailInfo(address) {
+async function getAddressDetailInfo(address) {
     console.log(`🔍 [시작] 주소로 토지 정보 검색: ${address}`);
     const VWORLD_API_KEY = 'BE552462-0744-32DB-81E7-1B7317390D68';
 
-    return new Promise((resolve, reject) => {
-        if (!address || address.trim() === '') {
-            console.log("❌ [중단] 주소가 비어있습니다.");
-            resolve(null);
-            return;
-        }
+    return new Promise((resolve) => {
+        if (!address || address.trim() === '') return resolve(null);
+        let resolved = false;
+        const safeResolve = (v) => { if (!resolved) { resolved = true; resolve(v); } };
 
-        let callbackCount = 0;
+        const callbackId = () => `${Date.now()}_${Math.random().toString(36).substr(2,5)}`;
 
-        // 콜백 함수를 동적으로 생성하고, 완료 후 스스스로 정리하는 헬퍼 함수
-        const createCallback = (callbackName, successHandler, errorHandler) => {
-            window[callbackName] = (data) => {
-                delete window[callbackName];
-                const script = document.getElementById(callbackName);
-                if (script) script.remove();
-                successHandler(data);
-            };
-            window[callbackName + '_error'] = () => {
-                delete window[callbackName + '_error'];
-                const script = document.getElementById(callbackName);
-                if (script) script.remove();
-                errorHandler(new Error('Script load error'));
+        // 공통 콜백 생성 함수
+        const createCallback = (name, onSuccess) => {
+            window[name] = (data) => {
+                delete window[name];
+                document.getElementById(name)?.remove();
+                onSuccess(data);
             };
         };
 
-        // 1. 주소 -> 좌표 변환 (도로명 우선, 실패 시 지번)
-        const geoCallbackName = `geoCallback_${Date.now()}_${++callbackCount}`;
-        createCallback(geoCallbackName, (geoJson) => {
-            if (!geoJson || !geoJson.response || geoJson.response.status !== "OK") {
-                console.warn("⚠️ [실패] 도로명 주소 변환. 지번 주소로 재시도...");
-                // 지번 주소로 재시도
-                const parcelCallbackName = `parcelCallback_${Date.now()}_${++callbackCount}`;
-                createCallback(parcelCallbackName, (parcelJson) => {
-                    if (!parcelJson || !parcelJson.response || parcelJson.response.status !== "OK") {
-                        console.error(`❌ [최종 실패] 좌표 변환 실패: ${address}`);
-                        resolve(null);
-                        return;
-                    }
-                    const point = parcelJson.response.result.point;
-                    console.log(`✅ [성공] 지번 주소 변환: (${point.x}, ${point.y})`);
-                    // 좌표를 얻었으니 토지 정보 조회 시작
-                    fetchLandInfo(point.x, point.y, parcelJson.response.result.point.zip);
-                }, (err) => {
-                    console.error(`❌ [오류] 지번 주소 변환 중 문제 발생: ${address}`, err);
-                    resolve(null);
-                });
-                const parcelScript = document.createElement('script');
-                parcelScript.id = parcelCallbackName;
-                parcelScript.src = `https://api.vworld.kr/req/address?service=address&request=getcoord&version=2.0&crs=epsg:4326&address=${encodeURIComponent(address)}&type=parcel&key=${VWORLD_API_KEY}&callback=${parcelCallbackName}`;
-                parcelScript.onerror = () => window[parcelCallbackName + '_error']();
-                document.body.appendChild(parcelScript);
-            }, (err) => {
-                console.error(`❌ [오류] 도로명 주소 변환 중 문제 발생: ${address}`, err);
-                resolve(null);
-            });
-            const geoScript = document.createElement('script');
-            geoScript.id = geoCallbackName;
-            geoScript.src = `https://api.vworld.kr/req/address?service=address&request=getcoord&version=2.0&crs=epsg:4326&address=${encodeURIComponent(address)}&type=road&key=${VWORLD_API_KEY}&callback=${geoCallbackName}`;
-            geoScript.onerror = () => window[geoCallbackName + '_error']();
-            document.body.appendChild(geoScript);
-        });
-
-        // 2. 좌표 -> 토지 정보 조회
+        // 좌표 → 토지정보
         const fetchLandInfo = (x, y, zip) => {
-            const landCallbackName = `landCallback_${Date.now()}_${++callbackCount}`;
-            createCallback(landCallbackName, (landJson) => {
-                if (!landJson || !landJson.response || landJson.response.status !== "OK" || !landJson.response.result.featureCollection.features.length) {
-                    console.error(`❌ [실패] 토지 정보 없음: ${address}`);
-                    resolve(null);
-                    return;
-                }
-                const f = landJson.response.result.featureCollection.features[0].properties;
-                const pnu = f.pnu || "";
-                let bjdCode = "";
-                let daejang = "";
-                let bonbun = "";
-                let bubun = "";
-                if (pnu.length >= 19) {
-                    bjdCode = pnu.substring(0, 10);
-                    const typeDigit = pnu.charAt(10);
-                    switch (typeDigit) {
-                        case "1": daejang = "토지대장"; break;
-                        case "2": daejang = "임야대장"; break;
-                        case "3": daejang = "하천"; break;
-                        case "4": daejang = "간척"; break;
-                        default: daejang = "기타";
-                    }
-                    bonbun = pnu.substring(11, 15).replace(/^0+/, '') || "0";
-                    bubun = pnu.substring(15, 19).replace(/^0+/, '') || "0";
-                }
-                const result = {
-                    zipCode: zip || "",
-                    bjdCode: bjdCode,
+            const cb = `land_${callbackId()}`;
+            createCallback(cb, (json) => {
+                const features = json?.response?.result?.featureCollection?.features || [];
+                if (!features.length) return safeResolve(null);
+                const f = features[0].properties;
+                const pnu = f.pnu || '';
+                const r = {
+                    zipCode: zip || '',
+                    bjdCode: pnu.substring(0, 10),
                     pnuCode: pnu,
-                    대장구분: daejang,
-                    본번: bonbun,
-                    부번: bubun,
-                    지목: f.jimok || null,
-                    면적: f.parea || null,
-                    lat: y,
-                    lon: x
+                    대장구분: ({'1':'토지대장','2':'임야대장','3':'하천','4':'간척'}[pnu[10]] || '기타'),
+                    본번: pnu.substring(11, 15).replace(/^0+/, '') || '0',
+                    부번: pnu.substring(15, 19).replace(/^0+/, '') || '0',
+                    지목: f.jimok || '-',
+                    면적: f.parea || '-',
+                    lat: y, lon: x
                 };
-                console.log(`✅ [최종 성공] PNU 코드 획득: ${result.pnuCode}`);
-                resolve(result);
-            }, (err) => {
-                console.error(`❌ [오류] 토지 정보 조회 중 문제 발생: ${address}`, err);
-                resolve(null);
+                console.log(`✅ [성공] PNU: ${r.pnuCode}`);
+                safeResolve(r);
             });
-            const landScript = document.createElement('script');
-            landScript.id = landCallbackName;
-            landScript.src = `https://api.vworld.kr/req/data?service=data&request=getfeature&format=json&size=1&page=1&data=LP_PA_CBND_BUBUN&geomFilter=POINT(${x} ${y})&key=${VWORLD_API_KEY}&callback=${landCallbackName}`;
-            landScript.onerror = () => window[landCallbackName + '_error']();
-            document.body.appendChild(landScript);
+            const s = document.createElement('script');
+            s.id = cb;
+            s.src = `https://api.vworld.kr/req/data?service=data&request=getfeature&format=json&size=1&page=1&data=LP_PA_CBND_BUBUN&geomFilter=POINT(${x} ${y})&key=${VWORLD_API_KEY}&callback=${cb}`;
+            document.body.appendChild(s);
         };
+
+        // 주소 → 좌표 (도로명 → 지번)
+        const geoCb = `geo_${callbackId()}`;
+        createCallback(geoCb, (json) => {
+            const status = json?.response?.status;
+            if (status !== 'OK') {
+                console.warn("⚠️ [도로명 실패] 지번주소 재시도");
+                const cb2 = `parcel_${callbackId()}`;
+                createCallback(cb2, (parcelJson) => {
+                    const p = parcelJson?.response?.result?.point;
+                    if (p) fetchLandInfo(p.x, p.y, p.zip);
+                    else safeResolve(null);
+                });
+                const s2 = document.createElement('script');
+                s2.id = cb2;
+                s2.src = `https://api.vworld.kr/req/address?service=address&request=getcoord&version=2.0&crs=epsg:4326&address=${encodeURIComponent(address)}&type=parcel&key=${VWORLD_API_KEY}&callback=${cb2}`;
+                document.body.appendChild(s2);
+            } else {
+                const p = json.response.result.point;
+                fetchLandInfo(p.x, p.y, p.zip);
+            }
+        });
+        const s1 = document.createElement('script');
+        s1.id = geoCb;
+        s1.src = `https://api.vworld.kr/req/address?service=address&request=getcoord&version=2.0&crs=epsg:4326&address=${encodeURIComponent(address)}&type=road&key=${VWORLD_API_KEY}&callback=${geoCb}`;
+        document.body.appendChild(s1);
     });
 }
+
 
 function renderDataInputTable() {
     const tbody = document.getElementById('dataInputTable');
