@@ -333,13 +333,15 @@ function getStatusColor(status) {
 function renderReportTable() {
     const tbody = document.getElementById('reportTable');
     if (!tbody) return;
-    
+
     tbody.innerHTML = currentProject.data
         .filter(row => row.이름 || row.연락처 || row.주소)
         .map(row => {
+            const pnu = row.pnu코드 || '';
+            const 법정동코드 = row.법정동코드 || (pnu ? pnu.substring(0, 10) : '-');
             const 본번 = row.본번 ? String(row.본번).padStart(4, '0') : '0000';
             const 부번 = row.부번 ? String(row.부번).padStart(4, '0') : '0000';
-            
+
             return `
             <tr class="hover:bg-slate-50">
                 <td class="border border-slate-300 px-3 py-2 text-center">${row.순번}</td>
@@ -355,8 +357,8 @@ function renderReportTable() {
                         <option value="보류" ${row.상태 === '보류' ? 'selected' : ''}>보류</option>
                     </select>
                 </td>
-                <td class="border border-slate-300 px-3 py-2 text-center">${row.법정동코드 || '-'}</td>
-                <td class="border border-slate-300 px-3 py-2 text-center">${row.pnu코드 || '-'}</td>
+                <td class="border border-slate-300 px-3 py-2 text-center">${법정동코드}</td>
+                <td class="border border-slate-300 px-3 py-2 text-center">${pnu || '-'}</td>
                 <td class="border border-slate-300 px-3 py-2 text-center">${row.대장구분 || '-'}</td>
                 <td class="border border-slate-300 px-3 py-2 text-center">${본번}</td>
                 <td class="border border-slate-300 px-3 py-2 text-center">${부번}</td>
@@ -367,6 +369,7 @@ function renderReportTable() {
             `;
         }).join('');
 }
+
 
 function updateReportStatus(rowId, status) {
     if (updateCell(rowId, '상태', status)) {
@@ -403,62 +406,64 @@ async function fetchLandInfoForReport() {
         alert('프로젝트가 선택되지 않았습니다.');
         return;
     }
-    
+
     const rowsWithAddress = currentProject.data.filter(row => 
         row.주소 && row.주소.trim() !== '' && (row.이름 || row.연락처)
     );
-    
+
     if (rowsWithAddress.length === 0) {
         alert('주소가 입력된 데이터가 없습니다.');
         return;
     }
-    
+
     const loadingMsg = document.createElement('div');
     loadingMsg.id = 'landInfoLoading';
     loadingMsg.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 z-50 px-6 py-3 bg-blue-600 text-white rounded-lg shadow-lg';
     loadingMsg.textContent = '토지정보 수집 중... (0/' + rowsWithAddress.length + ')';
     document.body.appendChild(loadingMsg);
-    
+
     let successCount = 0;
-    
+
     for (let i = 0; i < rowsWithAddress.length; i++) {
         const row = rowsWithAddress[i];
-        
+
         try {
             const detailInfo = await getAddressDetailInfo(row.주소);
             if (detailInfo) {
-                row.우편번호 = detailInfo.zipCode;
-                row.법정동코드 = detailInfo.bjdCode;
-                row.pnu코드 = detailInfo.pnuCode;
-                row.대장구분 = detailInfo.대장구분;
-                row.본번 = detailInfo.본번;
-                row.부번 = detailInfo.부번;
-                row.지목 = detailInfo.지목;
-                row.면적 = detailInfo.면적;
-                row.lat = detailInfo.lat;
-                row.lng = detailInfo.lon;
+                row.우편번호 = detailInfo.zipCode || row.우편번호;
+                row.pnu코드 = detailInfo.pnuCode || row.pnu코드;
+                row.법정동코드 = detailInfo.법정동코드 || 
+                                 (detailInfo.pnuCode ? detailInfo.pnuCode.substring(0, 10) : row.법정동코드);
+                row.대장구분 = detailInfo.대장구분 || row.대장구분;
+                row.본번 = detailInfo.본번 || row.본번;
+                row.부번 = detailInfo.부번 || row.부번;
+                row.지목 = detailInfo.지목 || row.지목;
+                row.면적 = detailInfo.면적 || row.면적;
+                row.lat = detailInfo.lat || row.lat;
+                row.lng = detailInfo.lon || row.lng;
                 successCount++;
             }
         } catch (error) {
             console.error('토지정보 수집 오류:', error);
         }
-        
+
         loadingMsg.textContent = `토지정보 수집 중... (${i + 1}/${rowsWithAddress.length})`;
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise(resolve => setTimeout(resolve, 800));
     }
-    
+
     const projectIndex = projects.findIndex(p => p.id === currentProject.id);
     if (projectIndex !== -1) {
         projects[projectIndex] = currentProject;
     }
-    
+
     renderReportTable();
-    
+
     document.body.removeChild(loadingMsg);
-    
+
     if (successCount > 0) {
         alert(`토지정보 수집 완료: ${successCount}건`);
     } else {
         alert('토지정보를 수집하지 못했습니다.');
     }
 }
+
