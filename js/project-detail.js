@@ -1,3 +1,4 @@
+alert("새로운 코드가 로드되었습니다! 이 메시지가 보이면 파일은 정상입니다.");
 // project-detail.js 파일이 로드되었는지 확인하는 로그
 console.log("✅ js/project-detail.js loaded successfully.");
 
