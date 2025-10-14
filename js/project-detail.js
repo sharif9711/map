@@ -204,61 +204,41 @@ async function getAddressDetailInfo(address) {
             });
         }
 
-// 📘 XML 방식으로 토지특성정보 조회 (VBA 참조 버전)
+// 📘 JSON 방식으로 토지특성정보 조회 (정상 작동 버전)
 function requestLandCharacteristics(pnu, callback) {
   const SERVICEKEY = "BE552462-0744-32DB-81E7-1B7317390D68";
-  const DOMAIN = "sharif9711.github.io";
-  const YEAR = "2017";
-  const URL = `https://api.vworld.kr/ned/data/getLandCharacteristics?format=xml&key=${SERVICEKEY}&domain=${DOMAIN}&stdrYear=${YEAR}&pnu=${pnu}`;
+  const URL = `https://api.vworld.kr/ned/data/ladfrlList?format=json&pnu=${pnu}&key=${SERVICEKEY}`;
 
   console.log(`🌐 [요청] ${URL}`);
 
   $.ajax({
     type: "GET",
     url: URL,
-    dataType: "text", // XML로 직접 받음
-    success: function (xmlText) {
+    dataType: "json",
+    success: function (data) {
       try {
-        // XML 파싱
-        const parser = new DOMParser();
-        const xmlDoc = parser.parseFromString(xmlText, "text/xml");
-
-        const totalCount = xmlDoc.getElementsByTagName("totalCount")[0]?.textContent || "0";
-
-        if (parseInt(totalCount) > 0) {
-          // <field> 노드가 여러 개인 경우 가장 최신(lastUpdtDt가 가장 큰) 것을 선택
-          const fields = xmlDoc.getElementsByTagName("field");
-          let latestNode = fields[0];
-          let latestDate = new Date("1900-01-01");
-
-          for (let i = 0; i < fields.length; i++) {
-            const node = fields[i];
-            const dt = node.getElementsByTagName("lastUpdtDt")[0]?.textContent;
-            if (dt && new Date(dt) > latestDate) {
-              latestDate = new Date(dt);
-              latestNode = node;
-            }
-          }
-
-          // 최신 노드에서 지목, 면적 추출
-          const lndcgrCodeNm =
-            latestNode.getElementsByTagName("lndcgrCodeNm")[0]?.textContent || "-";
-          const lndpclAr =
-            latestNode.getElementsByTagName("lndpclAr")[0]?.textContent || "-";
-
-          console.log(`✅ [성공] ${pnu} → 지목:${lndcgrCodeNm}, 면적:${lndpclAr}`);
-
-          callback({
-            success: true,
-            lndcgrCodeNm: lndcgrCodeNm,
-            lndpclAr: lndpclAr,
-          });
-        } else {
-          console.warn(`⚠️ [${pnu}] 데이터 없음 (totalCount=0)`);
+        const list = data?.fields?.ladfrlVOList;
+        if (!list) {
+          console.warn(`⚠️ [${pnu}] 데이터 없음`);
           callback({ success: false, lndcgrCodeNm: "-", lndpclAr: "-" });
+          return;
         }
+
+        // ✅ 배열일 수도 있고 단일 객체일 수도 있음
+        const item = Array.isArray(list) ? list[0] : list;
+
+        const lndcgrCodeNm = item.lndcgrCodeNm || "-";
+        const lndpclAr = item.lndpclAr || "-";
+
+        console.log(`✅ [성공] ${pnu} → 지목:${lndcgrCodeNm}, 면적:${lndpclAr}`);
+
+        callback({
+          success: true,
+          lndcgrCodeNm: lndcgrCodeNm,
+          lndpclAr: lndpclAr,
+        });
       } catch (err) {
-        console.error(`❌ [${pnu}] XML 파싱 실패:`, err);
+        console.error(`❌ [${pnu}] JSON 파싱 실패:`, err);
         callback({ success: false, lndcgrCodeNm: "-", lndpclAr: "-" });
       }
     },
@@ -268,6 +248,7 @@ function requestLandCharacteristics(pnu, callback) {
     },
   });
 }
+
 
 
 
