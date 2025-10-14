@@ -204,66 +204,71 @@ async function getAddressDetailInfo(address) {
             });
         }
 
+// 📘 XML 방식으로 토지특성정보 조회 (VBA 참조 버전)
 function requestLandCharacteristics(pnu, callback) {
-    $.ajax({
-        type: "get",
-        dataType: "jsonp",
-        jsonp: "callback",
-        url: "https://api.vworld.kr/ned/data/getLandCharacteristics",
-        data: {
-            key: "BE552462-0744-32DB-81E7-1B7317390D68",
-            domain: "sharif9711.github.io",
-            pnu: pnu,
-            stdrYear: "2017",
-            format: "json",
-            numOfRows: 1,
-            pageNo: 1
-        },
-        success: function (res) {
-            try {
-                console.log("📦 [응답:", pnu, "]", res);
+  const SERVICEKEY = "BE552462-0744-32DB-81E7-1B7317390D68";
+  const DOMAIN = "sharif9711.github.io";
+  const YEAR = "2017";
+  const URL = `https://api.vworld.kr/ned/data/getLandCharacteristics?format=xml&key=${SERVICEKEY}&domain=${DOMAIN}&stdrYear=${YEAR}&pnu=${pnu}`;
 
-                // ✅ 다양한 구조 대응
-                const field =
-                    res?.response?.result?.field ||
-                    res?.response?.result?.fields?.field ||
-                    res?.response?.field ||
-                    null;
+  console.log(`🌐 [요청] ${URL}`);
 
-                if (field) {
-                    console.log(`✅ [성공] ${pnu} → 지목:${field.lndcgrCodeNm}, 면적:${field.lndpclAr}`);
-                    callback({
-                        success: true,
-                        lndcgrCodeNm: field.lndcgrCodeNm || "-",
-                        lndpclAr: field.lndpclAr || "-"
-                    });
-                } else {
-                    console.warn(`⚠️ [${pnu}] result 없음 (해당 PNU 데이터 없음)`);
-                    callback({
-                        success: false,
-                        lndcgrCodeNm: "-",
-                        lndpclAr: "-"
-                    });
-                }
-            } catch (e) {
-                console.error(`❌ [${pnu}] 파싱 오류:`, e);
-                callback({
-                    success: false,
-                    lndcgrCodeNm: "-",
-                    lndpclAr: "-"
-                });
+  $.ajax({
+    type: "GET",
+    url: URL,
+    dataType: "text", // XML로 직접 받음
+    success: function (xmlText) {
+      try {
+        // XML 파싱
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(xmlText, "text/xml");
+
+        const totalCount = xmlDoc.getElementsByTagName("totalCount")[0]?.textContent || "0";
+
+        if (parseInt(totalCount) > 0) {
+          // <field> 노드가 여러 개인 경우 가장 최신(lastUpdtDt가 가장 큰) 것을 선택
+          const fields = xmlDoc.getElementsByTagName("field");
+          let latestNode = fields[0];
+          let latestDate = new Date("1900-01-01");
+
+          for (let i = 0; i < fields.length; i++) {
+            const node = fields[i];
+            const dt = node.getElementsByTagName("lastUpdtDt")[0]?.textContent;
+            if (dt && new Date(dt) > latestDate) {
+              latestDate = new Date(dt);
+              latestNode = node;
             }
-        },
-        error: function (xhr, status, error) {
-            console.error(`❌ [${pnu}] 요청 실패:`, error);
-            callback({
-                success: false,
-                lndcgrCodeNm: "-",
-                lndpclAr: "-"
-            });
+          }
+
+          // 최신 노드에서 지목, 면적 추출
+          const lndcgrCodeNm =
+            latestNode.getElementsByTagName("lndcgrCodeNm")[0]?.textContent || "-";
+          const lndpclAr =
+            latestNode.getElementsByTagName("lndpclAr")[0]?.textContent || "-";
+
+          console.log(`✅ [성공] ${pnu} → 지목:${lndcgrCodeNm}, 면적:${lndpclAr}`);
+
+          callback({
+            success: true,
+            lndcgrCodeNm: lndcgrCodeNm,
+            lndpclAr: lndpclAr,
+          });
+        } else {
+          console.warn(`⚠️ [${pnu}] 데이터 없음 (totalCount=0)`);
+          callback({ success: false, lndcgrCodeNm: "-", lndpclAr: "-" });
         }
-    });
+      } catch (err) {
+        console.error(`❌ [${pnu}] XML 파싱 실패:`, err);
+        callback({ success: false, lndcgrCodeNm: "-", lndpclAr: "-" });
+      }
+    },
+    error: function (xhr, status, error) {
+      console.error(`❌ [${pnu}] 요청 실패:`, error);
+      callback({ success: false, lndcgrCodeNm: "-", lndpclAr: "-" });
+    },
+  });
 }
+
 
 
 
