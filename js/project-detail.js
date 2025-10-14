@@ -142,6 +142,11 @@ async function fetchPostalCodesForReport() {
  * @param {string} address - 검색할 주소
  * @returns {Promise<object|null>} 토지 정보 객체 또는 null
  */
+/**
+ * 주소로부터 PNU 코드를 포함한 상세 토지 정보를 가져오는 함수 (순수 자바스크립트 버전)
+ * @param {string} address - 검색할 주소
+ * @returns {Promise<object|null>} 토지 정보 객체 또는 null
+ */
 function getAddressDetailInfo(address) {
     console.log(`🔍 [시작] 주소로 토지 정보 검색: ${address}`);
     const VWORLD_API_KEY = 'BE552462-0744-32DB-81E7-1B7317390D68';
@@ -153,9 +158,10 @@ function getAddressDetailInfo(address) {
             return;
         }
 
-        // VWorld API 호출을 위한 공통 함수
-        const callVWorldApi = (url, callbackName) => {
+        // VWorld API 호출을 위한 공통 함수 (JSONP 방식)
+        const callVWorldApi = (url) => {
             return new Promise((resolve, reject) => {
+                const callbackName = `vworldCallback_${Date.now()}_${Math.random()}`;
                 window[callbackName] = (data) => {
                     delete window[callbackName];
                     const script = document.getElementById(callbackName);
@@ -177,8 +183,8 @@ function getAddressDetailInfo(address) {
         let point = null;
         try {
             console.log("1단계: 도로명 주소로 좌표 변환 시도...");
-            const geoUrl = `https://api.vworld.kr/req/address?service=address&request=getcoord&version=2.0&crs=epsg:4326&address=${encodeURIComponent(address)}&type=road&key=${VWORLD_API_KEY}&callback=geoCallback_${Date.now()}`;
-            const geoJson = await callVWorldApi(geoUrl.split('callback=')[0] + 'callback=' + geoUrl.split('callback=')[1]);
+            const geoUrl = `https://api.vworld.kr/req/address?service=address&request=getcoord&version=2.0&crs=epsg:4326&address=${encodeURIComponent(address)}&type=road&key=${VWORLD_API_KEY}&callback=vworldCallback_${Date.now()}`;
+            const geoJson = await callVWorldApi(geoUrl);
             if (geoJson.response && geoJson.response.status === "OK") {
                 point = geoJson.response.result.point;
                 console.log(`✅ [성공] 도로명 주소 변환: (${point.x}, ${point.y})`);
@@ -188,8 +194,8 @@ function getAddressDetailInfo(address) {
         } catch (roadError) {
             console.warn("⚠️ [실패] 도로명 주소 변환. 지번 주소로 재시도...");
             try {
-                const parcelUrl = `https://api.vworld.kr/req/address?service=address&request=getcoord&version=2.0&crs=epsg:4326&address=${encodeURIComponent(address)}&type=parcel&key=${VWORLD_API_KEY}&callback=parcelCallback_${Date.now()}`;
-                const parcelJson = await callVWorldApi(parcelUrl.split('callback=')[0] + 'callback=' + parcelUrl.split('callback=')[1]);
+                const parcelUrl = `https://api.vworld.kr/req/address?service=address&request=getcoord&version=2.0&crs=epsg:4326&address=${encodeURIComponent(address)}&type=parcel&key=${VWORLD_API_KEY}&callback=vworldCallback_${Date.now()}`;
+                const parcelJson = await callVWorldApi(parcelUrl);
                 if (parcelJson.response && parcelJson.response.status === "OK") {
                     point = parcelJson.response.result.point;
                     console.log(`✅ [성공] 지번 주소 변환: (${point.x}, ${point.y})`);
@@ -211,8 +217,8 @@ function getAddressDetailInfo(address) {
         // 2. 좌표 -> 토지 정보 조회
         try {
             console.log("2단계: 좌표로 토지 정보 조회...");
-            const landUrl = `https://api.vworld.kr/req/data?service=data&request=getfeature&format=json&size=1&page=1&data=LP_PA_CBND_BUBUN&geomFilter=POINT(${point.x} ${point.y})&key=${VWORLD_API_KEY}&callback=landCallback_${Date.now()}`;
-            const landJson = await callVWorldApi(landUrl.split('callback=')[0] + 'callback=' + landUrl.split('callback=')[1]);
+            const landUrl = `https://api.vworld.kr/req/data?service=data&request=getfeature&format=json&size=1&page=1&data=LP_PA_CBND_BUBUN&geomFilter=POINT(${point.x} ${point.y})&key=${VWORLD_API_KEY}&callback=vworldCallback_${Date.now()}`;
+            const landJson = await callVWorldApi(landUrl);
 
             if (!landJson || !landJson.response || landJson.response.status !== "OK" || !landJson.response.result.featureCollection.features.length) {
                 console.error(`❌ [실패] 토지 정보 없음: ${address}`);
