@@ -204,17 +204,17 @@ async function getAddressDetailInfo(address) {
             });
         }
 
-// ✅ JSON 기반으로 토지특성(지목, 면적) 조회
 function requestLandCharacteristics(pnu, callback) {
   const SERVICEKEY = "BE552462-0744-32DB-81E7-1B7317390D68";
-  const URL = `https://api.vworld.kr/ned/data/ladfrlList?format=json&pnu=${pnu}&key=${SERVICEKEY}`;
+  const URL = `https://api.vworld.kr/ned/data/ladfrlList?format=jsonp&pnu=${pnu}&key=${SERVICEKEY}`;
 
   console.log(`🌐 [요청] ${URL}`);
 
   $.ajax({
     type: "GET",
     url: URL,
-    dataType: "json",
+    dataType: "jsonp",  // ✅ 변경: json → jsonp
+    jsonp: "callback",
     success: function (data) {
       try {
         const list = data?.fields?.ladfrlVOList;
@@ -223,7 +223,7 @@ function requestLandCharacteristics(pnu, callback) {
           callback({ success: false, lndcgrCodeNm: "-", lndpclAr: "-" });
           return;
         }
-        // 단일 객체거나 배열일 수 있으므로 처리
+
         const item = Array.isArray(list) ? list[0] : list;
         const lndcgrCodeNm = item.lndcgrCodeNm || "-";
         const lndpclAr = item.lndpclAr || "-";
@@ -231,7 +231,7 @@ function requestLandCharacteristics(pnu, callback) {
         console.log(`✅ [성공] ${pnu} → 지목:${lndcgrCodeNm}, 면적:${lndpclAr}`);
         callback({ success: true, lndcgrCodeNm, lndpclAr });
       } catch (err) {
-        console.error(`❌ [${pnu}] JSON 파싱 실패:`, err);
+        console.error(`❌ [${pnu}] JSONP 파싱 실패:`, err);
         callback({ success: false, lndcgrCodeNm: "-", lndpclAr: "-" });
       }
     },
@@ -241,6 +241,7 @@ function requestLandCharacteristics(pnu, callback) {
     },
   });
 }
+
 
 
 
