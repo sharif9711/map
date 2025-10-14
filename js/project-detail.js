@@ -204,58 +204,87 @@ async function getAddressDetailInfo(address) {
             });
         }
 
-        // ✅ 토지특성 요청 (지목 / 면적)
         function requestLandCharacteristics(pnu, callback) {
-            $.ajax({
-                type: "get",
-                dataType: "jsonp",
-                jsonp: "callback",
-                url: "https://api.vworld.kr/ned/data/getLandCharacteristics",
-                data: {
-                    key: VWORLD_API_KEY,
-                    domain: DOMAIN,
-                    pnu: pnu,
-                    stdrYear: year,
-                    format: "json",
-                    numOfRows: 1,
-                    pageNo: 1
-                },
-                success: (res) => {
-                    try {
-                        if (!res?.response?.result) {
-                            console.warn(`⚠️ [${pnu}] response.result 없음 (데이터 없음)`);
-                            callback({ success: false });
-                            return;
-                        }
+    $.ajax({
+        type: "get",
+        dataType: "jsonp",
+        jsonp: "callback",
+        url: "https://api.vworld.kr/ned/data/getLandCharacteristics",
+        data: {
+            key: VWORLD_API_KEY,
+            domain: DOMAIN,
+            pnu: pnu,
+            stdrYear: "2017",  // ✅ VWorld 예시 구조와 동일하게 2017로 고정
+            format: "json",
+            numOfRows: 1,
+            pageNo: 1
+        },
+        success: function (res) {
+            try {
+                console.log(`📦 [응답:${pnu}]`, res);
 
-                        const feature =
-                            res.response.result.featureCollection?.features?.[0] ||
-                            res.response.result.featureCollection?.[0]?.features?.[0] ||
-                            res.response.result?.featureCollection?.features?.[0];
-
-                        if (feature?.properties) {
-                            const props = feature.properties;
-                            console.log(`✅ [성공] PNU:${pnu}`, props);
-                            callback({
-                                success: true,
-                                lndcgrCodeNm: props.lndcgrCodeNm || "-",
-                                lndpclAr: props.lndpclAr || "-"
-                            });
-                        } else {
-                            console.warn(`⚠️ [${pnu}] feature 없음 (토지특성 미등록)`);
-                            callback({ success: false });
-                        }
-                    } catch (e) {
-                        console.error(`❌ [${pnu}] 파싱 오류:`, e);
-                        callback({ success: false });
-                    }
-                },
-                error: (xhr, status, error) => {
-                    console.error(`❌ [${pnu}] 요청 실패:`, error);
-                    callback({ success: false });
+                // ✅ 구조 안전하게 접근
+                const result = res?.response?.result;
+                if (!result) {
+                    console.warn(`⚠️ [${pnu}] result 없음 (해당 PNU 데이터 없음)`);
+                    callback({
+                        success: false,
+                        lndcgrCodeNm: "-",
+                        lndpclAr: "-"
+                    });
+                    return;
                 }
+
+                // ✅ field 구조 탐색: 단일 or 배열 모두 대응
+                let fieldData = null;
+                if (result.field) {
+                    fieldData = result.field;
+                } else if (result.fields?.field) {
+                    fieldData = result.fields.field;
+                } else if (Array.isArray(result.fields)) {
+                    fieldData = result.fields[0]?.field;
+                }
+
+                // ✅ fieldData가 배열일 수도 있음
+                if (Array.isArray(fieldData)) {
+                    fieldData = fieldData[0];
+                }
+
+                if (fieldData) {
+                    console.log(`✅ [성공] PNU:${pnu}`, fieldData);
+                    callback({
+                        success: true,
+                        lndcgrCodeNm: fieldData.lndcgrCodeNm || "-",
+                        lndpclAr: fieldData.lndpclAr || "-"
+                    });
+                } else {
+                    console.warn(`⚠️ [${pnu}] field 데이터 없음 (토지특성 미등록)`);
+                    callback({
+                        success: false,
+                        lndcgrCodeNm: "-",
+                        lndpclAr: "-"
+                    });
+                }
+            } catch (e) {
+                console.error(`❌ [${pnu}] 파싱 오류:`, e);
+                callback({
+                    success: false,
+                    lndcgrCodeNm: "-",
+                    lndpclAr: "-"
+                });
+            }
+        },
+        error: function (xhr, status, error) {
+            console.error(`❌ [${pnu}] 요청 실패:`, error);
+            callback({
+                success: false,
+                lndcgrCodeNm: "-",
+                lndpclAr: "-"
             });
         }
+    });
+}
+
 
         // ✅ 1️⃣ 주소 → 좌표 변환
         requestCoord(address, "road", (geo) => {
