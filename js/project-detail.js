@@ -204,61 +204,41 @@ async function getAddressDetailInfo(address) {
             });
         }
 
-        function requestLandCharacteristics(pnu, callback) {
+function requestLandCharacteristics(pnu, callback) {
     $.ajax({
         type: "get",
         dataType: "jsonp",
         jsonp: "callback",
         url: "https://api.vworld.kr/ned/data/getLandCharacteristics",
         data: {
-            key: VWORLD_API_KEY,
-            domain: DOMAIN,
+            key: "BE552462-0744-32DB-81E7-1B7317390D68",
+            domain: "sharif9711.github.io",
             pnu: pnu,
-            stdrYear: "2017",  // ✅ VWorld 예시 구조와 동일하게 2017로 고정
+            stdrYear: "2017",
             format: "json",
             numOfRows: 1,
             pageNo: 1
         },
         success: function (res) {
             try {
-                console.log(`📦 [응답:${pnu}]`, res);
+                console.log("📦 [응답:", pnu, "]", res);
 
-                // ✅ 구조 안전하게 접근
-                const result = res?.response?.result;
-                if (!result) {
-                    console.warn(`⚠️ [${pnu}] result 없음 (해당 PNU 데이터 없음)`);
-                    callback({
-                        success: false,
-                        lndcgrCodeNm: "-",
-                        lndpclAr: "-"
-                    });
-                    return;
-                }
+                // ✅ 다양한 구조 대응
+                const field =
+                    res?.response?.result?.field ||
+                    res?.response?.result?.fields?.field ||
+                    res?.response?.field ||
+                    null;
 
-                // ✅ field 구조 탐색: 단일 or 배열 모두 대응
-                let fieldData = null;
-                if (result.field) {
-                    fieldData = result.field;
-                } else if (result.fields?.field) {
-                    fieldData = result.fields.field;
-                } else if (Array.isArray(result.fields)) {
-                    fieldData = result.fields[0]?.field;
-                }
-
-                // ✅ fieldData가 배열일 수도 있음
-                if (Array.isArray(fieldData)) {
-                    fieldData = fieldData[0];
-                }
-
-                if (fieldData) {
-                    console.log(`✅ [성공] PNU:${pnu}`, fieldData);
+                if (field) {
+                    console.log(`✅ [성공] ${pnu} → 지목:${field.lndcgrCodeNm}, 면적:${field.lndpclAr}`);
                     callback({
                         success: true,
-                        lndcgrCodeNm: fieldData.lndcgrCodeNm || "-",
-                        lndpclAr: fieldData.lndpclAr || "-"
+                        lndcgrCodeNm: field.lndcgrCodeNm || "-",
+                        lndpclAr: field.lndpclAr || "-"
                     });
                 } else {
-                    console.warn(`⚠️ [${pnu}] field 데이터 없음 (토지특성 미등록)`);
+                    console.warn(`⚠️ [${pnu}] result 없음 (해당 PNU 데이터 없음)`);
                     callback({
                         success: false,
                         lndcgrCodeNm: "-",
@@ -284,6 +264,7 @@ async function getAddressDetailInfo(address) {
         }
     });
 }
+
 
 
         // ✅ 1️⃣ 주소 → 좌표 변환
