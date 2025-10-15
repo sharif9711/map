@@ -441,3 +441,4 @@ async function fetchLandInfoForReport() {
         alert('토지정보를 수집하지 못했습니다.');
     }
 }
+// ✅ getAddressDetailInfo 함수 끝
