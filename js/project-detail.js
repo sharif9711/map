@@ -227,8 +227,8 @@ function requestLandCharacteristics(pnu, callback) {
     },
     success: function (data) {
       try {
-        // ✅ 응답 구조 보정
-        const field = data?.response?.fields?.field;
+        // ✅ 응답 구조 보정 (이전에 확인한 실제 API 응답 구조로 수정)
+        const field = data?.landCharacteristicss?.field[0];
 
         if (!field) {
           console.warn(`⚠️ [${pnu}] 응답 데이터 없음`, data);
