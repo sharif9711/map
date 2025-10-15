@@ -238,18 +238,30 @@ function getVWorldLandCharacteristics(pnu) {
 }
 
 // 카카오맵: 주소 -> 우편번호
+// project-detail.js 내의 getKakaoPostalCode 함수만 이 코드로 교체하세요.
+
+// 카카오맵: 주소 -> 우편번호
 function getKakaoPostalCode(address) {
     return new Promise((resolve) => {
-        if (typeof kakao === 'undefined' || typeof kakao.maps === 'undefined' || !geocoder) {
-            console.warn("Kakao Maps API or Geocoder not initialized.");
+        // 1️⃣ 카카오맵 API가 로드되었는지 확인
+        if (typeof kakao === 'undefined' || typeof kakao.maps === 'undefined' || typeof kakao.maps.services === 'undefined') {
+            console.warn("Kakao Maps API is not loaded. Cannot fetch postal code.");
             resolve(null);
             return;
         }
-        geocoder.addressSearch(address, (result, status) => {
+
+        // 2️⃣ Geocoder 객체가 없으면 새로 생성 (이 부분이 핵심!)
+        if (!window.kakaoGeocoder) {
+            window.kakaoGeocoder = new kakao.maps.services.Geocoder();
+        }
+
+        // 3️⃣ 주소 검색 실행
+        window.kakaoGeocoder.addressSearch(address, (result, status) => {
             if (status === kakao.maps.services.Status.OK && result[0]) {
                 const zip = result[0].road_address?.zone_no || result[0].address?.zip_code;
                 resolve(zip || null);
             } else {
+                console.warn(`Kakao address search failed for "${address}" with status:`, status);
                 resolve(null);
             }
         });
