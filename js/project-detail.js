@@ -206,32 +206,43 @@ async function getAddressDetailInfo(address) {
 
 function requestLandCharacteristics(pnu, callback) {
   const SERVICEKEY = "BE552462-0744-32DB-81E7-1B7317390D68";
-  const URL = `https://api.vworld.kr/ned/data/ladfrlList?format=jsonp&pnu=${pnu}&key=${SERVICEKEY}`;
+  const DOMAIN = "sharif9711.github.io"; // 사용 중인 실제 도메인
+  const YEAR = "2017"; // 최신 데이터 연도
 
-  console.log(`🌐 [요청] ${URL}`);
+  // 🌐 VWorld 공식 엔드포인트
+  const URL = `https://api.vworld.kr/ned/data/getLandCharacteristics`;
 
   $.ajax({
-    type: "GET",
-    url: URL,
-    dataType: "jsonp",  // ✅ 변경: json → jsonp
+    type: "get",
+    dataType: "jsonp", // ✅ 반드시 jsonp
     jsonp: "callback",
+    url: URL,
+    data: {
+      key: SERVICEKEY,
+      domain: DOMAIN,
+      pnu: pnu,
+      stdrYear: YEAR,
+      format: "json", // 또는 xml 가능
+      numOfRows: 10,
+      pageNo: 1,
+    },
     success: function (data) {
       try {
-        const list = data?.fields?.ladfrlVOList;
-        if (!list) {
-          console.warn(`⚠️ [${pnu}] 데이터 없음`);
+        const field = data?.fields?.field || data?.fields?.ladfrlVOList?.[0];
+        if (!field) {
+          console.warn(`⚠️ [${pnu}] 응답 데이터 없음`, data);
           callback({ success: false, lndcgrCodeNm: "-", lndpclAr: "-" });
           return;
         }
 
-        const item = Array.isArray(list) ? list[0] : list;
-        const lndcgrCodeNm = item.lndcgrCodeNm || "-";
-        const lndpclAr = item.lndpclAr || "-";
+        // ✅ 주요 필드 추출
+        const 지목 = field.lndcgrCodeNm || "-";
+        const 면적 = field.lndpclAr || "-";
 
-        console.log(`✅ [성공] ${pnu} → 지목:${lndcgrCodeNm}, 면적:${lndpclAr}`);
-        callback({ success: true, lndcgrCodeNm, lndpclAr });
+        console.log(`✅ [${pnu}] 지목: ${지목}, 면적: ${면적}`);
+        callback({ success: true, lndcgrCodeNm: 지목, lndpclAr: 면적 });
       } catch (err) {
-        console.error(`❌ [${pnu}] JSONP 파싱 실패:`, err);
+        console.error(`❌ [${pnu}] 데이터 파싱 실패:`, err);
         callback({ success: false, lndcgrCodeNm: "-", lndpclAr: "-" });
       }
     },
@@ -241,6 +252,7 @@ function requestLandCharacteristics(pnu, callback) {
     },
   });
 }
+
 
 
 
