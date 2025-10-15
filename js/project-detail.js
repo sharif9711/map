@@ -123,6 +123,8 @@ async function fetchPostalCodesForReport() {
  * @param {string} address - 조회할 주소
  * @returns {Promise<object|null>} 토지 정보 객체 또는 null
  */
+// project-detail.js 내의 getAddressDetailInfo 함수를 이 코드로 완전히 교체하세요.
+
 async function getAddressDetailInfo(address) {
     const VWORLD_API_KEY = "BE552462-0744-32DB-81E7-1B7317390D68";
     const DOMAIN = "sharif9711.github.io"; // 본인 도메인으로 수정
@@ -185,7 +187,6 @@ async function getAddressDetailInfo(address) {
                 type: "get", dataType: "jsonp", jsonp: "callback", url: URL, data: { key: SERVICEKEY, domain: DOMAIN, pnu: pnu, stdrYear: YEAR, format: "json", numOfRows: 1, pageNo: 1, },
                 success: function (data) {
                     try {
-                        // ✅ 응답 구조 보정 (실제 API 응답 구조로 수정)
                         const field = data?.landCharacteristicss?.field[0];
                         if (!field) { console.warn(`⚠️ [${pnu}] 응답 데이터 없음`, data); callback({ success: false, lndcgrCodeNm: "-", lndpclAr: "-" }); return; }
                         const 지목 = field.lndcgrCodeNm || "-"; const 면적 = field.lndpclAr || "-";
@@ -220,10 +221,16 @@ async function getAddressDetailInfo(address) {
 
             // ✅ VWorld 응답에서 우편번호 추출
             let zipCode = '';
+
+            // ★★★ 디버깅: VWorld API가 반환한 전체 point 객체를 콘솔에 출력합니다. ★★★
+            console.log(`📍 [VWorld DEBUG] 주소 "${address}"에 대한 전체 응답:`, point);
+
             if (point.road_address && point.road_address.zone_no) {
                 zipCode = point.road_address.zone_no; // 새우편번호 (5자리)
+            } else if (point.road_address && point.road_address.zip_code) {
+                zipCode = point.road_address.zip_code; // 도로명 구우편번호 (6자리)
             } else if (point.address && point.address.zip_code) {
-                zipCode = point.address.zip_code; // 구우편번호 (6자리)
+                zipCode = point.address.zip_code; // 지번 구우편번호 (6자리)
             }
             console.log(`📍 [VWorld] ${address} -> 우편번호: ${zipCode || '없음'}`);
 
