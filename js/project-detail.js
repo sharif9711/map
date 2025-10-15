@@ -206,15 +206,14 @@ async function getAddressDetailInfo(address) {
 
 function requestLandCharacteristics(pnu, callback) {
   const SERVICEKEY = "BE552462-0744-32DB-81E7-1B7317390D68";
-  const DOMAIN = "sharif9711.github.io"; // 사용 중인 실제 도메인
-  const YEAR = "2017"; // 최신 데이터 연도
+  const DOMAIN = "sharif9711.github.io";
+  const YEAR = "2017";
 
-  // 🌐 VWorld 공식 엔드포인트
-  const URL = `https://api.vworld.kr/ned/data/getLandCharacteristics`;
+  const URL = "https://api.vworld.kr/ned/data/getLandCharacteristics";
 
   $.ajax({
     type: "get",
-    dataType: "jsonp", // ✅ 반드시 jsonp
+    dataType: "jsonp",
     jsonp: "callback",
     url: URL,
     data: {
@@ -222,27 +221,29 @@ function requestLandCharacteristics(pnu, callback) {
       domain: DOMAIN,
       pnu: pnu,
       stdrYear: YEAR,
-      format: "json", // 또는 xml 가능
-      numOfRows: 10,
+      format: "json",
+      numOfRows: 1,
       pageNo: 1,
     },
     success: function (data) {
       try {
-        const field = data?.fields?.field || data?.fields?.ladfrlVOList?.[0];
+        // ✅ 응답 구조 보정
+        const field = data?.response?.fields?.field;
+
         if (!field) {
           console.warn(`⚠️ [${pnu}] 응답 데이터 없음`, data);
           callback({ success: false, lndcgrCodeNm: "-", lndpclAr: "-" });
           return;
         }
 
-        // ✅ 주요 필드 추출
+        // ✅ 지목 / 면적 추출
         const 지목 = field.lndcgrCodeNm || "-";
         const 면적 = field.lndpclAr || "-";
 
         console.log(`✅ [${pnu}] 지목: ${지목}, 면적: ${면적}`);
         callback({ success: true, lndcgrCodeNm: 지목, lndpclAr: 면적 });
       } catch (err) {
-        console.error(`❌ [${pnu}] 데이터 파싱 실패:`, err);
+        console.error(`❌ [${pnu}] 파싱 실패`, err);
         callback({ success: false, lndcgrCodeNm: "-", lndpclAr: "-" });
       }
     },
@@ -252,6 +253,7 @@ function requestLandCharacteristics(pnu, callback) {
     },
   });
 }
+
 
 
 
