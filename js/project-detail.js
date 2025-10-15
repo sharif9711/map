@@ -64,11 +64,23 @@ function switchTab(tabName) {
  * 보고서 탭에서 모든 행의 주소를 기준으로
  * 우편번호 및 PNU코드 등 토지정보를 조회하는 함수
  */
-// project-detail.js 내의 fetchPostalCodesForReport 함수를 이 코드로 완전히 교체하세요.
-
 async function fetchPostalCodesForReport() {
     if (!currentProject) return;
     
+    if (typeof kakao === 'undefined' || typeof kakao.maps === 'undefined') {
+        console.log('Kakao Maps API not loaded yet');
+        return;
+    }
+
+    if (!geocoder) {
+        try {
+            geocoder = new kakao.maps.services.Geocoder();
+        } catch (error) {
+            console.error('Failed to initialize geocoder:', error);
+            return;
+        }
+    }
+
     const rowsWithAddress = currentProject.data.filter(row => 
         row.주소 && row.주소.trim() !== ''
     );
@@ -78,45 +90,59 @@ async function fetchPostalCodesForReport() {
         return;
     }
 
-    console.log(`📦 ${rowsWithAddress.length}건의 주소에서 토지정보 및 우편번호를 VWorld로 조회합니다.`);
+    console.log(`📦 ${rowsWithAddress.length}건의 주소에서 우편번호와 토지정보를 조회합니다.`);
 
-    for (let i = 0; i < rowsWithAddress.length; i++) {
+    for (let i = 0; i < rowsWithAddress.length; i++) { // ✅ 전체 행 반복
         const row = rowsWithAddress[i];
 
         try {
-            // ✅ getAddressDetailInfo 함수 하나로 모든 정보를 가져옴
-            const detailInfo = await getAddressDetailInfo(row.주소);
-            if (detailInfo) {
-                // 가져온 정보로 row 객체 업데이트
-                row.우편번호 = detailInfo.zipCode || row.우편번호;
-                row.lat = detailInfo.lat || row.lat;
-                row.lng = detailInfo.lon || row.lng;
-                row.법정동코드 = detailInfo.법정동코드 || row.법정동코드;
-                row.pnu코드 = detailInfo.pnuCode || row.pnu코드;
-                row.대장구분 = detailInfo.대장구분 || row.대장구분;
-                row.본번 = detailInfo.본번 || row.본번;
-                row.부번 = detailInfo.부번 || row.부번;
-                row.지목 = detailInfo.지목 || row.지목;
-                row.면적 = detailInfo.면적 || row.면적;
-            }
+            geocoder.addressSearch(row.주소, async function(result, status) {
+                if (status === kakao.maps.services.Status.OK) {
+                    if (!row.우편번호) {
+                        let zipCode = '';
+                        if (result[0].road_address && result[0].road_address.zone_no) {
+                            zipCode = result[0].road_address.zone_no;
+                        } else if (result[0].address && result[0].address.zip_code) {
+                            zipCode = result[0].address.zip_code;
+                        }
+                        if (zipCode) row.우편번호 = zipCode;
+                    }
+
+                    if (!row.lat || !row.lng) {
+                        row.lat = parseFloat(result[0].y);
+                        row.lng = parseFloat(result[0].x);
+                    }
+
+                    // ✅ 모든 주소에 대해 토지정보 요청
+                    const detailInfo = await getAddressDetailInfo(row.주소);
+                    if (detailInfo) {
+                        row.법정동코드 = detailInfo.bjdCode || row.법정동코드;
+                        row.pnu코드 = detailInfo.pnuCode || row.pnu코드;
+                        row.대장구분 = detailInfo.대장구분 || row.대장구분;
+                        row.본번 = detailInfo.본번 || row.본번;
+                        row.부번 = detailInfo.부번 || row.부번;
+                        row.지목 = detailInfo.지목 || row.지목;
+                        row.면적 = detailInfo.면적 || row.면적;
+                    }
+
+                    if (typeof renderReportTable === 'function') {
+                        renderReportTable();
+                    }
+                }
+            });
         } catch (error) {
             console.error(`❌ [${i + 1}] ${row.주소} 처리 중 오류:`, error);
         }
 
-        // API 과부하 방지를 위한 약간의 딜레이
-        await new Promise(resolve => setTimeout(resolve, 500)); 
+        await new Promise(resolve => setTimeout(resolve, 500)); // 살짝 딜레이 유지
     }
 
-    // 변경된 사항을 저장하고 화면 갱신
     const projectIndex = projects.findIndex(p => p.id === currentProject.id);
     if (projectIndex !== -1) {
         projects[projectIndex] = currentProject;
     }
-
-    if (typeof renderReportTable === 'function') {
-        renderReportTable();
-    }
 }
+
 
 // jQuery가 반드시 로드되어 있어야 합니다.
 
@@ -125,11 +151,9 @@ async function fetchPostalCodesForReport() {
 
 // jQuery 필요: <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
-// project-detail.js 내의 getAddressDetailInfo 함수를 이 코드로 완전히 교체하세요.
-
 async function getAddressDetailInfo(address) {
     const VWORLD_API_KEY = "BE552462-0744-32DB-81E7-1B7317390D68";
-    const DOMAIN = "sharif9711.github.io"; // 본인 도메인으로 수정
+    const DOMAIN = "sharif9711.github.io";
     const year = new Date().getFullYear();
 
     return new Promise((resolve) => {
@@ -138,7 +162,7 @@ async function getAddressDetailInfo(address) {
             return;
         }
 
-        // ✅ 좌표 요청 (VWorld)
+        // ✅ 좌표 요청
         function requestCoord(address, type, callback) {
             $.ajax({
                 type: "get",
@@ -151,7 +175,7 @@ async function getAddressDetailInfo(address) {
                     version: "2.0",
                     crs: "epsg:4326",
                     address: address,
-                    type: type, // 'ROAD' 또는 'PARCEL'
+                    type: type,
                     key: VWORLD_API_KEY
                 },
                 success: (data) => callback(data),
@@ -159,7 +183,7 @@ async function getAddressDetailInfo(address) {
             });
         }
 
-        // ✅ PNU 요청 (VWorld)
+        // ✅ PNU 요청
         function requestPNU(x, y, callback) {
             $.ajax({
                 type: "get",
@@ -179,96 +203,6 @@ async function getAddressDetailInfo(address) {
                 error: () => callback(null)
             });
         }
-
-        function requestLandCharacteristics(pnu, callback) {
-            const SERVICEKEY = "BE552462-0744-32DB-81E7-1B7317390D68";
-            const DOMAIN = "sharif9711.github.io"; // 본인 도메인으로 수정
-            const YEAR = "2017";
-            const URL = "https://api.vworld.kr/ned/data/getLandCharacteristics";
-            $.ajax({
-                type: "get", dataType: "jsonp", jsonp: "callback", url: URL, data: { key: SERVICEKEY, domain: DOMAIN, pnu: pnu, stdrYear: YEAR, format: "json", numOfRows: 1, pageNo: 1, },
-                success: function (data) {
-                    try {
-                        const field = data?.landCharacteristicss?.field[0];
-                        if (!field) { console.warn(`⚠️ [${pnu}] 응답 데이터 없음`, data); callback({ success: false, lndcgrCodeNm: "-", lndpclAr: "-" }); return; }
-                        const 지목 = field.lndcgrCodeNm || "-"; const 면적 = field.lndpclAr || "-";
-                        console.log(`✅ [${pnu}] 지목: ${지목}, 면적: ${면적}`);
-                        callback({ success: true, lndcgrCodeNm: 지목, lndpclAr: 면적 });
-                    } catch (err) { console.error(`❌ [${pnu}] 파싱 실패`, err); callback({ success: false, lndcgrCodeNm: "-", lndpclAr: "-" }); }
-                },
-                error: function (xhr, status, error) { console.error(`❌ [${pnu}] 요청 실패:`, error); callback({ success: false, lndcgrCodeNm: "-", lndpclAr: "-" }); },
-            });
-        }
-
-        // ✅ 1️⃣ 주소 → 좌표 변환 (도로명 우선, 실패 시 지번 시도)
-        requestCoord(address, "ROAD", (geo) => {
-            if (!geo?.response?.result?.point) {
-                requestCoord(address, "PARCEL", (geo2) => {
-                    if (!geo2?.response?.result?.point) {
-                        console.warn("⚠️ VWorld 주소 변환 실패:", address);
-                        resolve(null);
-                        return;
-                    }
-                    processCoord(geo2.response.result.point);
-                });
-            } else {
-                processCoord(geo.response.result.point);
-            }
-        });
-
-        // ✅ 2️⃣ 좌표 → PNU → 토지특성 순서대로 처리
-        function processCoord(point) {
-            const x = point.x;
-            const y = point.y;
-
-            // ✅ VWorld 응답에서 우편번호 추출
-            let zipCode = '';
-            if (point.road_address && point.road_address.zone_no) {
-                zipCode = point.road_address.zone_no; // 새우편번호 (5자리)
-            } else if (point.address && point.address.zip_code) {
-                zipCode = point.address.zip_code; // 구우편번호 (6자리)
-            }
-            console.log(`📍 [VWorld] ${address} -> 우편번호: ${zipCode || '없음'}`);
-
-            requestPNU(x, y, (pnuRes) => {
-                const f = pnuRes?.response?.result?.featureCollection?.features?.[0]?.properties;
-                if (!f?.pnu) {
-                    console.warn("⚠️ PNU 코드 없음:", address);
-                    resolve(null);
-                    return;
-                }
-
-                const pnu = f.pnu;
-                const daejangMap = { "1": "토지", "2": "임야", "3": "하천", "4": "간척" };
-                const daejang = daejangMap[pnu.charAt(10)] || "기타";
-                const bjdCode = pnu.substring(0, 10);
-
-                const result = {
-                    pnuCode: pnu,
-                    법정동코드: bjdCode,
-                    대장구분: daejang,
-                    본번: pnu.substring(11, 15).replace(/^0+/, "") || "0",
-                    부번: pnu.substring(15, 19).replace(/^0+/, "") || "0",
-                    지목: "-",
-                    면적: "-",
-                    zipCode: zipCode, // ✅ 우편번호 추가
-                    lat: y,
-                    lon: x
-                };
-
-                // ✅ 3️⃣ 토지특성 정보까지 다 얻은 후 resolve
-                requestLandCharacteristics(pnu, (info) => {
-                    if (info && info.success) {
-                        result.지목 = info.lndcgrCodeNm;
-                        result.면적 = info.lndpclAr;
-                    }
-                    console.log(`📍 [최종] ${address} -> 지목:${result.지목}, 면적:${result.면적}, 우편번호:${result.zipCode}`);
-                    resolve(result);
-                });
-            });
-        }
-    });
-}
 
 function requestLandCharacteristics(pnu, callback) {
   const SERVICEKEY = "BE552462-0744-32DB-81E7-1B7317390D68";
@@ -318,74 +252,6 @@ function requestLandCharacteristics(pnu, callback) {
       callback({ success: false, lndcgrCodeNm: "-", lndpclAr: "-" });
     },
   });
-}
-
-
-
-
-
-
-
-
-
-        // ✅ 1️⃣ 주소 → 좌표 변환
-        requestCoord(address, "road", (geo) => {
-            if (!geo?.response?.result?.point) {
-                requestCoord(address, "parcel", (geo2) => {
-                    if (!geo2?.response?.result?.point) {
-                        console.warn("⚠️ 주소 변환 실패:", address);
-                        resolve(null);
-                        return;
-                    }
-                    processCoord(geo2.response.result.point);
-                });
-            } else {
-                processCoord(geo.response.result.point);
-            }
-        });
-
-        // ✅ 2️⃣ 좌표 → PNU → 토지특성 순서대로 처리
-        function processCoord(point) {
-            const x = point.x;
-            const y = point.y;
-
-            requestPNU(x, y, (pnuRes) => {
-                const f = pnuRes?.response?.result?.featureCollection?.features?.[0]?.properties;
-                if (!f?.pnu) {
-                    console.warn("⚠️ PNU 코드 없음:", address);
-                    resolve(null);
-                    return;
-                }
-
-                const pnu = f.pnu;
-                const daejangMap = { "1": "토지", "2": "임야", "3": "하천", "4": "간척" };
-                const daejang = daejangMap[pnu.charAt(10)] || "기타";
-                const bjdCode = pnu.substring(0, 10);
-
-                const result = {
-                    pnuCode: pnu,
-                    법정동코드: bjdCode,
-                    대장구분: daejang,
-                    본번: pnu.substring(11, 15).replace(/^0+/, "") || "0",
-                    부번: pnu.substring(15, 19).replace(/^0+/, "") || "0",
-                    지목: "-",
-                    면적: "-",
-                    lat: y,
-                    lon: x
-                };
-
-                // ✅ 3️⃣ 토지특성 정보까지 다 얻은 후 resolve
-                requestLandCharacteristics(pnu, (info) => {
-                    if (info && info.success) {
-                        result.지목 = info.lndcgrCodeNm;
-                        result.면적 = info.lndpclAr;
-                    }
-                    console.log(`📍 [최종] ${address} → 지목:${result.지목}, 면적:${result.면적}`);
-                    resolve(result);
-                });
-            });
-        }
-    });
 }
 
 
