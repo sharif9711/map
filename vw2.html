@@ -1,0 +1,52 @@
+//polygon 생성
+	var polygonIdArray = new Array();
+	function testcreatePolygonForVec3(){
+		SOPPlugin.getViewCamera().moveLonLat(127.470641826861,36.68141601304);
+		polygonIdArray = new Array();
+		var data = {
+				/* compareColumn : forecastType,
+				compareValue : value,
+				compareDate : forecastDate[dateValue] */
+		};
+		Common.ajax(
+			"weather/getForeCastDateList", 
+			"POST", 
+			data,  
+			true,
+			function(data) {
+				if(data.RESULT == "SUCCESS"){
+					var list = data.LIST;
+					jQuery.each(list, function(i, v) {
+						if(SOPPlugin != null){
+							for ( var i = 0; i < list.length; i++) {
+								var geom = list[i].geom;
+								var dataArray = JSON.parse(geom).coordinates[0][0];
+	 							var rect;
+								var va=SOPPlugin.createVec3Array();
+								for ( var j = 0; j < dataArray.length - 1; j++) {
+									var tmp = dataArray[j];
+									var tmpLon = tmp[0];
+									var tmpLat = tmp[1];
+									va.pushLonLatAlt(tmpLon,tmpLat,'3');
+								}
+								var objId ="polygon"+i;
+								rect = SOPPlugin.createPolygon(objId);
+								rect.setCoordinates(va);
+								var polyStyle = rect.getStyle();	
+								var sopColor = polyStyle.getOutlineColor();
+								sopColor.setARGB(255, 232, 83, 228);	
+								polyStyle.setOutLineColor(sopColor);
+								var sopFillColor = polyStyle.getFillColor();
+									sopFillColor.setARGB(255, 64, 216, 20);
+								polyStyle.setFillColor(sopFillColor);
+								polyStyle.setOutlineWidth(5.0);
+								rect.setStyle(polyStyle);
+								SOPPlugin.getView().addChild(rect,13);
+								polygonIdArray.push(objId);
+							}
+						}
+					});
+				}
+			}
+		);
+	}
