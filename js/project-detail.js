@@ -1,5 +1,5 @@
 ﻿// ===============================
-// project-detail.js (완성본)
+// project-detail.js (v3.9.3 완성본)
 // ===============================
 console.log("✅ js/project-detail.js loaded successfully.");
 
@@ -35,19 +35,17 @@ function renderDataInputTable() {
             <td class="border border-slate-300 px-1">
                 <input type="text" value="${row.이름 || ''}"
                     onchange="updateCellAndRefresh('${row.id}', '이름', this.value)"
-                    onpaste="handlePaste(event, ${index}, '이름')"
+                    onpaste="handlePaste(event, ${index})"
                     class="w-full px-2 py-1 text-xs rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
             </td>
             <td class="border border-slate-300 px-1">
                 <input type="text" value="${row.연락처 || ''}"
                     onchange="updateCellAndRefresh('${row.id}', '연락처', this.value)"
-                    onpaste="handlePaste(event, ${index}, '연락처')"
                     class="w-full px-2 py-1 text-xs rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
             </td>
             <td class="border border-slate-300 px-1">
                 <input type="text" value="${row.주소 || ''}"
                     onchange="updateCellAndRefresh('${row.id}', '주소', this.value)"
-                    onpaste="handlePaste(event, ${index}, '주소')"
                     class="w-full px-2 py-1 text-xs rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
             </td>
         </tr>
@@ -61,7 +59,7 @@ function updateCellAndRefresh(id, field, value) {
 }
 
 // 붙여넣기 처리
-function handlePaste(event, rowIndex, field) {
+function handlePaste(event, rowIndex) {
     event.preventDefault();
     const text = (event.clipboardData || window.clipboardData).getData('text');
     const lines = text.trim().split('\n').map(line => line.split('\t'));
@@ -153,11 +151,44 @@ async function fetchLandInfoForReport(autoMode = false) {
 
     const idx = projects.findIndex(p => p.id === currentProject.id);
     if (idx !== -1) projects[idx] = currentProject;
-    if (typeof renderReportTable === 'function') renderReportTable();
+    renderReportTable();
 
     progressBar.style.width = '100%';
     showTopNotice(`✅ ${rows.length}건 토지정보 갱신 완료`, "success");
     setTimeout(() => (progressBar.style.width = '0%'), 1500);
+}
+
+// ===============================
+// 보고서 테이블 렌더링
+// ===============================
+function renderReportTable() {
+    const tbody = document.getElementById('reportTableBody');
+    if (!tbody) return;
+    if (!currentProject || !currentProject.data) {
+        tbody.innerHTML = `<tr><td colspan="10" class="text-center text-slate-500 py-4">데이터가 없습니다.</td></tr>`;
+        return;
+    }
+
+    const rows = currentProject.data;
+    if (rows.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="10" class="text-center text-slate-500 py-4">데이터가 없습니다.</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = rows.map((row, idx) => `
+        <tr class="hover:bg-slate-50 text-xs text-slate-700">
+            <td class="border border-slate-300 px-2 py-1 text-center">${row.순번 || idx + 1}</td>
+            <td class="border border-slate-300 px-2 py-1">${row.이름 || ''}</td>
+            <td class="border border-slate-300 px-2 py-1">${row.연락처 || ''}</td>
+            <td class="border border-slate-300 px-2 py-1">${row.주소 || ''}</td>
+            <td class="border border-slate-300 px-2 py-1 text-center">${row.법정동코드 || '-'}</td>
+            <td class="border border-slate-300 px-2 py-1 text-center">${row.pnu코드 || '-'}</td>
+            <td class="border border-slate-300 px-2 py-1 text-center">${row.본번 || '-'}</td>
+            <td class="border border-slate-300 px-2 py-1 text-center">${row.부번 || '-'}</td>
+            <td class="border border-slate-300 px-2 py-1 text-center">${row.지목 || '-'}</td>
+            <td class="border border-slate-300 px-2 py-1 text-right">${row.면적 || '-'}</td>
+        </tr>
+    `).join('');
 }
 
 // ===============================
