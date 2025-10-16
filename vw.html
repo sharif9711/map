@@ -122,3 +122,65 @@
           if (pnu) {
             $('#info').text(`PNU: ${pnu} → 필지 경계 조회 중...`);
             getParcelBoundary(pnu);
+          } else {
+            $('#info').text('PNU 코드 없음');
+          }
+        },
+        error: () => $('#info').text('PNU 조회 실패')
+      });
+    }
+
+    // ✅ LP_PA_CBND_BUBUN polygon 조회 (JSONP)
+    function getParcelBoundary(pnu) {
+      $.ajax({
+        url: 'https://api.vworld.kr/req/data',
+        dataType: 'jsonp',
+        data: {
+          service: 'data',
+          request: 'getFeature',
+          key: apiKey,
+          data: 'LP_PA_CBND_BUBUN',
+          attrFilter: `pnu:${pnu}`,
+          format: 'json'
+        },
+        success: function(res) {
+          const polygon = res?.response?.result?.featureCollection?.features?.[0]?.properties?.polygon;
+          if (polygon) {
+            drawPolygon(polygon);
+            $('#info').text('✅ 필지 경계선 표시 완료!');
+          } else {
+            $('#info').text('필지 경계 정보 없음');
+          }
+        },
+        error: () => $('#info').text('경계선 데이터 조회 실패')
+      });
+    }
+
+    // ✅ 마커 추가
+    function addMarker(lon, lat, title) {
+      markerLayer.removeAllFeatures();
+      const marker = new vworld.Marker(lon, lat, { title });
+      markerLayer.addMarker(marker);
+    }
+
+    // ✅ polygon → 지도 표시
+    function drawPolygon(wkt) {
+      vectorLayer.removeAllFeatures();
+      const feature = new OpenLayers.Format.WKT().read(wkt);
+      feature.geometry.transform("EPSG:4326", "EPSG:900913");
+      vectorLayer.addFeatures([feature]);
+      map.zoomToExtent(feature.geometry.getBounds());
+    }
+
+    // ✅ 초기화
+    function resetMap() {
+      markerLayer.removeAllFeatures();
+      vectorLayer.removeAllFeatures();
+      $('#info').text('지도 초기화 완료.');
+    }
+
+    // ✅ 실행: SDK 로드가 끝날 때까지 대기 후 initMap 실행
+    waitForVWorldInit(initMap);
+  </script>
+</body>
+</html>
