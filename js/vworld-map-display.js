@@ -8,22 +8,16 @@ let parcelVectorLayer = null;
 async function getParcelBoundary(pnuCode) {
     if (!pnuCode) return null;
 
-    // VWorld 2D 데이터 API 요청 URL (연속지적도)
-    // ✅ 수정: attrfilter를 사용하여 PNU 코드로 직접 필지 경계선 조회 (더 안정적)
     const url = `https://api.vworld.kr/req/data?service=data&request=getfeature&data=LP_PA_CBND_BUBUN&key=${VWORLD_API_KEY}&attrfilter=pnu:${pnuCode}&format=json&size=1`;
 
     try {
-        // vworld-map-init.js 에서 정의한 vworldJsonp 함수 사용 (CORS 문제 해결)
         const data = await vworldJsonp(url);
 
         if (data.response.status === "OK" && data.response.result.featureCollection.features.length > 0) {
             const feature = data.response.result.featureCollection.features[0];
-            const coordinates = feature.geometry.coordinates[0]; // [[lon, lat], [lon, lat], ...]
+            const coordinates = feature.geometry.coordinates[0];
             
-            // OpenLayers의 좌표계(EPSG:3857)로 변환
             const transformedCoords = coordinates.map(coord => ol.proj.fromLonLat(coord));
-            
-            // OpenLayers 폴리곤 객체 생성
             const polygon = new ol.geom.Polygon([transformedCoords]);
             return polygon;
         } else {
@@ -45,12 +39,11 @@ function getStatusColor(status) {
     }
 }
 
-// ... (이전 코드 동일) ...
-
 // 여러 필지의 외곽선을 한 번에 지도에 표시
 async function drawParcelBoundaries(rows) {
     console.log('🟢 [drawParcelBoundaries] 함수 시작');
     console.log(' - 입력된 행 수:', rows.length);
+    
     if (!vworldMap) {
         console.error('❌ VWorld 지도 객체가 없습니다.');
         return;
@@ -66,13 +59,17 @@ async function drawParcelBoundaries(rows) {
     let successCount = 0;
     let failCount = 0;
 
-    for (const row of rows) {
-        if (!row.pnu코드) {
-            console.warn(` - PNU 코드 없음, 건너뜀: ${row.주소}`);
-            continue;
-        }
-        
-        console.log(` - [${rows.indexOf(row)+1}/${rows.length}] PNU 조회 중: ${row.pnu코드}`);
+    // PNU 코드가 있는 행만 필터링
+    const rowsWithPnu = rows.filter(r => r.pnu코드 && r.pnu코드.trim() !== '');
+    
+    if (rowsWithPnu.length === 0) {
+        console.warn('⚠️ PNU 코드가 있는 행이 없습니다.');
+        showMapMessage('필지 경계선을 표시할 PNU 코드가 없습니다.', 'warning');
+        return;
+    }
+
+    for (const row of rowsWithPnu) {
+        console.log(` - [${rowsWithPnu.indexOf(row)+1}/${rowsWithPnu.length}] PNU 조회 중: ${row.pnu코드}`);
         const geom = await getParcelBoundary(row.pnu코드);
         
         if (!geom) {
@@ -90,13 +87,16 @@ async function drawParcelBoundaries(rows) {
         feature.setStyle(
             new ol.style.Style({
                 stroke: new ol.style.Stroke({ color, width: 2.5 }),
-                fill: new ol.style.Fill({ color: ol.color.asString(color) + '33' })
+                fill: new ol.style.Fill({ color: color + '33' })
             })
-        });
+        );
 
         features.push(feature);
         successCount++;
         console.log(`   ✅ 필지 경계선 생성 성공: ${row.주소}`);
+        
+        // API 호출 제한 방지를 위한 딜레이
+        await new Promise(resolve => setTimeout(resolve, 200));
     }
 
     if (features.length === 0) {
@@ -107,18 +107,22 @@ async function drawParcelBoundaries(rows) {
 
     // 벡터 레이어 생성 및 지도에 추가
     const vectorSource = new ol.source.Vector({ features });
-    parcelVectorLayer = new ol.layer.Vector({ source: vectorSource, zIndex: 5 });
+    parcelVectorLayer = new ol.layer.Vector({ 
+        source: vectorSource, 
+        zIndex: 5 
+    });
     vworldMap.addLayer(parcelVectorLayer);
     
     console.log(`✅ [drawParcelBoundaries] 완료: 성공 ${successCount}개, 실패 ${failCount}개`);
     showMapMessage(`필지 경계선 ${successCount}개 표시 완료.`, 'success');
 }
 
-// ... (이후 코드 동일) ...
-
-// 마커 추가 (vworld-map-marker.js의 함수와 통합)
+// 마커 추가
 function addVWorldMarker(coordinate, label, status, rowData, isDuplicate, markerIndex) {
-    if (!vworldMap) return null;
+    if (!vworldMap) {
+        console.error('❌ VWorld 지도 객체가 없습니다.');
+        return null;
+    }
 
     const color = getStatusColor(status);
     const markerEl = document.createElement('div');
@@ -138,7 +142,7 @@ function addVWorldMarker(coordinate, label, status, rowData, isDuplicate, marker
     const markerOverlay = new ol.Overlay({
         position: position,
         element: markerEl,
-        positioning: 'bottom-center', // 핀의 끝점이 좌표와 일치하도록
+        positioning: 'bottom-center',
         stopEvent: false,
         zIndex: 10
     });
@@ -147,18 +151,32 @@ function addVWorldMarker(coordinate, label, status, rowData, isDuplicate, marker
     // 이름 라벨
     let labelOverlay = null;
     if (showLabels) {
-        const labelEl = document.createElement('div');
-        labelEl.textContent = label || '이름없음';
-        labelEl.style.cssText = `background: rgba(255,255,255,0.9); color: #1e293b; font-size: 12px; font-weight: 700; padding: 3px 8px; border-radius: 12px; white-space: nowrap; box-shadow: 0 2px 5px rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.8); pointer-events: none;`;
+        const labelBg = isDuplicate ? '#ef4444' : '#ffffff';
+        const labelColor = isDuplicate ? '#ffffff' : '#1e293b';
         
-        // ✅ 수정: 라벨을 마커 위에 표시하도록 positioning과 offset 변경
+        const labelEl = document.createElement('div');
+        labelEl.innerHTML = `
+            <div style="
+                background: ${labelBg};
+                color: ${labelColor};
+                padding: 4px 8px;
+                border-radius: 12px;
+                font-size: 11px;
+                font-weight: 600;
+                white-space: nowrap;
+                box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+                border: 1px solid rgba(255,255,255,0.8);
+                pointer-events: none;
+            ">${label || '이름없음'}</div>
+        `;
+        
         labelOverlay = new ol.Overlay({
             position: position,
             element: labelEl,
-            positioning: 'bottom-center', // 라벨의 하단 중앙을 기준으로
-            offset: [0, -45], // 좌표에서 45px 위에 라벨 하단을 위치시킴
+            positioning: 'bottom-center',
+            offset: [0, -45],
             stopEvent: false,
-            zIndex: 11 // 마커보다 위에 표시
+            zIndex: 11
         });
         vworldMap.addOverlay(labelOverlay);
     }
@@ -169,7 +187,10 @@ function addVWorldMarker(coordinate, label, status, rowData, isDuplicate, marker
 
 // 지도 전체 표시 (메인 함수)
 async function displayProjectOnVWorldMap(projectData) {
+    console.log('🟦 [displayProjectOnVWorldMap] 함수 시작');
+    
     if (!vworldMap) {
+        console.log(' - VWorld 지도 초기화 중...');
         initVWorldMap();
         await new Promise(r => setTimeout(r, 1000));
     }
@@ -184,31 +205,49 @@ async function displayProjectOnVWorldMap(projectData) {
     clearVWorldMarkers(); // 기존 마커 제거
 
     const rows = projectData.filter(r => r.주소 && r.주소.trim() !== '');
+    console.log(' - 표시할 주소 개수:', rows.length);
+    
     const coords = [];
-
-    // ✅ 수정: 최적경로 기능을 위해 markerListData를 전역 변수에 채워줍니다.
     markerListData = []; 
 
-    for (const row of rows) {
+    // 중복 주소 체크
+    const addressCount = {};
+    rows.forEach(r => {
+        addressCount[r.주소] = (addressCount[r.주소] || 0) + 1;
+    });
+
+    for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
         let coord = null;
+        
         // 이미 좌표가 있으면 재사용
         if (row.lat && row.lng) {
             coord = { lon: parseFloat(row.lng), lat: parseFloat(row.lat) };
+            console.log(` - [${i+1}/${rows.length}] 기존 좌표 사용: ${row.주소}`);
         } else {
             // 없으면 주소로 검색
+            console.log(` - [${i+1}/${rows.length}] 주소 검색 중: ${row.주소}`);
             coord = await geocodeAddressVWorld(row.주소);
-            // 검색된 좌표를 원본 데이터에 저장
+            
             if (coord) {
+                // 검색된 좌표를 원본 데이터에 저장
                 row.lng = coord.lon;
                 row.lat = coord.lat;
+                console.log(`   ✅ 좌표 검색 성공`);
+            } else {
+                console.warn(`   ❌ 좌표 검색 실패`);
             }
+            
+            // API 제한 방지를 위한 딜레이
+            await new Promise(resolve => setTimeout(resolve, 300));
         }
 
         if (coord) {
-            addVWorldMarker(coord, row.이름, row.상태, row, false, vworldMarkers.length);
+            const isDuplicate = addressCount[row.주소] > 1;
+            addVWorldMarker(coord, row.이름, row.상태, row, isDuplicate, vworldMarkers.length);
             coords.push([coord.lon, coord.lat]);
 
-            // ✅ 수정: markerListData에 마커 정보 추가
+            // markerListData에 마커 정보 추가 (최적경로 기능용)
             markerListData.push({
                 순번: row.순번, 
                 이름: row.이름, 
@@ -217,28 +256,38 @@ async function displayProjectOnVWorldMap(projectData) {
                 상태: row.상태, 
                 lat: parseFloat(coord.lat), 
                 lng: parseFloat(coord.lng), 
-                isDuplicate: false // VWorld에서는 중복 체크 로직을 여기에 추가할 수 있습니다.
+                isDuplicate: isDuplicate
             });
         }
     }
 
+    console.log(' - 마커 표시 완료. 총:', vworldMarkers.length);
+    console.log(' - markerListData 개수:', markerListData.length);
+
+    // 지도 범위 조정
     if (coords.length > 0) {
         const extent = ol.extent.boundingExtent(coords.map(c => ol.proj.fromLonLat(c)));
         vworldMap.getView().fit(extent, { padding: [100, 100, 100, 100], maxZoom: 18 });
     }
 
-    // ✅ 필지 외곽선 표시 함수 호출
+    // 좌표가 업데이트되었으므로 프로젝트 저장
+    const projectIndex = projects.findIndex(p => p.id === currentProject.id);
+    if (projectIndex !== -1) {
+        projects[projectIndex] = currentProject;
+    }
+
+    // 필지 외곽선 표시
+    console.log(' - 필지 경계선 표시 시작...');
     await drawParcelBoundaries(rows);
 
     if (loading) {
         loading.style.backgroundColor = '#10b981';
-        loading.textContent = '지도 표시 완료';
+        loading.textContent = `✅ 지도 표시 완료 (${vworldMarkers.length}개 마커)`;
         setTimeout(() => (loading.style.display = 'none'), 3000);
     }
 
-    console.log('✅ VWorld 지도에 모든 마커 및 외곽선 표시 완료');
+    console.log('✅ [displayProjectOnVWorldMap] 완료');
 }
-
 
 // ================================
 // ✅ VWorld 하단 정보창 관련 함수
