@@ -45,22 +45,41 @@ function getStatusColor(status) {
     }
 }
 
+// ... (이전 코드 동일) ...
+
 // 여러 필지의 외곽선을 한 번에 지도에 표시
 async function drawParcelBoundaries(rows) {
-    if (!vworldMap) return;
+    console.log('🟢 [drawParcelBoundaries] 함수 시작');
+    console.log(' - 입력된 행 수:', rows.length);
+    if (!vworldMap) {
+        console.error('❌ VWorld 지도 객체가 없습니다.');
+        return;
+    }
 
     // 기존에 그려진 필지 경계선이 있다면 제거
     if (parcelVectorLayer) {
         vworldMap.removeLayer(parcelVectorLayer);
+        console.log(' - 기존 필지 경계선 레이어 제거 완료');
     }
 
     const features = [];
+    let successCount = 0;
+    let failCount = 0;
 
     for (const row of rows) {
-        if (!row.pnu코드) continue;
+        if (!row.pnu코드) {
+            console.warn(` - PNU 코드 없음, 건너뜀: ${row.주소}`);
+            continue;
+        }
         
+        console.log(` - [${rows.indexOf(row)+1}/${rows.length}] PNU 조회 중: ${row.pnu코드}`);
         const geom = await getParcelBoundary(row.pnu코드);
-        if (!geom) continue;
+        
+        if (!geom) {
+            console.warn(`   ❌ 필지 경계선 조회 실패: ${row.pnu코드}`);
+            failCount++;
+            continue;
+        }
 
         const color = getStatusColor(row.상태);
         const feature = new ol.Feature({
@@ -71,25 +90,31 @@ async function drawParcelBoundaries(rows) {
         feature.setStyle(
             new ol.style.Style({
                 stroke: new ol.style.Stroke({ color, width: 2.5 }),
-                fill: new ol.style.Fill({ color: ol.color.asString(color) + '33' }) // 투명도 추가
+                fill: new ol.style.Fill({ color: ol.color.asString(color) + '33' })
             })
-        );
+        });
 
         features.push(feature);
+        successCount++;
+        console.log(`   ✅ 필지 경계선 생성 성공: ${row.주소}`);
     }
 
     if (features.length === 0) {
-        console.log('❌ 표시할 필지 외곽선이 없습니다.');
+        console.error('❌ 표시할 필지 외곽선이 하나도 없습니다.');
+        showMapMessage('표시할 필지 외곽선이 없습니다.', 'error');
         return;
     }
 
     // 벡터 레이어 생성 및 지도에 추가
     const vectorSource = new ol.source.Vector({ features });
-    // ✅ 수정: zIndex를 5로 높여서 기본 지도 레이어(z-index: 0~2) 위에 표시되도록 함
     parcelVectorLayer = new ol.layer.Vector({ source: vectorSource, zIndex: 5 });
     vworldMap.addLayer(parcelVectorLayer);
-    console.log(`✅ ${features.length}개의 필지 외곽경계 표시 완료`);
+    
+    console.log(`✅ [drawParcelBoundaries] 완료: 성공 ${successCount}개, 실패 ${failCount}개`);
+    showMapMessage(`필지 경계선 ${successCount}개 표시 완료.`, 'success');
 }
+
+// ... (이후 코드 동일) ...
 
 // 마커 추가 (vworld-map-marker.js의 함수와 통합)
 function addVWorldMarker(coordinate, label, status, rowData, isDuplicate, markerIndex) {
