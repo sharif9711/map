@@ -24,54 +24,60 @@ function vworldJsonpRequest(url) {
     });
 }
 
-// ✅ VWorld 필지 외곽선 요청 (XML → fetch 방식)
-// ✅ JSONP 방식 (CORS 문제 없음)
-// ✅ VWorld 필지 외곽선 요청 (JSONP + JSON 응답)
+// ✅ JSONP 방식 (CORS 차단 없음, GitHub Pages 완전 호환)
 async function getParcelBoundary(pnuCode) {
     if (!pnuCode) return null;
 
     const url = `https://api.vworld.kr/ned/data/getParcel?service=data&request=getParcel&key=${VWORLD_API_KEY}&pnu=${pnuCode}&format=json&domain=sharif9711.github.io`;
 
     return new Promise((resolve) => {
-        const callbackName = 'jsonp_cb_' + Math.random().toString(36).substr(2, 9);
+        const callbackName = "jsonp_cb_" + Math.random().toString(36).substr(2, 9);
 
+        // 콜백 함수 생성
         window[callbackName] = (response) => {
             try {
-                if (!response || !response.response || !response.response.result) {
-                    console.warn('⚠️ 응답 데이터 없음:', pnuCode);
+                if (!response?.response?.result?.featureCollection) {
+                    console.warn("⚠️ 데이터 없음:", pnuCode);
                     resolve(null);
                     return;
                 }
 
-                const result = response.response.result.featureCollection;
-                if (!result || !result.features || result.features.length === 0) {
-                    console.warn('⚠️ 필지 데이터 없음:', pnuCode);
+                const feature = response.response.result.featureCollection.features?.[0];
+                if (!feature) {
+                    console.warn("⚠️ feature 없음:", pnuCode);
                     resolve(null);
                     return;
                 }
 
-                // 좌표 데이터 추출
-                const coords = result.features[0].geometry.coordinates[0];
+                const coords = feature.geometry.coordinates?.[0];
+                if (!coords) {
+                    console.warn("⚠️ 좌표 데이터 없음:", pnuCode);
+                    resolve(null);
+                    return;
+                }
+
                 const polygon = new ol.geom.Polygon([coords]);
-                resolve(polygon.transform('EPSG:4326', 'EPSG:3857'));
+                resolve(polygon.transform("EPSG:4326", "EPSG:3857"));
             } catch (err) {
-                console.error('❌ 필지 데이터 파싱 오류:', err);
+                console.error("❌ JSONP 파싱 오류:", err);
                 resolve(null);
             } finally {
+                // 정리
                 delete window[callbackName];
                 document.body.removeChild(script);
             }
         };
 
-        // ✅ JSONP 스크립트 생성
-        const script = document.createElement('script');
+        // 스크립트 동적 추가 (JSONP 호출)
+        const script = document.createElement("script");
         script.src = `${url}&callback=${callbackName}`;
         script.onerror = () => {
-            console.error('❌ JSONP 요청 실패:', pnuCode);
+            console.error("❌ JSONP 요청 실패:", pnuCode);
             delete window[callbackName];
             document.body.removeChild(script);
             resolve(null);
         };
+
         document.body.appendChild(script);
     });
 }
