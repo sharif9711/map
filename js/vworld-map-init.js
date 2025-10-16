@@ -172,3 +172,76 @@ async function geocodeAddressVWorld(address) {
 // 참고: getAddressDetailInfo 함수는 이제 js/project-detail.js 파일에 있습니다.
 // 이 파일에서는 더 이상 관리하지 않습니다.
 // ===================================================================
+
+// ===============================
+// VWorld 데이터 API 헬퍼 함수 모음
+// ===============================
+
+// 주소 → 좌표 변환
+async function getVWorldCoord(address) {
+    const url = `https://api.vworld.kr/req/address?service=address&request=getcoord&version=2.0`
+        + `&crs=epsg:4326&address=${encodeURIComponent(address)}`
+        + `&refine=true&simple=false&type=road&format=json&key=${VWORLD_API_KEY}`;
+
+    try {
+        const data = await vworldJsonp(url);
+        if (data?.response?.status === 'OK') {
+            const p = data.response.result.point;
+            return { x: parseFloat(p.x), y: parseFloat(p.y) };
+        }
+    } catch (e) {
+        console.error('❌ getVWorldCoord 실패:', address, e);
+    }
+    return null;
+}
+
+// 좌표 → PNU 코드 변환
+async function getVWorldPNU(x, y) {
+    const url = `https://api.vworld.kr/ned/data/getParcelInfo?`
+        + `key=${VWORLD_API_KEY}&Service=address&Request=getParcelInfo`
+        + `&crs=epsg:4326&point=${x},${y}&format=json`;
+
+    try {
+        const data = await vworldJsonp(url);
+        if (data?.response?.result?.featureCollection?.features?.length) {
+            const props = data.response.result.featureCollection.features[0].properties;
+            return props.pnu;
+        }
+    } catch (e) {
+        console.error('❌ getVWorldPNU 실패:', e);
+    }
+    return null;
+}
+
+// PNU → 지목/면적 조회
+async function getVWorldLandCharacteristics(pnu) {
+    const url = `https://api.vworld.kr/ned/data/getLandCharacteristics?`
+        + `key=${VWORLD_API_KEY}&pnu=${pnu}&stdrYear=2017&format=json`;
+
+    try {
+        const data = await vworldJsonp(url);
+        if (data?.response?.result?.featureCollection?.features?.length) {
+            return data.response.result.featureCollection.features[0].properties;
+        }
+    } catch (e) {
+        console.error('❌ getVWorldLandCharacteristics 실패:', e);
+    }
+    return null;
+}
+
+// 카카오 주소 → 우편번호
+async function getKakaoPostalCode(address) {
+    return new Promise((resolve) => {
+        if (!window.kakao || !window.kakao.maps) {
+            console.error("❌ Kakao Maps SDK가 로드되지 않았습니다.");
+            return resolve(null);
+        }
+        const geocoder = new kakao.maps.services.Geocoder();
+        geocoder.addressSearch(address, (result, status) => {
+            if (status === kakao.maps.services.Status.OK && result[0]) {
+                resolve(result[0].road_address?.zone_no || result[0].address?.zone_no || null);
+            } else resolve(null);
+        });
+    });
+}
+
