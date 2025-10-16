@@ -64,57 +64,77 @@ function switchTab(tabName) {
  * 보고서 탭에서 모든 행의 주소를 기준으로
  * 우편번호 및 PNU코드 등 토지정보를 VWorld API로 조회하는 함수
  */
+// ✅ 보고서 탭 자동 실행 시: PNU 없는 행만 조회
 async function fetchPostalCodesForReport() {
     if (!currentProject) return;
-    
-    const rowsWithAddress = currentProject.data.filter(row => 
-        row.주소 && row.주소.trim() !== ''
+    const targetRows = currentProject.data.filter(r =>
+        r.주소 && r.주소.trim() !== '' && (!r.pnu코드 || r.pnu코드.trim() === '')
     );
 
-    if (rowsWithAddress.length === 0) {
-        console.log("📭 주소가 입력된 행이 없습니다.");
+    if (targetRows.length === 0) {
+        console.log('📭 새로 조회할 행이 없습니다.');
         return;
     }
 
-    console.log(`📦 ${rowsWithAddress.length}건의 주소에서 토지정보 및 우편번호를 VWorld로 조회합니다.`);
+    await fetchLandInfoCore(targetRows);
+}
 
-    for (let i = 0; i < rowsWithAddress.length; i++) {
-        const row = rowsWithAddress[i];
+// ✅ "토지정보 수집" 버튼용 함수
+async function fetchLandInfoForReport() {
+    if (!currentProject) return;
+    const targetRows = currentProject.data.filter(r =>
+        r.주소 && r.주소.trim() !== '' && (!r.pnu코드 || r.pnu코드.trim() === '')
+    );
 
+    if (targetRows.length === 0) {
+        showToast('새로 조회할 행이 없습니다.');
+        return;
+    }
+
+    await fetchLandInfoCore(targetRows);
+}
+
+// ✅ 공통 처리 (진행바 + 알림 포함)
+async function fetchLandInfoCore(targetRows) {
+    const total = targetRows.length;
+    showProgress(0);
+
+    for (let i = 0; i < total; i++) {
+        const row = targetRows[i];
         try {
-            // ✅ getAddressDetailInfo 함수 하나로 모든 정보를 가져옴
-            const detailInfo = await getAddressDetailInfo(row.주소);
-            if (detailInfo) {
-                // 가져온 정보로 row 객체 업데이트
-                row.우편번호 = detailInfo.zipCode || row.우편번호;
-                row.lat = detailInfo.lat || row.lat;
-                row.lng = detailInfo.lon || row.lng;
-                row.법정동코드 = detailInfo.법정동코드 || row.법정동코드;
-                row.pnu코드 = detailInfo.pnuCode || row.pnu코드;
-                row.대장구분 = detailInfo.대장구분 || row.대장구분;
-                row.본번 = detailInfo.본번 || row.본번;
-                row.부번 = detailInfo.부번 || row.부번;
-                row.지목 = detailInfo.지목 || row.지목;
-                row.면적 = detailInfo.면적 || row.면적;
+            const info = await getAddressDetailInfo(row.주소);
+            if (info) {
+                Object.assign(row, {
+                    우편번호: info.zipCode || row.우편번호,
+                    lat: info.lat || row.lat,
+                    lng: info.lon || row.lng,
+                    법정동코드: info.법정동코드 || row.법정동코드,
+                    pnu코드: info.pnuCode || row.pnu코드,
+                    대장구분: info.대장구분 || row.대장구분,
+                    본번: info.본번 || row.본번,
+                    부번: info.부번 || row.부번,
+                    지목: info.지목 || row.지목,
+                    면적: info.면적 || row.면적,
+                });
             }
-        } catch (error) {
-            console.error(`❌ [${i + 1}] ${row.주소} 처리 중 오류:`, error);
+        } catch (err) {
+            console.error(`❌ 오류 [${i + 1}/${total}]`, err);
         }
 
-        // API 과부하 방지를 위한 약간의 딜레이
-        await new Promise(resolve => setTimeout(resolve, 500)); 
+        showProgress(((i + 1) / total) * 100);
+        await new Promise(res => setTimeout(res, 400));
     }
 
-    // 변경된 사항을 저장하고 화면 갱신
+    showProgress(100);
+    setTimeout(() => showProgress(0), 1500);
+
     const projectIndex = projects.findIndex(p => p.id === currentProject.id);
-    if (projectIndex !== -1) {
-        projects[projectIndex] = currentProject;
-    }
+    if (projectIndex !== -1) projects[projectIndex] = currentProject;
 
-    if (typeof renderReportTable === 'function') {
-        renderReportTable();
-    }
+    if (typeof renderReportTable === 'function') renderReportTable();
+    showToast(`✅ 토지정보 ${total}건 갱신 완료`);
 }
+
 
 // jQuery가 반드시 로드되어 있어야 합니다.
 
