@@ -6,7 +6,7 @@ var isGpsActive = false;
 var markerListData = [];
 var myCurrentLocation = null;
 var routePolyline = null;
-var routeMarkers = []; // 경로 순번 마커들
+var routeMarkers = [];
 var isRouteActive = false;
 
 // 마커 목록 토글
@@ -81,7 +81,7 @@ function updateMarkerList() {
     }).join('');
 }
 
-// 특정 마커로 포커스 - ✅ 수정: 디버깅 로그 추가
+// 특정 마커로 포커스 - ✅ 수정: 디버깅 로그 추가 및 VWorld 지도 이동 개선
 function focusOnMarker(index) {
     console.log(`🟡 [focusOnMarker] 호출됨, index: ${index}`);
     console.log(' - markerListData:', markerListData);
@@ -101,6 +101,7 @@ function focusOnMarker(index) {
             const position = new kakao.maps.LatLng(item.lat, item.lng);
             kakaoMap.setCenter(position);
             kakaoMap.setLevel(3);
+            console.log('✅ 카카오맵 이동 완료');
         }
     } else if (mapType === 'vworld') {
         if (!vworldMap) {
@@ -136,7 +137,7 @@ function toggleMyLocation() {
         if (navigator.geolocation) {
             btn.classList.add('bg-yellow-500', 'text-white');
             btn.classList.remove('bg-white', 'text-slate-700', 'bg-green-600');
-            btn.textContent = '📡 검색중...';
+            btn.textContent = '🔡 검색중...';
             showMapMessage('현재 위치를 검색하고 있습니다...', 'info');
             
             navigator.geolocation.getCurrentPosition(
@@ -501,7 +502,7 @@ async function calculateOptimalRoute() {
         btn.classList.add('bg-purple-600', 'text-white');
         btn.textContent = '✓ 경로표시중';
         
-        showMapMessage(`최적 경로 완성! 이 ${pendingMarkers.length}개 지점 (예정 상태만)`, 'success');
+        showMapMessage(`최적 경로 완성! 총 ${pendingMarkers.length}개 지점 (예정 상태만)`, 'success');
     } catch (error) {
         console.error('경로 계산 오류:', error);
         showMapMessage('경로 계산 중 오류가 발생했습니다.', 'error');
@@ -670,7 +671,12 @@ async function drawVWorldRoute(start, waypoints) {
     const routeLine = new ol.geom.LineString(pathCoords);
     const routeFeature = new ol.Feature({ geometry: routeLine });
     const routeStyle = new ol.style.Style({
-        stroke: new ol.style.Stroke({ color: '#4A90E2', width: 6, lineCap: 'round', lineJoin: 'round' })
+        stroke: new ol.style.Stroke({ 
+            color: '#4A90E2', 
+            width: 6, 
+            lineCap: 'round', 
+            lineJoin: 'round' 
+        })
     });
     routeFeature.setStyle(routeStyle);
     const vectorSource = new ol.source.Vector({ features: [routeFeature] });
