@@ -25,22 +25,54 @@ function vworldJsonpRequest(url) {
 }
 
 // 지번 외곽선 요청
+// 지번 외곽선 요청 (XML 방식)
 async function getParcelBoundary(pnuCode) {
     if (!pnuCode) return null;
-const url = `https://api.vworld.kr/ned/data/getParcel?service=data&request=getParcel&key=${VWORLD_API_KEY}&pnu=${pnuCode}&format=json&domain=sharif9711.github.io&type=xml&numOfRows=1&pageNo=1`;
+    const url = `https://api.vworld.kr/ned/data/getParcel?service=data&request=getParcel&key=${VWORLD_API_KEY}&pnu=${pnuCode}&format=xml&domain=sharif9711.github.io`;
 
+    return new Promise((resolve, reject) => {
+        const callbackName = 'jsonp_cb_' + Math.random().toString(36).substr(2, 9);
+        window[callbackName] = (xmlText) => {
+            try {
+                const parser = new DOMParser();
+                const xmlDoc = parser.parseFromString(xmlText, "text/xml");
+                const coordNode = xmlDoc.querySelector("polygon");
+                if (!coordNode) {
+                    console.warn('⚠️ polygon 데이터 없음:', pnuCode);
+                    resolve(null);
+                    return;
+                }
 
-    try {
-        const data = await vworldJsonpRequest(url);
-        if (!data.response || data.response.status !== 'OK') return null;
-        const geom = data.response.result.featureCollection.features[0].geometry;
-        if (!geom || geom.type !== 'Polygon') return null;
-        return new ol.geom.Polygon(geom.coordinates);
-    } catch (err) {
-        console.error('❌ getParcelBoundary JSONP 실패:', err);
-        return null;
-    }
+                const coordText = coordNode.textContent.trim();
+                const coordPairs = coordText.split(' ').map(p => p.split(',').map(Number));
+                if (coordPairs.length === 0) {
+                    console.warn('⚠️ 좌표 없음:', pnuCode);
+                    resolve(null);
+                    return;
+                }
+
+                const polygon = new ol.geom.Polygon([coordPairs]);
+                resolve(polygon);
+            } catch (err) {
+                console.error('XML 파싱 오류:', err);
+                resolve(null);
+            } finally {
+                delete window[callbackName];
+            }
+        };
+
+        // JSONP <script> 요청
+        const script = document.createElement('script');
+        script.src = `${url}&callback=${callbackName}`;
+        script.onerror = () => {
+            reject(new Error('JSONP(XML) 요청 실패'));
+            delete window[callbackName];
+            document.body.removeChild(script);
+        };
+        document.body.appendChild(script);
+    });
 }
+
 
 // 상태별 색상
 function getStatusColor(status) {
