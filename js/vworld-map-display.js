@@ -85,7 +85,8 @@ async function drawParcelBoundaries(rows) {
 
     // 벡터 레이어 생성 및 지도에 추가
     const vectorSource = new ol.source.Vector({ features });
-    parcelVectorLayer = new ol.layer.Vector({ source: vectorSource, zIndex: 1 }); // 마커 아래에 표시
+    // ✅ 수정: zIndex를 5로 높여서 기본 지도 레이어(z-index: 0~2) 위에 표시되도록 함
+    parcelVectorLayer = new ol.layer.Vector({ source: vectorSource, zIndex: 5 });
     vworldMap.addLayer(parcelVectorLayer);
     console.log(`✅ ${features.length}개의 필지 외곽경계 표시 완료`);
 }
