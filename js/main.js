@@ -13,3 +13,18 @@ document.addEventListener('DOMContentLoaded', function() {
 document.addEventListener('DOMContentLoaded', function() {
     createProgressAndToastUI(); // ✅ 진행바/토스트 생성
 });
+
+// js/main.js 파일 맨 아래에 추가
+function refreshMap() {
+    if (!currentProject || !currentProject.data) {
+        console.log('새로고침할 프로젝트 데이터가 없습니다.');
+        return;
+    }
+    const mapType = currentProject.mapType || 'kakao';
+    console.log(`지도 새로고침 시작. 타입: ${mapType}`);
+    if (mapType === 'vworld') {
+        displayProjectOnVWorldMap(currentProject.data);
+    } else {
+        displayProjectOnKakaoMap(currentProject.data);
+    }
+}
