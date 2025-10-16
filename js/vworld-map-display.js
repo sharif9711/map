@@ -130,7 +130,7 @@ function addVWorldMarker(coordinate, label, status, rowData, isDuplicate, marker
             positioning: 'bottom-center',
             offset: [0, -45],
             stopEvent: false,
-            zIndex: 9
+            zIndex: 11 // ✅ 수정: 마커(zIndex: 10)보다 위에 표시되도록 z-index 증가
         });
         vworldMap.addOverlay(labelOverlay);
     }
@@ -158,6 +158,9 @@ async function displayProjectOnVWorldMap(projectData) {
     const rows = projectData.filter(r => r.주소 && r.주소.trim() !== '');
     const coords = [];
 
+    // ✅ 수정: 최적경로 기능을 위해 markerListData를 전역 변수에 채워줍니다.
+    markerListData = []; 
+
     for (const row of rows) {
         let coord = null;
         // 이미 좌표가 있으면 재사용
@@ -176,6 +179,18 @@ async function displayProjectOnVWorldMap(projectData) {
         if (coord) {
             addVWorldMarker(coord, row.이름, row.상태, row, false, vworldMarkers.length);
             coords.push([coord.lon, coord.lat]);
+
+            // ✅ 수정: markerListData에 마커 정보 추가
+            markerListData.push({
+                순번: row.순번, 
+                이름: row.이름, 
+                연락처: row.연락처, 
+                주소: row.주소,
+                상태: row.상태, 
+                lat: parseFloat(coord.lat), 
+                lng: parseFloat(coord.lon), 
+                isDuplicate: false // VWorld에서는 중복 체크 로직을 여기에 추가할 수 있습니다.
+            });
         }
     }
 
