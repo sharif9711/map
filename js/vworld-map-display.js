@@ -1,141 +1,229 @@
-/*
- * vworld-map-display_v3.8.7_fixed.js
- * CORS / CORB 완전 대응 + HTML 응답 예외 처리 + 중복키 제거 버전
- * by ChatGPT (2025-10)
- */
+// ================================
+// ✅ VWorld 지도 표시 (JSONP + 외곽경계선 + 마커 + 이름 개선)
+// ================================
 
-// ⚙️ 기존 중복 const 방지
-if (typeof VWORLD_API_KEY === "undefined") {
-  var VWORLD_API_KEY = "BE552462-0744-32DB-81E7-1B7317390D68";
+let parcelVectorLayer = null;
+
+// JSONP 요청 (CORS 우회)
+function vworldJsonpRequest(url) {
+    return new Promise((resolve, reject) => {
+        const callbackName = 'jsonp_cb_' + Math.random().toString(36).substr(2, 9);
+        window[callbackName] = (data) => {
+            resolve(data);
+            delete window[callbackName];
+            document.body.removeChild(script);
+        };
+        const script = document.createElement('script');
+        script.src = url + '&callback=' + callbackName;
+        script.onerror = () => {
+            reject(new Error('JSONP request failed'));
+            delete window[callbackName];
+            document.body.removeChild(script);
+        };
+        document.body.appendChild(script);
+    });
 }
 
-// ✅ JSON 전용 Proxy
-const VWORLD_PROXY = "https://api.allorigins.win/raw?url=";
-
-/**
- * VWorld API로부터 PNU 기반 필지 외곽 Polygon 데이터 가져오기
- */
+// 지번 외곽선 요청
+// 지번 외곽선 요청 (XML 방식)
 async function getParcelBoundary(pnuCode) {
-  if (!pnuCode) return null;
+    if (!pnuCode) return null;
+    const url = `https://api.vworld.kr/ned/data/getParcel?service=data&request=getParcel&key=${VWORLD_API_KEY}&pnu=${pnuCode}&format=xml&domain=sharif9711.github.io`;
 
-  // VWorld 요청 URL (domain 제거)
-  const vworldUrl = `https://api.vworld.kr/ned/data/getParcel?service=data&request=getParcel&key=${VWORLD_API_KEY}&pnu=${pnuCode}&format=json`;
-  const proxyUrl = `${VWORLD_PROXY}${encodeURIComponent(vworldUrl)}`;
+    return new Promise((resolve, reject) => {
+        const callbackName = 'jsonp_cb_' + Math.random().toString(36).substr(2, 9);
+        window[callbackName] = (xmlText) => {
+            try {
+                const parser = new DOMParser();
+                const xmlDoc = parser.parseFromString(xmlText, "text/xml");
+                const coordNode = xmlDoc.querySelector("polygon");
+                if (!coordNode) {
+                    console.warn('⚠️ polygon 데이터 없음:', pnuCode);
+                    resolve(null);
+                    return;
+                }
 
-  try {
-    const response = await fetch(proxyUrl);
-    const text = await response.text();
+                const coordText = coordNode.textContent.trim();
+                const coordPairs = coordText.split(' ').map(p => p.split(',').map(Number));
+                if (coordPairs.length === 0) {
+                    console.warn('⚠️ 좌표 없음:', pnuCode);
+                    resolve(null);
+                    return;
+                }
 
-    // ✅ HTML 응답 감지
-    if (text.trim().startsWith("<")) {
-      console.warn("⚠️ HTML 응답 수신됨 (CORS 또는 도메인 문제):", text.substring(0, 100));
-      return null;
-    }
+                const polygon = new ol.geom.Polygon([coordPairs]);
+                resolve(polygon);
+            } catch (err) {
+                console.error('XML 파싱 오류:', err);
+                resolve(null);
+            } finally {
+                delete window[callbackName];
+            }
+        };
 
-    // ✅ JSON 파싱
-    const data = JSON.parse(text);
-    const feature = data?.response?.result?.featureCollection?.features?.[0];
-
-    if (!feature || !feature.geometry?.coordinates?.[0]) {
-      console.warn("⚠️ 좌표 데이터 없음:", pnuCode);
-      return null;
-    }
-
-    const coords = feature.geometry.coordinates[0];
-    const polygon = new ol.geom.Polygon([coords]);
-    return polygon.transform("EPSG:4326", "EPSG:3857");
-  } catch (err) {
-    console.error("❌ VWorld API 오류:", err);
-    return null;
-  }
+        // JSONP <script> 요청
+        const script = document.createElement('script');
+        script.src = `${url}&callback=${callbackName}`;
+        script.onerror = () => {
+            reject(new Error('JSONP(XML) 요청 실패'));
+            delete window[callbackName];
+            document.body.removeChild(script);
+        };
+        document.body.appendChild(script);
+    });
 }
 
-/**
- * 지도 초기화
- */
-function initVWorldMap() {
-  try {
-    console.log("Initializing VWorld map...");
 
-    const map = new ol.Map({
-      target: "map",
-      layers: [
-        new ol.layer.Tile({
-          source: new ol.source.XYZ({
-            url: `https://xdworld.vworld.kr/2d/Base/service/{z}/{x}/{y}.png`,
-          }),
-        }),
-        new ol.layer.Tile({
-          source: new ol.source.XYZ({
-            url: `https://xdworld.vworld.kr/2d/Satellite/service/{z}/{x}/{y}.jpeg`,
-          }),
-          visible: true,
-        }),
-      ],
-      view: new ol.View({
-        center: ol.proj.fromLonLat([127.0, 37.5]),
-        zoom: 10,
-      }),
+// 상태별 색상
+function getStatusColor(status) {
+    switch (status) {
+        case '완료': return '#10b981';
+        case '보류': return '#f59e0b';
+        default: return '#3b82f6';
+    }
+}
+
+// 필지 외곽선 표시
+async function drawParcelBoundaries(rows) {
+    if (!vworldMap) return;
+
+    if (parcelVectorLayer) {
+        vworldMap.removeLayer(parcelVectorLayer);
+        parcelVectorLayer = null;
+    }
+
+    const features = [];
+
+    for (const row of rows) {
+        if (!row.pnu코드) continue;
+        const geom = await getParcelBoundary(row.pnu코드);
+        if (!geom) continue;
+
+        const color = getStatusColor(row.상태);
+        const feature = new ol.Feature({
+            geometry: geom.transform('EPSG:4326', 'EPSG:3857'),
+            name: row.주소,
+        });
+
+        feature.setStyle(
+            new ol.style.Style({
+                stroke: new ol.style.Stroke({ color, width: 2.5 }),
+                fill: new ol.style.Fill({ color: color + '33' })
+            })
+        );
+
+        features.push(feature);
+    }
+
+    if (features.length === 0) {
+        console.log('❌ 표시할 필지 외곽선이 없습니다.');
+        return;
+    }
+
+    const vectorSource = new ol.source.Vector({ features });
+    parcelVectorLayer = new ol.layer.Vector({ source: vectorSource, zIndex: 8 });
+    vworldMap.addLayer(parcelVectorLayer);
+    console.log(`✅ ${features.length}개의 필지 외곽경계 표시 완료`);
+}
+
+// 마커 및 이름 표시 (이름이 마커 위에 표시되도록 개선)
+function addVWorldMarker(coordinate, label, status, rowData, isDuplicate, markerIndex) {
+    if (!vworldMap) return null;
+
+    const color = getStatusColor(status);
+    const markerEl = document.createElement('div');
+    markerEl.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="42" viewBox="0 0 32 42">
+            <path d="M16 0 C7.16 0 0 7.16 0 16 C0 25 16 42 16 42 C16 42 32 25 32 16 C32 7.16 24.84 0 16 0 Z" fill="${color}" stroke="#fff" stroke-width="2"/>
+            <circle cx="16" cy="16" r="8" fill="white"/>
+        </svg>`;
+    markerEl.style.cursor = 'pointer';
+    markerEl.onclick = () => showBottomInfoPanelVWorld(rowData, markerIndex);
+
+    // 이름 오버레이 (마커 위쪽에 위치)
+    const labelEl = document.createElement('div');
+    labelEl.textContent = label || '이름없음';
+    labelEl.style.cssText = `
+        background: rgba(255,255,255,0.9);
+        color: #1e293b;
+        font-size: 12px;
+        font-weight: 700;
+        padding: 3px 8px;
+        border-radius: 12px;
+        white-space: nowrap;
+        position: relative;
+        top: -45px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    `;
+
+    const markerOverlay = new ol.Overlay({
+        position: ol.proj.fromLonLat([coordinate.lon, coordinate.lat]),
+        element: markerEl,
+        positioning: 'bottom-center',
+        stopEvent: false,
+        zIndex: 20
     });
 
-    console.log("✅ VWorld map initialized");
-    return map;
-  } catch (e) {
-    console.error("❌ 지도 초기화 오류:", e);
-    return null;
-  }
+    const labelOverlay = new ol.Overlay({
+        position: ol.proj.fromLonLat([coordinate.lon, coordinate.lat]),
+        element: labelEl,
+        positioning: 'bottom-center',
+        stopEvent: false,
+        zIndex: 25
+    });
+
+    vworldMap.addOverlay(markerOverlay);
+    vworldMap.addOverlay(labelOverlay);
+
+    vworldMarkers.push({ marker: markerOverlay, labelOverlay, rowData });
 }
 
-/**
- * 여러 개의 필지를 지도에 표시
- */
-async function displayParcelBoundaries(map, pnuList) {
-  if (!map || !pnuList?.length) return;
 
-  const features = [];
+// 지도 전체 표시
+async function displayProjectOnVWorldMap(projectData) {
+    if (!vworldMap) {
+        initVWorldMap();
+        await new Promise(r => setTimeout(r, 1000));
+    }
 
-  for (let i = 0; i < pnuList.length; i++) {
-    const pnu = pnuList[i];
-    console.log(`📍 필지 요청: ${pnu}`);
+    const loading = document.getElementById('mapLoadingStatus');
+    if (loading) {
+        loading.style.display = 'block';
+        loading.style.backgroundColor = '#3b82f6';
+        loading.textContent = '지도 불러오는 중...';
+    }
 
-    const polygon = await getParcelBoundary(pnu);
-    if (!polygon) continue;
+    clearVWorldMarkers();
 
-    const feature = new ol.Feature({ geometry: polygon });
-    feature.setStyle(
-      new ol.style.Style({
-        stroke: new ol.style.Stroke({ color: "#007bff", width: 2 }),
-        fill: new ol.style.Fill({ color: "rgba(0, 123, 255, 0.1)" }),
-      })
-    );
+    const rows = projectData.filter(r => r.주소 && r.주소.trim() !== '');
+    const coords = [];
 
-    features.push(feature);
-  }
+    for (const row of rows) {
+        let coord = null;
+        if (row.vworld_lon && row.vworld_lat)
+            coord = { lon: row.vworld_lon, lat: row.vworld_lat };
+        else
+            coord = await geocodeAddressVWorld(row.주소);
 
-  if (features.length === 0) {
-    console.warn("⚠️ 표시할 필지 외곽선이 없습니다.");
-    return;
-  }
+        if (coord) {
+            addVWorldMarker(coord, row.이름, row.상태, row, false, vworldMarkers.length);
+            coords.push([coord.lon, coord.lat]);
+        }
+    }
 
-  const vectorSource = new ol.source.Vector({ features });
-  const vectorLayer = new ol.layer.Vector({ source: vectorSource });
-  map.addLayer(vectorLayer);
+    if (coords.length > 0) {
+        const extent = ol.extent.boundingExtent(coords.map(c => ol.proj.fromLonLat(c)));
+        vworldMap.getView().fit(extent, { padding: [100, 100, 100, 100], maxZoom: 18 });
+    }
 
-  console.log(`✅ ${features.length}개의 필지 외곽선 표시 완료`);
+    // ✅ 필지 외곽선 표시
+    await drawParcelBoundaries(rows);
+
+    if (loading) {
+        loading.style.backgroundColor = '#10b981';
+        loading.textContent = '지도 표시 완료';
+        setTimeout(() => (loading.style.display = 'none'), 3000);
+    }
+
+    console.log('✅ 모든 마커 및 외곽선 표시 완료');
 }
-
-/**
- * 실행 예시 (테스트용)
- */
-window.addEventListener("DOMContentLoaded", async () => {
-  const map = initVWorldMap();
-
-  // 🔹 테스트용 PNU 리스트 (원하는 코드로 교체 가능)
-  const sampleList = [
-    "4682035022109703008",
-    "4682035022105008018",
-    "4682035022105026000",
-  ];
-
-  await displayParcelBoundaries(map, sampleList);
-});
