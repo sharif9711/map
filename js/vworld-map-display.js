@@ -5,11 +5,13 @@
 let parcelVectorLayer = null;
 
 // VWorld 표준 2D 데이터 API를 사용하여 필지 경계선(Polygon) 가져오기
+// ✅ 수정: attrfilter를 사용하여 PNU 코드로 직접 필지 경계선 조회 (더 안정적)
 async function getParcelBoundary(pnuCode) {
     if (!pnuCode) return null;
 
     // VWorld 2D 데이터 API 요청 URL (연속지적도)
-    const url = `https://api.vworld.kr/req/data?service=data&request=getfeature&data=LP_PA_CBND_BUBUN&key=${VWORLD_API_KEY}&geomfilter=POINT(${pnuCode.substring(0, 10)}.${pnuCode.substring(10, 15).replace(/^0+/, '')}.${pnuCode.substring(15, 20).replace(/^0+/, '')})&format=json&size=1`;
+    // ✅ 수정: geomfilter 대신 attrfilter 사용
+    const url = `https://api.vworld.kr/req/data?service=data&request=getfeature&data=LP_PA_CBND_BUBUN&key=${VWORLD_API_KEY}&attrfilter=pnu:${pnuCode}&format=json&size=1`;
 
     try {
         // vworld-map-init.js 에서 정의한 vworldJsonp 함수 사용 (CORS 문제 해결)
@@ -96,7 +98,7 @@ function addVWorldMarker(coordinate, label, status, rowData, isDuplicate, marker
     const color = getStatusColor(status);
     const markerEl = document.createElement('div');
     markerEl.innerHTML = `
-        <div style="position: relative; cursor: pointer; transform: translate(-50%, -100%);">
+        <div style="position: relative; cursor: pointer;">
             <svg xmlns="http://www.w3.org/2000/svg" width="32" height="40" viewBox="0 0 32 40">
                 <path d="M16 0 C7.16 0 0 7.16 0 16 C0 24 16 40 16 40 C16 40 32 24 32 16 C32 7.16 24.84 0 16 0 Z" fill="${color}" stroke="#fff" stroke-width="2"/>
                 <circle cx="16" cy="16" r="8" fill="white" opacity="0.9"/>
@@ -104,6 +106,7 @@ function addVWorldMarker(coordinate, label, status, rowData, isDuplicate, marker
             </svg>
         </div>
     `;
+    // ✅ 수정: CSS transform 제거하여 OpenLayers positioning에 위임
     markerEl.onclick = () => showBottomInfoPanelVWorld(rowData, markerIndex);
 
     const position = ol.proj.fromLonLat([coordinate.lon, coordinate.lat]);
@@ -111,7 +114,7 @@ function addVWorldMarker(coordinate, label, status, rowData, isDuplicate, marker
     const markerOverlay = new ol.Overlay({
         position: position,
         element: markerEl,
-        positioning: 'bottom-center',
+        positioning: 'bottom-center', // 핀의 끝점이 좌표와 일치하도록
         stopEvent: false,
         zIndex: 10
     });
@@ -124,13 +127,14 @@ function addVWorldMarker(coordinate, label, status, rowData, isDuplicate, marker
         labelEl.textContent = label || '이름없음';
         labelEl.style.cssText = `background: rgba(255,255,255,0.9); color: #1e293b; font-size: 12px; font-weight: 700; padding: 3px 8px; border-radius: 12px; white-space: nowrap; box-shadow: 0 2px 5px rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.8); pointer-events: none;`;
         
+        // ✅ 수정: 라벨을 마커 위에 표시하도록 positioning과 offset 변경
         labelOverlay = new ol.Overlay({
             position: position,
             element: labelEl,
-            positioning: 'bottom-center',
-            offset: [0, -45],
+            positioning: 'top-center', // 라벨의 상단 중앙을 기준으로 위치
+            offset: [0, 5], // 좌표에서 5px 아래에 라벨 상단을 위치시켜 마커 위에 보이게 함
             stopEvent: false,
-            zIndex: 11 // ✅ 수정: 마커(zIndex: 10)보다 위에 표시되도록 z-index 증가
+            zIndex: 11 // 마커보다 위에 표시
         });
         vworldMap.addOverlay(labelOverlay);
     }
@@ -188,7 +192,7 @@ async function displayProjectOnVWorldMap(projectData) {
                 주소: row.주소,
                 상태: row.상태, 
                 lat: parseFloat(coord.lat), 
-                lng: parseFloat(coord.lon), 
+                lng: parseFloat(coord.lng), 
                 isDuplicate: false // VWorld에서는 중복 체크 로직을 여기에 추가할 수 있습니다.
             });
         }
