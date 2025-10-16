@@ -9,3 +9,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // 초기 렌더링
     renderProjects();
 });
+
+document.addEventListener('DOMContentLoaded', function() {
+    createProgressAndToastUI(); // ✅ 진행바/토스트 생성
+});
