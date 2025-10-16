@@ -24,54 +24,41 @@ function vworldJsonpRequest(url) {
     });
 }
 
-// 지번 외곽선 요청
-// 지번 외곽선 요청 (XML 방식)
+// ✅ VWorld 필지 외곽선 요청 (XML → fetch 방식)
 async function getParcelBoundary(pnuCode) {
     if (!pnuCode) return null;
-    const url = `https://api.vworld.kr/ned/data/getParcel?service=data&request=getParcel&key=${VWORLD_API_KEY}&pnu=${pnuCode}&format=xml&domain=sharif9711.github.io`;
 
-    return new Promise((resolve, reject) => {
-        const callbackName = 'jsonp_cb_' + Math.random().toString(36).substr(2, 9);
-        window[callbackName] = (xmlText) => {
-            try {
-                const parser = new DOMParser();
-                const xmlDoc = parser.parseFromString(xmlText, "text/xml");
-                const coordNode = xmlDoc.querySelector("polygon");
-                if (!coordNode) {
-                    console.warn('⚠️ polygon 데이터 없음:', pnuCode);
-                    resolve(null);
-                    return;
-                }
+    const url = `https://api.vworld.kr/ned/data/getParcel?service=data&request=getParcel&key=${VWORLD_API_KEY}&pnu=${pnuCode}&format=xml`;
 
-                const coordText = coordNode.textContent.trim();
-                const coordPairs = coordText.split(' ').map(p => p.split(',').map(Number));
-                if (coordPairs.length === 0) {
-                    console.warn('⚠️ 좌표 없음:', pnuCode);
-                    resolve(null);
-                    return;
-                }
+    try {
+        const response = await fetch(url);
+        const xmlText = await response.text();
 
-                const polygon = new ol.geom.Polygon([coordPairs]);
-                resolve(polygon);
-            } catch (err) {
-                console.error('XML 파싱 오류:', err);
-                resolve(null);
-            } finally {
-                delete window[callbackName];
-            }
-        };
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(xmlText, "text/xml");
+        const coordNode = xmlDoc.querySelector("polygon");
 
-        // JSONP <script> 요청
-        const script = document.createElement('script');
-        script.src = `${url}&callback=${callbackName}`;
-        script.onerror = () => {
-            reject(new Error('JSONP(XML) 요청 실패'));
-            delete window[callbackName];
-            document.body.removeChild(script);
-        };
-        document.body.appendChild(script);
-    });
+        if (!coordNode) {
+            console.warn('⚠️ polygon 데이터 없음:', pnuCode);
+            return null;
+        }
+
+        const coordText = coordNode.textContent.trim();
+        const coordPairs = coordText.split(' ').map(p => p.split(',').map(Number));
+
+        if (coordPairs.length === 0) {
+            console.warn('⚠️ 좌표 없음:', pnuCode);
+            return null;
+        }
+
+        const polygon = new ol.geom.Polygon([coordPairs]);
+        return polygon;
+    } catch (err) {
+        console.error('❌ 필지 외곽선 요청 오류:', err);
+        return null;
+    }
 }
+
 
 
 // 상태별 색상
