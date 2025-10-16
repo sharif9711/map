@@ -81,16 +81,9 @@ function updateMarkerList() {
     }).join('');
 }
 
-// 특정 마커로 포커스 - ✅ 수정: 디버깅 로그 추가
+// 특정 마커로 포커스
 function focusOnMarker(index) {
-    // ✅ 디버깅 로그
-    console.log(`focusOnMarker called with index: ${index}`);
-    console.log('markerListData at index:', markerListData[index]);
-
-    if (index < 0 || index >= markerListData.length) {
-        console.error('Invalid marker index:', index);
-        return;
-    }
+    if (index < 0 || index >= markerListData.length) return;
     
     const item = markerListData[index];
     const mapType = currentProject.mapType || 'kakao';
@@ -109,8 +102,6 @@ function focusOnMarker(index) {
                 zoom: 17,
                 duration: 500
             });
-        } else {
-            console.error('VWorld map or item coordinates are missing.', { vworldMap: !!vworldMap, item });
         }
     }
 }
@@ -172,4 +163,581 @@ function toggleMyLocation() {
                         markerElement.innerHTML = `
                             <div style="position: relative; width: 40px; height: 40px;">
                                 <div style="position: absolute;top: 50%;left: 50%;transform: translate(-50%, -50%);width: 40px;height: 40px;background: rgba(66, 133, 244, 0.3);border-radius: 50%;animation: pulse 2s infinite;"></div>
-                                <div style="position: absolute
+                                <div style="position: absolute;top: 50%;left: 50%;transform: translate(-50%, -50%);width: 24px;height: 24px;background: rgba(66, 133, 244, 0.5);border-radius: 50%;border: 3px solid white;box-shadow: 0 2px 8px rgba(0,0,0,0.3);"></div>
+                                <div style="position: absolute;top: 50%;left: 50%;transform: translate(-50%, -50%);width: 12px;height: 12px;background: #4285F4;border-radius: 50%;border: 2px solid white;"></div>
+                            </div>
+                            <style>
+                                @keyframes pulse {
+                                    0% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+                                    100% { transform: translate(-50%, -50%) scale(2); opacity: 0; }
+                                }
+                            </style>
+                        `;
+                        
+                        myLocationMarker = new ol.Overlay({
+                            position: ol.proj.fromLonLat([lng, lat]),
+                            element: markerElement,
+                            positioning: 'center-center',
+                            stopEvent: false
+                        });
+                        
+                        vworldMap.addOverlay(myLocationMarker);
+                        vworldMap.getView().animate({
+                            center: ol.proj.fromLonLat([lng, lat]),
+                            zoom: 14,
+                            duration: 500
+                        });
+                    }
+                    
+                    myCurrentLocation = { lat: lat, lng: lng };
+                    
+                    isGpsActive = true;
+                    btn.classList.remove('bg-yellow-500');
+                    btn.classList.add('bg-green-600', 'text-white');
+                    btn.textContent = '📍 GPS';
+                    showMapMessage('내 위치가 표시되었습니다', 'success');
+                },
+                function(error) {
+                    alert('위치 정보를 가져올 수 없습니다: ' + error.message);
+                    btn.classList.remove('bg-yellow-500', 'text-white');
+                    btn.classList.add('bg-white', 'text-slate-700');
+                    btn.textContent = '📍 GPS';
+                }
+            );
+        } else {
+            alert('이 브라우저는 위치 정보를 지원하지 않습니다.');
+        }
+    }
+    // 상태 1: 내 위치 표시 → 상태 2: 실시간 추적
+    else if (isGpsActive && !gpsWatchId) {
+        btn.classList.add('bg-blue-600', 'text-white');
+        btn.classList.remove('bg-green-600');
+        btn.textContent = '🎯 추적중';
+        showMapMessage('실시간 위치 추적을 시작합니다', 'info');
+        
+        gpsWatchId = navigator.geolocation.watchPosition(
+            function(position) {
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+                
+                if (mapType === 'kakao') {
+                    const myPosition = new kakao.maps.LatLng(lat, lng);
+                    
+                    if (myLocationMarker) {
+                        myLocationMarker.setMap(null);
+                    }
+                    
+                    myLocationMarker = new kakao.maps.CustomOverlay({
+                        position: myPosition,
+                        content: `
+                            <div style="position: relative; width: 40px; height: 40px;">
+                                <div style="position: absolute;top: 50%;left: 50%;transform: translate(-50%, -50%);width: 40px;height: 40px;background: rgba(66, 133, 244, 0.3);border-radius: 50%;animation: pulse 2s infinite;"></div>
+                                <div style="position: absolute;top: 50%;left: 50%;transform: translate(-50%, -50%);width: 24px;height: 24px;background: rgba(66, 133, 244, 0.5);border-radius: 50%;border: 3px solid white;box-shadow: 0 2px 8px rgba(0,0,0,0.3);"></div>
+                                <div style="position: absolute;top: 50%;left: 50%;transform: translate(-50%, -50%);width: 12px;height: 12px;background: #4285F4;border-radius: 50%;border: 2px solid white;"></div>
+                            </div>
+                        `,
+                        map: kakaoMap,
+                        zIndex: 10
+                    });
+                    
+                    kakaoMap.setCenter(myPosition);
+                } else if (mapType === 'vworld') {
+                    if (myLocationMarker) {
+                        vworldMap.removeOverlay(myLocationMarker);
+                    }
+                    
+                    const markerElement = document.createElement('div');
+                    markerElement.innerHTML = `
+                        <div style="position: relative; width: 40px; height: 40px;">
+                            <div style="position: absolute;top: 50%;left: 50%;transform: translate(-50%, -50%);width: 40px;height: 40px;background: rgba(66, 133, 244, 0.3);border-radius: 50%;animation: pulse 2s infinite;"></div>
+                            <div style="position: absolute;top: 50%;left: 50%;transform: translate(-50%, -50%);width: 24px;height: 24px;background: rgba(66, 133, 244, 0.5);border-radius: 50%;border: 3px solid white;box-shadow: 0 2px 8px rgba(0,0,0,0.3);"></div>
+                            <div style="position: absolute;top: 50%;left: 50%;transform: translate(-50%, -50%);width: 12px;height: 12px;background: #4285F4;border-radius: 50%;border: 2px solid white;"></div>
+                        </div>
+                    `;
+                    
+                    myLocationMarker = new ol.Overlay({
+                        position: ol.proj.fromLonLat([lng, lat]),
+                        element: markerElement,
+                        positioning: 'center-center',
+                        stopEvent: false
+                    });
+                    
+                    vworldMap.addOverlay(myLocationMarker);
+                    vworldMap.getView().setCenter(ol.proj.fromLonLat([lng, lat]));
+                }
+                
+                myCurrentLocation = { lat: lat, lng: lng };
+            },
+            function(error) {
+                console.error('위치 추적 오류:', error);
+            },
+            {
+                enableHighAccuracy: true,
+                maximumAge: 0,
+                timeout: 5000
+            }
+        );
+    }
+    // 상태 2: 실시간 추적 → 상태 0: OFF
+    else {
+        if (gpsWatchId) {
+            navigator.geolocation.clearWatch(gpsWatchId);
+            gpsWatchId = null;
+        }
+        
+        if (myLocationMarker) {
+            if (mapType === 'kakao') {
+                myLocationMarker.setMap(null);
+            } else if (mapType === 'vworld') {
+                vworldMap.removeOverlay(myLocationMarker);
+            }
+            myLocationMarker = null;
+        }
+        
+        isGpsActive = false;
+        myCurrentLocation = null;
+        btn.classList.remove('bg-green-600', 'bg-blue-600', 'text-white');
+        btn.classList.add('bg-white', 'text-slate-700');
+        btn.textContent = '📍 GPS';
+        showMapMessage('GPS가 꺼졌습니다', 'info');
+    }
+}
+
+// 마커 이름 라벨 토글
+function toggleMarkerLabels() {
+    showLabels = !showLabels;
+    const btn = document.getElementById('toggleLabelsBtn');
+    
+    if (showLabels) {
+        btn.classList.add('bg-blue-600', 'text-white');
+        btn.classList.remove('bg-white', 'text-slate-700');
+    } else {
+        btn.classList.remove('bg-blue-600', 'text-white');
+        btn.classList.add('bg-white', 'text-slate-700');
+    }
+    
+    const mapType = currentProject.mapType || 'kakao';
+    
+    if (mapType === 'kakao') {
+        kakaoMarkers.forEach(item => {
+            if (item.customOverlay) {
+                if (showLabels) {
+                    item.customOverlay.setMap(kakaoMap);
+                } else {
+                    item.customOverlay.setMap(null);
+                }
+            }
+        });
+    } else if (mapType === 'vworld') {
+        vworldMarkers.forEach(item => {
+            if (item.labelOverlay) {
+                if (showLabels) {
+                    vworldMap.addOverlay(item.labelOverlay);
+                } else {
+                    vworldMap.removeOverlay(item.labelOverlay);
+                }
+            }
+        });
+    }
+}
+
+// 중복 주소 체크
+function checkDuplicateAddresses(addresses) {
+    const addressCount = {};
+    addresses.forEach(addr => {
+        addressCount[addr] = (addressCount[addr] || 0) + 1;
+    });
+    return addressCount;
+}
+
+// 최적 경로 계산 (ON/OFF 토글)
+async function calculateOptimalRoute() {
+    const btn = document.getElementById('optimalRouteBtn');
+    
+    if (!currentProject) {
+        showMapMessage('프로젝트를 먼저 선택해주세요.', 'warning');
+        return;
+    }
+    
+    const mapType = currentProject.mapType || 'kakao';
+    
+    // 이미 경로가 표시되어 있으면 제거 (OFF)
+    if (isRouteActive) {
+        if (mapType === 'kakao') {
+            if (routePolyline) {
+                routePolyline.setMap(null);
+                routePolyline = null;
+            }
+            routeMarkers.forEach(marker => marker.setMap(null));
+        } else if (mapType === 'vworld') {
+            if (vworldRouteLayer) {
+                vworldMap.removeLayer(vworldRouteLayer);
+                vworldRouteLayer = null;
+            }
+            if (vworldRouteMarkers && vworldRouteMarkers.length > 0) {
+                vworldRouteMarkers.forEach(marker => vworldMap.removeOverlay(marker));
+            }
+        }
+        
+        routeMarkers = [];
+        if (typeof vworldRouteMarkers !== 'undefined') {
+            vworldRouteMarkers = [];
+        }
+        isRouteActive = false;
+        
+        btn.classList.remove('bg-purple-600', 'text-white');
+        btn.classList.add('bg-white', 'text-slate-700');
+        btn.textContent = '🗺️ 최적경로';
+        
+        showMapMessage('경로가 제거되었습니다.', 'info');
+        return;
+    }
+    
+    // 경로 계산 시작 (ON)
+    if (!myCurrentLocation) {
+        showMapMessage('먼저 GPS 버튼을 눌러 현재 위치를 설정해주세요.', 'warning');
+        return;
+    }
+    
+    if (markerListData.length === 0) {
+        showMapMessage('표시할 마커가 없습니다. 지도를 새로고침해주세요.', 'warning');
+        return;
+    }
+    
+    // 예정 상태인 마커만 필터링
+    const pendingMarkers = markerListData.filter(marker => marker.상태 === '예정');
+    
+    if (pendingMarkers.length === 0) {
+        showMapMessage('예정 상태인 마커가 없습니다. (완료/보류 제외)', 'warning');
+        return;
+    }
+    
+    btn.classList.remove('bg-white', 'text-slate-700');
+    btn.classList.add('bg-yellow-500', 'text-white');
+    btn.textContent = '🔄 계산중...';
+    
+    // 최적 경로 계산
+    const visited = new Array(pendingMarkers.length).fill(false);
+    const routeOrder = [];
+    let currentPos = myCurrentLocation;
+    
+    for (let i = 0; i < pendingMarkers.length; i++) {
+        let nearestIndex = -1;
+        let minDistance = Infinity;
+        
+        for (let j = 0; j < pendingMarkers.length; j++) {
+            if (!visited[j]) {
+                const distance = getDistance(
+                    currentPos.lat, currentPos.lng,
+                    pendingMarkers[j].lat, pendingMarkers[j].lng
+                );
+                
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    nearestIndex = j;
+                }
+            }
+        }
+        
+        if (nearestIndex !== -1) {
+            visited[nearestIndex] = true;
+            routeOrder.push({
+                lat: pendingMarkers[nearestIndex].lat,
+                lng: pendingMarkers[nearestIndex].lng,
+                순번: i + 1,
+                이름: pendingMarkers[nearestIndex].이름
+            });
+            currentPos = { 
+                lat: pendingMarkers[nearestIndex].lat, 
+                lng: pendingMarkers[nearestIndex].lng 
+            };
+        }
+    }
+    
+    // 경로 그리기 (지도 유형별)
+    try {
+        if (mapType === 'kakao') {
+            if (typeof drawRoadRoute === 'function') {
+                await drawRoadRoute(myCurrentLocation, routeOrder);
+            } else {
+                showMapMessage('경로 그리기 함수를 찾을 수 없습니다.', 'error');
+                btn.classList.remove('bg-yellow-500');
+                btn.classList.add('bg-white', 'text-slate-700');
+                btn.textContent = '🗺️ 최적경로';
+                return;
+            }
+        } else if (mapType === 'vworld') {
+            if (typeof drawVWorldRoute === 'function') {
+                await drawVWorldRoute(myCurrentLocation, routeOrder);
+            } else {
+                showMapMessage('경로 그리기 함수를 찾을 수 없습니다.', 'error');
+                btn.classList.remove('bg-yellow-500');
+                btn.classList.add('bg-white', 'text-slate-700');
+                btn.textContent = '🗺️ 최적경로';
+                return;
+            }
+        }
+        
+        isRouteActive = true;
+        btn.classList.remove('bg-yellow-500');
+        btn.classList.add('bg-purple-600', 'text-white');
+        btn.textContent = '✓ 경로표시중';
+        
+        showMapMessage(`최적 경로 완성! 이 ${pendingMarkers.length}개 지점 (예정 상태만)`, 'success');
+    } catch (error) {
+        console.error('경로 계산 오류:', error);
+        showMapMessage('경로 계산 중 오류가 발생했습니다.', 'error');
+        btn.classList.remove('bg-yellow-500');
+        btn.classList.add('bg-white', 'text-slate-700');
+        btn.textContent = '🗺️ 최적경로';
+    }
+}
+
+// 실제 도로를 따라 경로 그리기 (카카오맵)
+async function drawRoadRoute(start, waypoints) {
+    const allPoints = [start, ...waypoints];
+    const pathCoords = [];
+    
+    pathCoords.push(new kakao.maps.LatLng(start.lat, start.lng));
+    
+    for (let i = 0; i < allPoints.length - 1; i++) {
+        const origin = allPoints[i];
+        const destination = allPoints[i + 1];
+        
+        try {
+            const response = await fetch(
+                `https://apis-navi.kakaomobility.com/v1/directions?` +
+                `origin=${origin.lng},${origin.lat}&` +
+                `destination=${destination.lng},${destination.lat}&` +
+                `priority=RECOMMEND`,
+                {
+                    headers: {
+                        'Authorization': `KakaoAK ${KAKAO_REST_KEY}`,
+                        'Content-Type': 'application/json'
+                    }
+                }
+            );
+            
+            if (response.ok) {
+                const data = await response.json();
+                
+                if (data.routes && data.routes[0] && data.routes[0].sections) {
+                    data.routes[0].sections.forEach(section => {
+                        if (section.roads) {
+                            section.roads.forEach(road => {
+                                road.vertexes.forEach((coord, idx) => {
+                                    if (idx % 2 === 0) {
+                                        const lng = coord;
+                                        const lat = road.vertexes[idx + 1];
+                                        pathCoords.push(new kakao.maps.LatLng(lat, lng));
+                                    }
+                                });
+                            });
+                        }
+                    });
+                }
+            } else {
+                pathCoords.push(new kakao.maps.LatLng(destination.lat, destination.lng));
+            }
+        } catch (error) {
+            console.error('경로 탐색 오류:', error);
+            pathCoords.push(new kakao.maps.LatLng(destination.lat, destination.lng));
+        }
+        
+        await new Promise(resolve => setTimeout(resolve, 300));
+    }
+    
+    // 경로 선 그리기
+    routePolyline = new kakao.maps.Polyline({
+        map: kakaoMap,
+        path: pathCoords,
+        strokeWeight: 6,
+        strokeColor: '#4A90E2',
+        strokeOpacity: 0.9,
+        strokeStyle: 'solid',
+        zIndex: 2
+    });
+    
+    // 순번 마커 추가
+    waypoints.forEach((point, index) => {
+        const markerContent = `
+            <div style="
+                width: 32px;
+                height: 32px;
+                background: linear-gradient(135deg, #FF6B6B, #EE5A6F);
+                border: 3px solid white;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: white;
+                font-weight: bold;
+                font-size: 14px;
+                box-shadow: 0 3px 8px rgba(0,0,0,0.3);
+            ">
+                ${point.순번}
+            </div>
+        `;
+        
+        const customOverlay = new kakao.maps.CustomOverlay({
+            map: kakaoMap,
+            position: new kakao.maps.LatLng(point.lat, point.lng),
+            content: markerContent,
+            zIndex: 100
+        });
+        
+        routeMarkers.push(customOverlay);
+    });
+}
+
+// VWorld 경로 그리기 (OSRM 사용) - ✅ 핵심 수정: zIndex 변경
+async function drawVWorldRoute(start, waypoints) {
+    if (!vworldMap) {
+        console.error('오류: VWorld 지도가 초기화되지 않음.');
+        showMapMessage('지도가 초기화되지 않았습니다.', 'error');
+        return;
+    }
+
+    const allPoints = [start, ...waypoints];
+    const pathCoords = [];
+    
+    // 시작점 추가
+    pathCoords.push(ol.proj.fromLonLat([start.lng, start.lat]));
+    
+    // 각 구간을 OSRM으로 경로 찾기
+    for (let i = 0; i < allPoints.length - 1; i++) {
+        const origin = allPoints[i];
+        const destination = allPoints[i + 1];
+        
+        try {
+            const url = `https://router.project-osrm.org/route/v1/driving/${origin.lng},${origin.lat};${destination.lng},${destination.lat}?overview=full&geometries=geojson`;
+            
+            const response = await fetch(url);
+            
+            if (response.ok) {
+                const data = await response.json();
+                
+                if (data.routes && data.routes[0] && data.routes[0].geometry) {
+                    const coordinates = data.routes[0].geometry.coordinates;
+                    
+                    coordinates.forEach(coord => {
+                        pathCoords.push(ol.proj.fromLonLat(coord));
+                    });
+                } else {
+                    pathCoords.push(ol.proj.fromLonLat([destination.lng, destination.lat]));
+                }
+            } else {
+                pathCoords.push(ol.proj.fromLonLat([destination.lng, destination.lat]));
+            }
+        } catch (error) {
+            console.error('OSRM routing error:', error);
+            pathCoords.push(ol.proj.fromLonLat([destination.lng, destination.lat]));
+        }
+        
+        await new Promise(resolve => setTimeout(resolve, 200));
+    }
+    
+    if (pathCoords.length < 2) {
+        showMapMessage('경로를 그릴 수 없습니다.', 'error');
+        return;
+    }
+    
+    // 경로 선 생성
+    const routeLine = new ol.geom.LineString(pathCoords);
+    
+    const routeFeature = new ol.Feature({
+        geometry: routeLine
+    });
+    
+    const routeStyle = new ol.style.Style({
+        stroke: new ol.style.Stroke({
+            color: '#4A90E2',
+            width: 6,
+            lineCap: 'round',
+            lineJoin: 'round'
+        })
+    });
+    
+    routeFeature.setStyle(routeStyle);
+    
+    const vectorSource = new ol.source.Vector({
+        features: [routeFeature]
+    });
+    
+    // ✅ 핵심 수정: zIndex를 10으로 높여 필지 경계선(z-index: 5)보다 위에 표시되도록 함
+    vworldRouteLayer = new ol.layer.Vector({
+        source: vectorSource,
+        zIndex: 10 
+    });
+    
+    vworldMap.addLayer(vworldRouteLayer);
+    
+    // 순번 마커 추가
+    if (!vworldRouteMarkers) vworldRouteMarkers = [];
+    waypoints.forEach((point, index) => {
+        const markerElement = document.createElement('div');
+        markerElement.innerHTML = `
+            <div style="
+                width: 32px;
+                height: 32px;
+                background: linear-gradient(135deg, #FF6B6B, #EE5A6F);
+                border: 3px solid white;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: white;
+                font-weight: bold;
+                font-size: 14px;
+                box-shadow: 0 3px 8px rgba(0,0,0,0.3);
+            ">
+                ${point.순번}
+            </div>
+        `;
+        
+        const markerOverlay = new ol.Overlay({
+            position: ol.proj.fromLonLat([point.lng, point.lat]),
+            element: markerElement,
+            positioning: 'center-center',
+            stopEvent: false
+        });
+        
+        vworldMap.addOverlay(markerOverlay);
+        vworldRouteMarkers.push(markerOverlay);
+    });
+}
+
+// 지도 메시지 표시
+function showMapMessage(message, type = 'info') {
+    const loadingStatus = document.getElementById('mapLoadingStatus');
+    if (!loadingStatus) return;
+    
+    const colors = {
+        success: '#10b981',
+        error: '#ef4444',
+        info: '#3b82f6',
+        warning: '#f59e0b'
+    };
+    
+    loadingStatus.style.display = 'block';
+    loadingStatus.style.backgroundColor = colors[type] || colors.info;
+    loadingStatus.textContent = message;
+    
+    setTimeout(() => {
+        if (loadingStatus) {
+            loadingStatus.style.display = 'none';
+        }
+    }, 3000);
+}
+
+// 거리 계산 (Haversine formula)
+function getDistance(lat1, lng1, lat2, lng2) {
+    const R = 6371; // 지구 반지름 (km)
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLng/2) * Math.sin(dLng/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c; // 거리 반환 (km)
+}
