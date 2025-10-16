@@ -72,7 +72,7 @@ async function fetchPostalCodesForReport() {
     );
 
     if (targetRows.length === 0) {
-        console.log('📭 새로 조회할 행이 없습니다.');
+        console.log('🔭 새로 조회할 행이 없습니다.');
         return;
     }
 
@@ -135,18 +135,6 @@ async function fetchLandInfoCore(targetRows) {
     showToast(`✅ 토지정보 ${total}건 갱신 완료`);
 }
 
-
-// jQuery가 반드시 로드되어 있어야 합니다.
-
-/**
- * 주소를 기반으로 VWorld API를 통해 상세 토지 정보(좌표, PNU, 지목, 면적, 우편번호)를 조회하는 함수
- * @param {string} address - 조회할 주소
- * @returns {Promise<object|null>} 토지 정보 객체 또는 null
- */
-// project-detail.js 내의 getAddressDetailInfo 함수를 이 코드로 완전히 교체하세요.
-
-// project-detail.js 내의 getAddressDetailInfo 함수를 이 코드로 완전히 교체하세요.
-
 /**
  * 주소를 기반으로 VWorld와 카카오맵 API를 통해 상세 토지 정보를 조회하는 함수
  * @param {string} address - 조회할 주소
@@ -157,45 +145,66 @@ async function getAddressDetailInfo(address) {
         return null;
     }
 
+    console.log(`🔍 [getAddressDetailInfo] 시작: ${address}`);
+
     // ✅ 1️⃣ VWorld: 주소 → 좌표 변환
     const point = await getVWorldCoord(address);
     if (!point) {
         console.warn("⚠️ VWorld 주소 변환 실패:", address);
         return null;
     }
+    console.log(` - 좌표 조회 성공: (${point.x}, ${point.y})`);
 
     // ✅ 2️⃣ VWorld: 좌표 → PNU 코드 조회
     const pnu = await getVWorldPNU(point.x, point.y);
     if (!pnu) {
         console.warn("⚠️ PNU 코드 없음:", address);
-        return null;
+        // PNU가 없어도 좌표는 반환 (우편번호 조회를 위해)
+    } else {
+        console.log(` - PNU 조회 성공: ${pnu}`);
     }
 
     // ✅ 3️⃣ VWorld: PNU → 토지 특성(지목, 면적) 조회
-    const landInfo = await getVWorldLandCharacteristics(pnu);
+    let landInfo = null;
+    if (pnu) {
+        landInfo = await getVWorldLandCharacteristics(pnu);
+        if (landInfo) {
+            console.log(` - 토지 특성 조회 성공: 지목=${landInfo.lndcgrCodeNm}, 면적=${landInfo.lndpclAr}`);
+        }
+    }
 
-    // ✅ 4️⃣ 카카오맵: 주소 → 우편번호 조회 (VWorld API는 우편번호를 제공하지 않음)
+    // ✅ 4️⃣ 카카오맵: 주소 → 우편번호 조회
     const zipCode = await getKakaoPostalCode(address);
+    if (zipCode) {
+        console.log(` - 우편번호 조회 성공: ${zipCode}`);
+    }
 
     // ✅ 5️⃣ 모든 정보 조합하여 반환
-    const daejangMap = { "1": "토지", "2": "임야", "3": "하천", "4": "간척" };
-    const daejang = daejangMap[pnu.charAt(10)] || "기타";
-    const bjdCode = pnu.substring(0, 10);
-
-    const result = {
-        pnuCode: pnu,
-        법정동코드: bjdCode,
-        대장구분: daejang,
-        본번: pnu.substring(11, 15).replace(/^0+/, "") || "0",
-        부번: pnu.substring(15, 19).replace(/^0+/, "") || "0",
-        지목: landInfo?.lndcgrCodeNm || "-",
-        면적: landInfo?.lndpclAr || "-",
-        zipCode: zipCode || "-", // ✅ 카카오맵에서 얻은 우편번호
+    let result = {
+        zipCode: zipCode || "-",
         lat: point.y,
         lon: point.x
     };
 
-    console.log(`📍 [최종] ${address} -> 지목:${result.지목}, 면적:${result.면적}, 우편번호:${result.zipCode}`);
+    // PNU가 있는 경우에만 토지 정보 추가
+    if (pnu) {
+        const daejangMap = { "1": "토지", "2": "임야", "3": "하천", "4": "간척" };
+        const daejang = daejangMap[pnu.charAt(10)] || "기타";
+        const bjdCode = pnu.substring(0, 10);
+
+        result = {
+            ...result,
+            pnuCode: pnu,
+            법정동코드: bjdCode,
+            대장구분: daejang,
+            본번: pnu.substring(11, 15).replace(/^0+/, "") || "0",
+            부번: pnu.substring(15, 19).replace(/^0+/, "") || "0",
+            지목: landInfo?.lndcgrCodeNm || "-",
+            면적: landInfo?.lndpclAr || "-"
+        };
+    }
+
+    console.log(`✅ [getAddressDetailInfo] 완료:`, result);
     return result;
 }
 
@@ -206,20 +215,48 @@ function getVWorldCoord(address) {
     return new Promise((resolve) => {
         const requestCoord = (addr, type, callback) => {
             $.ajax({
-                type: "get", dataType: "jsonp", jsonp: "callback",
+                type: "get", 
+                dataType: "jsonp", 
+                jsonp: "callback",
                 url: "https://api.vworld.kr/req/address",
-                data: { service: "address", request: "getcoord", version: "2.0", crs: "epsg:4326", address: addr, type: type, key: "BE552462-0744-32DB-81E7-1B7317390D68" },
-                success: (data) => callback(data),
-                error: () => callback(null)
+                data: { 
+                    service: "address", 
+                    request: "getcoord", 
+                    version: "2.0", 
+                    crs: "epsg:4326", 
+                    address: addr, 
+                    type: type, 
+                    key: "BE552462-0744-32DB-81E7-1B7317390D68" 
+                },
+                success: (data) => {
+                    console.log(` - VWorld 좌표 조회 응답 (${type}):`, data);
+                    callback(data);
+                },
+                error: (xhr, status, error) => {
+                    console.error(` - VWorld 좌표 조회 실패 (${type}):`, error);
+                    callback(null);
+                }
             });
         };
 
+        // 도로명 주소로 먼저 시도
         requestCoord(address, "ROAD", (geo) => {
-            if (geo?.response?.result?.point) resolve(geo.response.result.point);
-            else requestCoord(address, "PARCEL", (geo2) => {
-                if (geo2?.response?.result?.point) resolve(geo2.response.result.point);
-                else resolve(null);
-            });
+            if (geo?.response?.result?.point) {
+                console.log(' - 도로명 주소로 좌표 찾음');
+                resolve(geo.response.result.point);
+            } else {
+                // 도로명 실패 시 지번 주소로 재시도
+                console.log(' - 도로명 주소 실패, 지번 주소로 재시도');
+                requestCoord(address, "PARCEL", (geo2) => {
+                    if (geo2?.response?.result?.point) {
+                        console.log(' - 지번 주소로 좌표 찾음');
+                        resolve(geo2.response.result.point);
+                    } else {
+                        console.warn(' - 지번 주소도 실패');
+                        resolve(null);
+                    }
+                });
+            }
         });
     });
 }
@@ -228,14 +265,33 @@ function getVWorldCoord(address) {
 function getVWorldPNU(x, y) {
     return new Promise((resolve) => {
         $.ajax({
-            type: "get", dataType: "jsonp", jsonp: "callback",
+            type: "get", 
+            dataType: "jsonp", 
+            jsonp: "callback",
             url: "https://api.vworld.kr/req/data",
-            data: { service: "data", request: "getfeature", format: "json", data: "LP_PA_CBND_BUBUN", geomFilter: `POINT(${x} ${y})`, size: 1, key: "BE552462-0744-32DB-81E7-1B7317390D68" },
+            data: { 
+                service: "data", 
+                request: "getfeature", 
+                format: "json", 
+                data: "LP_PA_CBND_BUBUN", 
+                geomFilter: `POINT(${x} ${y})`, 
+                size: 1, 
+                key: "BE552462-0744-32DB-81E7-1B7317390D68" 
+            },
             success: (data) => {
+                console.log(' - VWorld PNU 조회 응답:', data);
                 const pnu = data?.response?.result?.featureCollection?.features?.[0]?.properties?.pnu;
+                if (pnu) {
+                    console.log(` - PNU 찾음: ${pnu}`);
+                } else {
+                    console.warn(' - PNU 없음');
+                }
                 resolve(pnu || null);
             },
-            error: () => resolve(null)
+            error: (xhr, status, error) => {
+                console.error(' - VWorld PNU 조회 실패:', error);
+                resolve(null);
+            }
         });
     });
 }
@@ -244,41 +300,75 @@ function getVWorldPNU(x, y) {
 function getVWorldLandCharacteristics(pnu) {
     return new Promise((resolve) => {
         $.ajax({
-            type: "get", dataType: "jsonp", jsonp: "callback",
+            type: "get", 
+            dataType: "jsonp", 
+            jsonp: "callback",
             url: "https://api.vworld.kr/ned/data/getLandCharacteristics",
-            data: { key: "BE552462-0744-32DB-81E7-1B7317390D68", domain: "sharif9711.github.io", pnu: pnu, stdrYear: "2017", format: "json", numOfRows: 1, pageNo: 1 },
-            success: (data) => {
-                const field = data?.landCharacteristicss?.field[0];
-                if (field) resolve({ lndcgrCodeNm: field.lndcgrCodeNm, lndpclAr: field.lndpclAr });
-                else resolve(null);
+            data: { 
+                key: "BE552462-0744-32DB-81E7-1B7317390D68", 
+                domain: "sharif9711.github.io", 
+                pnu: pnu, 
+                stdrYear: "2017", 
+                format: "json", 
+                numOfRows: 1, 
+                pageNo: 1 
             },
-            error: () => resolve(null)
+            success: (data) => {
+                console.log(' - VWorld 토지특성 조회 응답:', data);
+                const field = data?.landCharacteristicss?.field?.[0];
+                if (field) {
+                    console.log(` - 토지특성 찾음: 지목=${field.lndcgrCodeNm}, 면적=${field.lndpclAr}`);
+                    resolve({ 
+                        lndcgrCodeNm: field.lndcgrCodeNm, 
+                        lndpclAr: field.lndpclAr 
+                    });
+                } else {
+                    console.warn(' - 토지특성 없음');
+                    resolve(null);
+                }
+            },
+            error: (xhr, status, error) => {
+                console.error(' - VWorld 토지특성 조회 실패:', error);
+                resolve(null);
+            }
         });
     });
 }
 
 // 카카오맵: 주소 -> 우편번호
-// project-detail.js 내의 getKakaoPostalCode 함수만 이 코드로 교체하세요.
-
-// 카카오맵: 주소 -> 우편번호
 function getKakaoPostalCode(address) {
     return new Promise((resolve) => {
         // 1️⃣ 카카오맵 API가 로드되었는지 확인
-        if (typeof kakao === 'undefined' || typeof kakao.maps === 'undefined' || typeof kakao.maps.services === 'undefined') {
+        if (typeof kakao === 'undefined' || 
+            typeof kakao.maps === 'undefined' || 
+            typeof kakao.maps.services === 'undefined') {
             console.warn("Kakao Maps API is not loaded. Cannot fetch postal code.");
             resolve(null);
             return;
         }
 
-        // 2️⃣ Geocoder 객체가 없으면 새로 생성 (이 부분이 핵심!)
+        // 2️⃣ Geocoder 객체가 없으면 새로 생성
         if (!window.kakaoGeocoder) {
-            window.kakaoGeocoder = new kakao.maps.services.Geocoder();
+            try {
+                window.kakaoGeocoder = new kakao.maps.services.Geocoder();
+                console.log(' - Kakao Geocoder 생성 완료');
+            } catch (error) {
+                console.error(' - Kakao Geocoder 생성 실패:', error);
+                resolve(null);
+                return;
+            }
         }
 
         // 3️⃣ 주소 검색 실행
         window.kakaoGeocoder.addressSearch(address, (result, status) => {
             if (status === kakao.maps.services.Status.OK && result[0]) {
-                const zip = result[0].road_address?.zone_no || result[0].address?.zip_code;
+                const zip = result[0].road_address?.zone_no || 
+                           result[0].address?.zip_code;
+                if (zip) {
+                    console.log(` - 카카오 우편번호 찾음: ${zip}`);
+                } else {
+                    console.warn(' - 카카오 우편번호 없음');
+                }
                 resolve(zip || null);
             } else {
                 console.warn(`Kakao address search failed for "${address}" with status:`, status);
@@ -377,7 +467,7 @@ function updateMapCount() {
     if (!mapCount) return;
     
     const count = currentProject.data.filter(row => row.주소).length;
-    mapCount.textContent = `이 ${count}개의 주소`;
+    mapCount.textContent = `총 ${count}개의 주소`;
 }
 
 function updateCellAndRefresh(rowId, field, value) {
@@ -395,71 +485,3 @@ function handlePaste(event, rowIndex, field) {
     renderReportTable();
     updateMapCount();
 }
-
-async function fetchLandInfoForReport() {
-    if (!currentProject) {
-        alert('프로젝트가 선택되지 않았습니다.');
-        return;
-    }
-
-    const rowsWithAddress = currentProject.data.filter(row => 
-        row.주소 && row.주소.trim() !== '' && (row.이름 || row.연락처)
-    );
-
-    if (rowsWithAddress.length === 0) {
-        alert('주소가 입력된 데이터가 없습니다.');
-        return;
-    }
-
-    const loadingMsg = document.createElement('div');
-    loadingMsg.id = 'landInfoLoading';
-    loadingMsg.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 z-50 px-6 py-3 bg-blue-600 text-white rounded-lg shadow-lg';
-    loadingMsg.textContent = '토지정보 수집 중... (0/' + rowsWithAddress.length + ')';
-    document.body.appendChild(loadingMsg);
-
-    let successCount = 0;
-
-    for (let i = 0; i < rowsWithAddress.length; i++) {
-        const row = rowsWithAddress[i];
-
-        try {
-            // ✅ 이 함수도 VWorld 통합 로직을 사용합니다.
-            const detailInfo = await getAddressDetailInfo(row.주소);
-            if (detailInfo) {
-                row.우편번호 = detailInfo.zipCode || row.우편번호;
-                row.pnu코드 = detailInfo.pnuCode || row.pnu코드;
-                row.법정동코드 = detailInfo.법정동코드 || 
-                                 (detailInfo.pnuCode ? detailInfo.pnuCode.substring(0, 10) : row.법정동코드);
-                row.대장구분 = detailInfo.대장구분 || row.대장구분;
-                row.본번 = detailInfo.본번 || row.본번;
-                row.부번 = detailInfo.부번 || row.부번;
-                row.지목 = detailInfo.지목 || row.지목;
-                row.면적 = detailInfo.면적 || row.면적;
-                row.lat = detailInfo.lat || row.lat;
-                row.lng = detailInfo.lon || row.lng;
-                successCount++;
-            }
-        } catch (error) {
-            console.error('토지정보 수집 오류:', error);
-        }
-
-        loadingMsg.textContent = `토지정보 수집 중... (${i + 1}/${rowsWithAddress.length})`;
-        await new Promise(resolve => setTimeout(resolve, 800));
-    }
-
-    const projectIndex = projects.findIndex(p => p.id === currentProject.id);
-    if (projectIndex !== -1) {
-        projects[projectIndex] = currentProject;
-    }
-
-    renderReportTable();
-
-    document.body.removeChild(loadingMsg);
-
-    if (successCount > 0) {
-        alert(`토지정보 수집 완료: ${successCount}건`);
-    } else {
-        alert('토지정보를 수집하지 못했습니다.');
-    }
-}
-// ✅ getAddressDetailInfo 함수 끝
