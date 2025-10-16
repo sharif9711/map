@@ -2,13 +2,10 @@
 <html lang="ko">
 <head>
 <meta charset="utf-8">
-<title>주소로 필지 경계선 표시 (vworldMapInit.js 전용)</title>
+<title>브이월드 2D 항공영상 지도</title>
 
-<!-- ✅ 브이월드 공개 SDK (GitHub Pages 호환 가능) -->
+<!-- ✅ 브이월드 2.0 SDK -->
 <script src="https://map.vworld.kr/js/vworldMapInit.js.do?version=2.0&apiKey=BE552462-0744-32DB-81E7-1B7317390D68"></script>
-
-<!-- ✅ jQuery (JSONP 요청용) -->
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
 <style>
 body { margin:0; font-family:Arial,sans-serif; }
@@ -21,7 +18,7 @@ button {
   background:#ff8a00; color:white; border:none;
   padding:6px 12px; border-radius:4px; cursor:pointer;
 }
-#map { width:100%; height:85vh; }
+#map { width:100%; height:90vh; }
 #info { padding:8px; background:#f5f5f5; font-size:14px; }
 </style>
 </head>
@@ -36,43 +33,35 @@ button {
   <div id="map"></div>
   <div id="info">지도 준비 중...</div>
 
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
 const apiKey = "BE552462-0744-32DB-81E7-1B7317390D68";
-let vmap, markerLayer, vectorSource, vectorLayer;
+let vmap, markerLayer;
 
-// ✅ 지도 로드
+// ✅ 지도 초기화 (항공영상 2D)
 function initMap() {
-  // 지도 옵션 설정
   vw.ol3.MapOptions = {
-    basemapType: vw.ol3.BasemapType.GRAPHIC,
+    basemapType: vw.ol3.BasemapType.PHOTO, // ✅ 항공영상(위성지도)
     controlDensity: vw.ol3.DensityType.BASIC,
     interactionDensity: vw.ol3.DensityType.BASIC,
-    controlsAutoArrange: true
+    controlsAutoArrange: true,
+    homePosition: vw.ol3.CameraPosition, 
+    initPosition: vw.ol3.CameraPosition
   };
 
-  // 지도 객체 생성
   vmap = new vw.ol3.Map("map", vw.ol3.MapOptions);
 
-  // 마커 및 벡터 레이어 추가
+  // ✅ 마커 레이어 생성
   markerLayer = new vw.ol3.layer.Marker(vmap);
-  vectorSource = new ol.source.Vector();
-  vectorLayer = new ol.layer.Vector({
-    source: vectorSource,
-    style: new ol.style.Style({
-      stroke: new ol.style.Stroke({ color: 'rgba(0,128,255,0.9)', width: 3 }),
-      fill: new ol.style.Fill({ color: 'rgba(0,128,255,0.15)' })
-    })
-  });
   vmap.addLayer(markerLayer);
-  vmap.addLayer(vectorLayer);
 
-  $("#info").text("지도 준비 완료. 주소를 입력하세요.");
+  $("#info").text("항공영상 지도 준비 완료. 주소를 입력하세요.");
 
   $("#searchBtn").on("click", searchAddress);
   $("#resetBtn").on("click", resetMap);
 }
 
-// ✅ 주소 → 좌표
+// ✅ 주소 검색
 function searchAddress() {
   const addr = $("#addrInput").val().trim();
   if (!addr) return alert("주소를 입력하세요.");
@@ -95,57 +84,9 @@ function searchAddress() {
       const lon = parseFloat(point.x);
       const lat = parseFloat(point.y);
       addMarker(lon, lat);
-      $("#info").text(`좌표(${lon}, ${lat}) → PNU 조회 중...`);
-      getPNU(lon, lat);
+      $("#info").text(`좌표(${lon}, ${lat})`);
     },
     error: () => $("#info").text("주소 변환 실패")
-  });
-}
-
-// ✅ 좌표 → PNU 조회
-function getPNU(lon, lat) {
-  $.ajax({
-    url: "https://api.vworld.kr/ned/data/getLandCharacteristics",
-    dataType: "jsonp",
-    data: {
-      key: apiKey,
-      format: "json",
-      geomFilter: `point(${lon} ${lat})`,
-      stdrYear: "2020"
-    },
-    success: function(res) {
-      const pnu = res?.response?.field?.pnu;
-      if (!pnu) return $("#info").text("PNU 코드 조회 실패");
-      $("#info").text(`PNU: ${pnu} → 필지 경계 조회 중...`);
-      getParcelPolygon(pnu);
-    },
-    error: () => $("#info").text("PNU API 호출 실패")
-  });
-}
-
-// ✅ PNU → polygon 좌표 불러오기
-function getParcelPolygon(pnu) {
-  $.ajax({
-    url: "https://api.vworld.kr/req/data",
-    dataType: "jsonp",
-    data: {
-      service: "data",
-      request: "getFeature",
-      key: apiKey,
-      data: "LP_PA_CBND_BUBUN",
-      attrFilter: `pnu:${pnu}`,
-      format: "json"
-    },
-    success: function(res) {
-      try {
-        const polygon = res.response.result.featureCollection.features[0].properties.polygon;
-        drawPolygon(polygon);
-        $("#info").text("✅ 필지 경계선 표시 완료!");
-      } catch (e) {
-        $("#info").text("해당 필지의 경계 데이터를 찾을 수 없습니다.");
-      }
-    },
-    error: () => $("#info").text("필지 경계 API 호출 실패")
   });
 }
 
@@ -162,25 +103,12 @@ function addMarker(lon, lat) {
 
   const center = ol.proj.transform([lon, lat], "EPSG:4326", "EPSG:900913");
   vmap.getView().setCenter(center);
-  vmap.getView().setZoom(18);
+  vmap.getView().setZoom(19);
 }
 
-// ✅ polygon WKT → 지도 표시
-function drawPolygon(wkt) {
-  vectorSource.clear();
-  const format = new ol.format.WKT();
-  const feature = format.readFeature(wkt, {
-    dataProjection: "EPSG:4326",
-    featureProjection: "EPSG:900913"
-  });
-  vectorSource.addFeature(feature);
-  vmap.getView().fit(feature.getGeometry().getExtent(), { padding: [20,20,20,20], maxZoom: 19 });
-}
-
-// ✅ 지도 초기화
+// ✅ 초기화
 function resetMap() {
   markerLayer.clear();
-  vectorSource.clear();
   $("#info").text("지도 초기화 완료.");
 }
 
