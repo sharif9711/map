@@ -140,23 +140,6 @@ function addVWorldMarker(coordinate, label, status, rowData, isDuplicate, marker
     markerEl.style.cursor = 'pointer';
     markerEl.onclick = () => showBottomInfoPanelVWorld(rowData, markerIndex);
 
-    
-const markerOverlay = new ol.Overlay({
-    position: ol.proj.fromLonLat([coordinate.lon, coordinate.lat]),
-    element: markerEl,
-    positioning: 'bottom-center',
-    stopEvent: false,
-    zIndex: 20
-});
-
-const labelOverlay = new ol.Overlay({
-    position: ol.proj.fromLonLat([coordinate.lon, coordinate.lat]),
-    element: labelEl,
-    positioning: 'bottom-center',
-    stopEvent: false,
-    zIndex: 25
-});
-
     // 이름 오버레이 (마커 위쪽에 위치)
     const labelEl = document.createElement('div');
     labelEl.textContent = label || '이름없음';
@@ -173,17 +156,28 @@ const labelOverlay = new ol.Overlay({
         box-shadow: 0 2px 5px rgba(0,0,0,0.2);
     `;
 
+    const markerOverlay = new ol.Overlay({
+        position: ol.proj.fromLonLat([coordinate.lon, coordinate.lat]),
+        element: markerEl,
+        positioning: 'bottom-center',
+        stopEvent: false,
+        zIndex: 20
+    });
+
     const labelOverlay = new ol.Overlay({
         position: ol.proj.fromLonLat([coordinate.lon, coordinate.lat]),
         element: labelEl,
         positioning: 'bottom-center',
-        stopEvent: false
+        stopEvent: false,
+        zIndex: 25
     });
 
     vworldMap.addOverlay(markerOverlay);
     vworldMap.addOverlay(labelOverlay);
+
     vworldMarkers.push({ marker: markerOverlay, labelOverlay, rowData });
 }
+
 
 // 지도 전체 표시
 async function displayProjectOnVWorldMap(projectData) {
