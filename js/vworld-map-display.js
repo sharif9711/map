@@ -140,12 +140,22 @@ function addVWorldMarker(coordinate, label, status, rowData, isDuplicate, marker
     markerEl.style.cursor = 'pointer';
     markerEl.onclick = () => showBottomInfoPanelVWorld(rowData, markerIndex);
 
-    const markerOverlay = new ol.Overlay({
-        position: ol.proj.fromLonLat([coordinate.lon, coordinate.lat]),
-        element: markerEl,
-        positioning: 'bottom-center',
-        stopEvent: false
-    });
+    
+const markerOverlay = new ol.Overlay({
+    position: ol.proj.fromLonLat([coordinate.lon, coordinate.lat]),
+    element: markerEl,
+    positioning: 'bottom-center',
+    stopEvent: false,
+    zIndex: 20
+});
+
+const labelOverlay = new ol.Overlay({
+    position: ol.proj.fromLonLat([coordinate.lon, coordinate.lat]),
+    element: labelEl,
+    positioning: 'bottom-center',
+    stopEvent: false,
+    zIndex: 25
+});
 
     // 이름 오버레이 (마커 위쪽에 위치)
     const labelEl = document.createElement('div');
