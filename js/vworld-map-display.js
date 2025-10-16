@@ -5,12 +5,11 @@
 let parcelVectorLayer = null;
 
 // VWorld 표준 2D 데이터 API를 사용하여 필지 경계선(Polygon) 가져오기
-// ✅ 수정: attrfilter를 사용하여 PNU 코드로 직접 필지 경계선 조회 (더 안정적)
 async function getParcelBoundary(pnuCode) {
     if (!pnuCode) return null;
 
     // VWorld 2D 데이터 API 요청 URL (연속지적도)
-    // ✅ 수정: geomfilter 대신 attrfilter 사용
+    // ✅ 수정: attrfilter를 사용하여 PNU 코드로 직접 필지 경계선 조회 (더 안정적)
     const url = `https://api.vworld.kr/req/data?service=data&request=getfeature&data=LP_PA_CBND_BUBUN&key=${VWORLD_API_KEY}&attrfilter=pnu:${pnuCode}&format=json&size=1`;
 
     try {
@@ -106,7 +105,6 @@ function addVWorldMarker(coordinate, label, status, rowData, isDuplicate, marker
             </svg>
         </div>
     `;
-    // ✅ 수정: CSS transform 제거하여 OpenLayers positioning에 위임
     markerEl.onclick = () => showBottomInfoPanelVWorld(rowData, markerIndex);
 
     const position = ol.proj.fromLonLat([coordinate.lon, coordinate.lat]);
@@ -131,8 +129,8 @@ function addVWorldMarker(coordinate, label, status, rowData, isDuplicate, marker
         labelOverlay = new ol.Overlay({
             position: position,
             element: labelEl,
-            positioning: 'top-center', // 라벨의 상단 중앙을 기준으로 위치
-            offset: [0, 5], // 좌표에서 5px 아래에 라벨 상단을 위치시켜 마커 위에 보이게 함
+            positioning: 'bottom-center', // 라벨의 하단 중앙을 기준으로
+            offset: [0, -45], // 좌표에서 45px 위에 라벨 하단을 위치시킴
             stopEvent: false,
             zIndex: 11 // 마커보다 위에 표시
         });
