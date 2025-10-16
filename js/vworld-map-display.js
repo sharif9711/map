@@ -26,32 +26,36 @@ function vworldJsonpRequest(url) {
 
 // ✅ VWorld 필지 외곽선 요청 (XML → fetch 방식)
 // ✅ JSONP 방식 (CORS 문제 없음)
+// ✅ VWorld 필지 외곽선 요청 (JSONP + JSON 응답)
 async function getParcelBoundary(pnuCode) {
     if (!pnuCode) return null;
 
-    const url = `https://api.vworld.kr/ned/data/getParcel?service=data&request=getParcel&key=${VWORLD_API_KEY}&pnu=${pnuCode}&format=xml&domain=sharif9711.github.io`;
+    const url = `https://api.vworld.kr/ned/data/getParcel?service=data&request=getParcel&key=${VWORLD_API_KEY}&pnu=${pnuCode}&format=json&domain=sharif9711.github.io`;
 
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
         const callbackName = 'jsonp_cb_' + Math.random().toString(36).substr(2, 9);
 
-        window[callbackName] = (data) => {
+        window[callbackName] = (response) => {
             try {
-                const parser = new DOMParser();
-                const xmlDoc = parser.parseFromString(data, "text/xml");
-                const coordNode = xmlDoc.querySelector("polygon");
-                if (!coordNode) {
-                    console.warn('⚠️ polygon 데이터 없음:', pnuCode);
+                if (!response || !response.response || !response.response.result) {
+                    console.warn('⚠️ 응답 데이터 없음:', pnuCode);
                     resolve(null);
                     return;
                 }
 
-                const coordText = coordNode.textContent.trim();
-                const coordPairs = coordText.split(' ').map(p => p.split(',').map(Number));
+                const result = response.response.result.featureCollection;
+                if (!result || !result.features || result.features.length === 0) {
+                    console.warn('⚠️ 필지 데이터 없음:', pnuCode);
+                    resolve(null);
+                    return;
+                }
 
-                const polygon = new ol.geom.Polygon([coordPairs]);
-                resolve(polygon);
+                // 좌표 데이터 추출
+                const coords = result.features[0].geometry.coordinates[0];
+                const polygon = new ol.geom.Polygon([coords]);
+                resolve(polygon.transform('EPSG:4326', 'EPSG:3857'));
             } catch (err) {
-                console.error('XML 파싱 오류:', err);
+                console.error('❌ 필지 데이터 파싱 오류:', err);
                 resolve(null);
             } finally {
                 delete window[callbackName];
@@ -59,10 +63,11 @@ async function getParcelBoundary(pnuCode) {
             }
         };
 
+        // ✅ JSONP 스크립트 생성
         const script = document.createElement('script');
         script.src = `${url}&callback=${callbackName}`;
         script.onerror = () => {
-            console.error('JSONP(XML) 요청 실패:', pnuCode);
+            console.error('❌ JSONP 요청 실패:', pnuCode);
             delete window[callbackName];
             document.body.removeChild(script);
             resolve(null);
@@ -70,6 +75,7 @@ async function getParcelBoundary(pnuCode) {
         document.body.appendChild(script);
     });
 }
+
 
 
 
