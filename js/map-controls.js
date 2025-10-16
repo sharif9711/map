@@ -81,9 +81,16 @@ function updateMarkerList() {
     }).join('');
 }
 
-// 특정 마커로 포커스
+// 특정 마커로 포커스 - ✅ 수정: 디버깅 로그 추가
 function focusOnMarker(index) {
-    if (index < 0 || index >= markerListData.length) return;
+    // ✅ 디버깅 로그
+    console.log(`focusOnMarker called with index: ${index}`);
+    console.log('markerListData at index:', markerListData[index]);
+
+    if (index < 0 || index >= markerListData.length) {
+        console.error('Invalid marker index:', index);
+        return;
+    }
     
     const item = markerListData[index];
     const mapType = currentProject.mapType || 'kakao';
@@ -102,6 +109,8 @@ function focusOnMarker(index) {
                 zoom: 17,
                 duration: 500
             });
+        } else {
+            console.error('VWorld map or item coordinates are missing.', { vworldMap: !!vworldMap, item });
         }
     }
 }
