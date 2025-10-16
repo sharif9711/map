@@ -56,32 +56,44 @@ function updateCell(rowId, field, value) {
     return false;
 }
 
-// 붙여넣기 처리
+// ✅ 붙여넣기 처리 개선 (엑셀 다중셀 대응)
 function processPasteData(pastedText, rowIndex, field) {
-    const rows = pastedText.split('\n').filter(row => row.trim() !== '');
+    const rows = pastedText
+        .split('\n')
+        .map(r => r.trim())
+        .filter(r => r !== '');
+
+    // 붙여넣기 시작 열 인덱스
     const fields = ['이름', '연락처', '주소'];
     const startFieldIndex = fields.indexOf(field);
-    
+
     rows.forEach((row, i) => {
         const targetIndex = rowIndex + i;
-        if (targetIndex < currentProject.data.length) {
-            const cells = row.split('\t');
-            const targetRow = currentProject.data[targetIndex];
-            
-            cells.forEach((cell, cellIndex) => {
-                const targetField = fields[startFieldIndex + cellIndex];
-                if (targetField) {
-                    targetRow[targetField] = cell.trim();
-                }
-            });
-        }
+        if (targetIndex >= currentProject.data.length) return;
+
+        const targetRow = currentProject.data[targetIndex];
+        const cells = row.split('\t'); // 엑셀 복사 시 탭 구분
+
+        cells.forEach((cell, j) => {
+            const targetField = fields[startFieldIndex + j];
+            if (targetField) {
+                targetRow[targetField] = cell.trim();
+            }
+        });
     });
 
+    // 변경사항 반영
     const projectIndex = projects.findIndex(p => p.id === currentProject.id);
     if (projectIndex !== -1) {
         projects[projectIndex] = currentProject;
     }
+
+    // 테이블 즉시 갱신
+    if (typeof renderDataInputTable === 'function') {
+        renderDataInputTable();
+    }
 }
+
 
 // 날짜 포맷
 function formatDate(date) {
