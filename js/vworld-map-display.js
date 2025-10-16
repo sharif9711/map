@@ -25,38 +25,50 @@ function vworldJsonpRequest(url) {
 }
 
 // ✅ VWorld 필지 외곽선 요청 (XML → fetch 방식)
+// ✅ JSONP 방식 (CORS 문제 없음)
 async function getParcelBoundary(pnuCode) {
     if (!pnuCode) return null;
 
-    const url = `https://api.vworld.kr/ned/data/getParcel?service=data&request=getParcel&key=${VWORLD_API_KEY}&pnu=${pnuCode}&format=xml`;
+    const url = `https://api.vworld.kr/ned/data/getParcel?service=data&request=getParcel&key=${VWORLD_API_KEY}&pnu=${pnuCode}&format=xml&domain=sharif9711.github.io`;
 
-    try {
-        const response = await fetch(url);
-        const xmlText = await response.text();
+    return new Promise((resolve, reject) => {
+        const callbackName = 'jsonp_cb_' + Math.random().toString(36).substr(2, 9);
 
-        const parser = new DOMParser();
-        const xmlDoc = parser.parseFromString(xmlText, "text/xml");
-        const coordNode = xmlDoc.querySelector("polygon");
+        window[callbackName] = (data) => {
+            try {
+                const parser = new DOMParser();
+                const xmlDoc = parser.parseFromString(data, "text/xml");
+                const coordNode = xmlDoc.querySelector("polygon");
+                if (!coordNode) {
+                    console.warn('⚠️ polygon 데이터 없음:', pnuCode);
+                    resolve(null);
+                    return;
+                }
 
-        if (!coordNode) {
-            console.warn('⚠️ polygon 데이터 없음:', pnuCode);
-            return null;
-        }
+                const coordText = coordNode.textContent.trim();
+                const coordPairs = coordText.split(' ').map(p => p.split(',').map(Number));
 
-        const coordText = coordNode.textContent.trim();
-        const coordPairs = coordText.split(' ').map(p => p.split(',').map(Number));
+                const polygon = new ol.geom.Polygon([coordPairs]);
+                resolve(polygon);
+            } catch (err) {
+                console.error('XML 파싱 오류:', err);
+                resolve(null);
+            } finally {
+                delete window[callbackName];
+                document.body.removeChild(script);
+            }
+        };
 
-        if (coordPairs.length === 0) {
-            console.warn('⚠️ 좌표 없음:', pnuCode);
-            return null;
-        }
-
-        const polygon = new ol.geom.Polygon([coordPairs]);
-        return polygon;
-    } catch (err) {
-        console.error('❌ 필지 외곽선 요청 오류:', err);
-        return null;
-    }
+        const script = document.createElement('script');
+        script.src = `${url}&callback=${callbackName}`;
+        script.onerror = () => {
+            console.error('JSONP(XML) 요청 실패:', pnuCode);
+            delete window[callbackName];
+            document.body.removeChild(script);
+            resolve(null);
+        };
+        document.body.appendChild(script);
+    });
 }
 
 
