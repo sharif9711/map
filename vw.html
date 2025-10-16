@@ -1,141 +1,172 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta charset="utf-8">
-<title>브이월드 2D 항공영상 지도11 (주소 자동 인식)</title>
-
-<!-- ✅ 브이월드 SDK -->
-<script src="https://map.vworld.kr/js/vworldMapInit.js.do?version=2.0&apiKey=BE552462-0744-32DB-81E7-1B7317390D68"></script>
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-
-<style>
-body { margin:0; font-family:Arial,sans-serif; }
-#topbar {
-  background:#0b69a3; color:white; padding:10px;
-  display:flex; align-items:center; gap:10px;
-}
-#addrInput { flex:1; padding:6px; border:1px solid #ccc; border-radius:4px; }
-button {
-  background:#ff8a00; color:white; border:none;
-  padding:6px 12px; border-radius:4px; cursor:pointer;
-}
-#map { width:100%; height:90vh; }
-#info { padding:8px; background:#f5f5f5; font-size:14px; }
-</style>
-</head>
-
-<body>
-  <div id="topbar">
-    <span>주소 입력:</span>
-    <input id="addrInput" placeholder="예: 광주광역시 광산구 송도로트 202 또는 전라남도 해남군 북평면 동해길 43-36">
-    <button id="searchBtn">찾기</button>
-    <button id="resetBtn">초기화</button>
-  </div>
-  <div id="map"></div>
-  <div id="info">지도 준비 중...</div>
-
-<script>
-const apiKey = "BE552462-0744-32DB-81E7-1B7317390D68";
-let vmap, markerLayer;
-
-// ✅ 지도 초기화 (항공영상)
-function initMap() {
-  vw.ol3.MapOptions = {
-    basemapType: vw.ol3.BasemapType.PHOTO, // 항공영상 지도
-    controlDensity: vw.ol3.DensityType.BASIC,
-    interactionDensity: vw.ol3.DensityType.BASIC,
-    controlsAutoArrange: true
-  };
-
-  vmap = new vw.ol3.Map("map", vw.ol3.MapOptions);
-  markerLayer = new vw.ol3.layer.Marker(vmap);
-  vmap.addLayer(markerLayer);
-
-  $("#info").text("항공영상 지도 준비 완료. 주소를 입력하세요.");
-
-  $("#searchBtn").on("click", searchAddress);
-  $("#resetBtn").on("click", resetMap);
-}
-
-// ✅ 주소 검색 (도로명 → 실패 시 지번 자동 재시도)
-function searchAddress() {
-  const addr = $("#addrInput").val().trim();
-  if (!addr) return alert("주소를 입력하세요.");
-  $("#info").text("주소 좌표 변환 중...");
-
-  requestAddress(addr, "ROAD", function(success, data) {
-    if (success) {
-      const lon = parseFloat(data.x);
-      const lat = parseFloat(data.y);
-      addMarker(lon, lat);
-      $("#info").text(`좌표(${lon}, ${lat})`);
-    } else {
-      $("#info").text("도로명주소 검색 실패, 지번주소로 재시도 중...");
-      requestAddress(addr, "PARCEL", function(success2, data2) {
-        if (success2) {
-          const lon = parseFloat(data2.x);
-          const lat = parseFloat(data2.y);
-          addMarker(lon, lat);
-          $("#info").text(`좌표(${lon}, ${lat})`);
-        } else {
-          $("#info").text("❌ 주소를 찾을 수 없습니다.");
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VWorld 주소 검색 및 필지 경계선 표시</title>
+    <!-- 1. Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        /* 지도 전체 화면 설정 */
+        html, body, #map {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
         }
-      });
-    }
-  });
-}
+        /* 검색창 스타일 */
+        .search-container {
+            position: absolute;
+            top: 20px;
+            left: 50px;
+            z-index: 1000;
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+        }
+        #address-input {
+            width: 250px;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+        }
+        #search-button {
+            padding: 8px 12px;
+            border: none;
+            background-color: #007bff;
+            color: white;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        #search-button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
 
-// ✅ 주소 변환 요청
-function requestAddress(address, type, callback) {
-  $.ajax({
-    url: "https://api.vworld.kr/req/address",
-    dataType: "jsonp",
-    data: {
-      service: "address",
-      request: "getCoord",
-      key: apiKey,
-      type: type, // ROAD 또는 PARCEL
-      format: "json",
-      address: address
-    },
-    success: function(res) {
-      try {
-        const point = res?.response?.result?.point;
-        if (point) callback(true, point);
-        else callback(false, null);
-      } catch (e) { callback(false, null); }
-    },
-    error: function() { callback(false, null); }
-  });
-}
+    <!-- 지도가 표시될 div -->
+    <div id="map"></div>
 
-// ✅ 마커 표시
-function addMarker(lon, lat) {
-  try { markerLayer.removeAll(); } catch (e) {} // 기존 마커 제거
+    <!-- 검색창 UI -->
+    <div class="search-container">
+        <input type="text" id="address-input" placeholder="예) 서울특별시 종로구 세종대로 1">
+        <button id="search-button">검색</button>
+    </div>
 
-  vw.ol3.markerOption = {
-    x: lon,
-    y: lat,
-    epsg: "EPSG:4326",
-    title: "검색 위치",
-    contents: "입력한 주소의 위치입니다.",
-    iconUrl: "https://map.vworld.kr/images/ol3/marker_blue.png"
-  };
-  markerLayer.addMarker(vw.ol3.markerOption);
+    <!-- 2. Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-  const center = ol.proj.transform([lon, lat], "EPSG:4326", "EPSG:900913");
-  vmap.getView().setCenter(center);
-  vmap.getView().setZoom(19);
-}
+    <script>
+        // --- 설정 ---
+        // VWorld API 인증키를 여기에 입력하세요.
+        const VWORD_API_KEY = "YOUR_VWORLD_API_KEY"; 
 
-// ✅ 초기화
-function resetMap() {
-  try { markerLayer.removeAll(); } catch (e) {}
-  $("#info").text("지도 초기화 완료.");
-}
+        // --- 지도 초기화 ---
+        // VWorld 베이스맵 타일 레이어
+        const vworldBaseMap = L.tileLayer(`http://api.vworld.kr/req/wmts/1.0.0/${VWORD_API_KEY}/BaseMap/{z}/{y}/{x}.png`, {
+            maxZoom: 19,
+            attribution: 'VWorld'
+        });
 
-// ✅ 시작
-$(document).ready(initMap);
-</script>
+        // Leaflet 지도 생성
+        const map = L.map('map', {
+            center: [37.5665, 126.9780], // 초기 중심 좌표 (서울시청)
+            zoom: 12,
+            layers: [vworldBaseMap]
+        });
+
+        // 이전 검색 결과를 지우기 위한 변수
+        let currentMarker = null;
+        let currentPolygon = null;
+
+        // --- 핵심 기능 함수 ---
+        /**
+         * 주소를 검색하여 마커와 필지 경계선을 지도에 표시합니다.
+         * @param {string} address - 검색할 주소
+         */
+        async function searchAndDisplay(address) {
+            if (!VWORD_API_KEY || VWORD_API_KEY === "YOUR_VWORLD_API_KEY") {
+                alert("VWorld API 키가 설정되지 않았습니다. 코드를 확인해주세요.");
+                return;
+            }
+
+            try {
+                // --- 1단계: 주소 -> 좌표 변환 (Geocoding) ---
+                const geocodeUrl = `https://api.vworld.kr/req/address?service=address&request=getcoord&version=2.0&crs=epsg:4326&address=${encodeURIComponent(address)}&format=json&type=parcel&key=${VWORD_API_KEY}`;
+                const geoResponse = await fetch(geocodeUrl);
+                const geoResult = await geoResponse.json();
+
+                if (geoResult.response.status !== "OK") {
+                    throw new Error("주소를 찾을 수 없습니다.");
+                }
+
+                const { x: lon, y: lat } = geoResult.response.result.point;
+                console.log(`1단계 성공: 주소 "${address}"의 좌표 -> (${lon}, ${lat})`);
+
+                // --- 이전 결과 지우기 ---
+                if (currentMarker) map.removeLayer(currentMarker);
+                if (currentPolygon) map.removeLayer(currentPolygon);
+
+                // --- 2단계: 마커 표시 ---
+                currentMarker = L.marker([lat, lon]).addTo(map);
+                currentMarker.bindPopup(`<b>${address}</b>`).openPopup();
+
+                // --- 3단계: 좌표 -> 필지 폴리곤 조회 ---
+                const dataUrl = `http://api.vworld.kr/req/data?key=${VWORD_API_KEY}&service=data&version=2.0&request=getfeature&format=json&size=1&page=1&data=LP_PA_CBND_BUBUN&geometry=true&attribute=true&crs=EPSG:4326&geomfilter=POINT(${lon} ${lat})`;
+                const dataResponse = await fetch(dataUrl);
+                const dataResult = await dataResponse.json();
+
+                if (dataResult.response.status !== "OK" || dataResult.response.result.featureCollection.features.length === 0) {
+                    throw new Error("해당 위치에 필지 정보가 없습니다.");
+                }
+
+                const polygonCoords = dataResult.response.result.featureCollection.features[0].geometry.coordinates[0];
+                console.log("3단계 성공: 필지 폴리곤 좌표 조회 완료.");
+
+                // --- 4단계: 필지 경계선 표시 ---
+                // VWorld 좌표 [경도, 위도] -> Leaflet 좌표 [위도, 경도]로 변환
+                const latlngs = polygonCoords.map(coord => [coord[1], coord[0]]);
+                
+                currentPolygon = L.polygon(latlngs, {
+                    color: 'red',       // 테두리 색상
+                    weight: 3,          // 테두리 두께
+                    fillColor: '#ff7800', // 채우기 색상
+                    fillOpacity: 0.3    // 채우기 투명도
+                }).addTo(map);
+
+                // --- 5단계: 지도 시점 조정 ---
+                const group = new L.featureGroup([currentMarker, currentPolygon]);
+                map.fitBounds(group.getBounds().pad(0.005)); // pad로 약간의 여백 추가
+
+            } catch (error) {
+                console.error(error);
+                alert(error.message);
+            }
+        }
+
+        // --- 이벤트 리스너 ---
+        const searchButton = document.getElementById('search-button');
+        const addressInput = document.getElementById('address-input');
+
+        // 검색 버튼 클릭 시
+        searchButton.addEventListener('click', () => {
+            const address = addressInput.value.trim();
+            if (address) {
+                searchAndDisplay(address);
+            } else {
+                alert("주소를 입력해주세요.");
+            }
+        });
+
+        // 입력창에서 Enter 키 누를 시
+        addressInput.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                searchButton.click();
+            }
+        });
+
+    </script>
 </body>
 </html>
