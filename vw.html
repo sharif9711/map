@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="utf-8" />
-  <title>VWorld 주소 → 필지 경계선 표시</title>
+  <title>VWorld 주소 → 필지 경계선 표시 (JSONP 버전)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
     body { margin:0; font-family: Arial, sans-serif; }
@@ -13,7 +13,10 @@
     #info { padding:8px; background:#f5f5f5; font-size:14px; }
   </style>
 
-  <!-- ✅ 최신 VWorld 지도 SDK -->
+  <!-- ✅ jQuery (JSONP용) -->
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+  <!-- ✅ VWorld Map SDK -->
   <script src="https://map.vworld.kr/js/map/OpenLayers.js"></script>
   <script src="https://map.vworld.kr/js/api/map/OpenLayers-Ext.js"></script>
   <script src="https://map.vworld.kr/js/api/vworldMap.js.do?version=2.0&apiKey=BE552462-0744-32DB-81E7-1B7317390D68"></script>
@@ -21,7 +24,7 @@
 <body>
   <div id="top">
     <span>주소 입력:</span>
-    <input id="address" placeholder="예: 전라남도 해남군 북평면 동해길 43-36" />
+    <input id="address" placeholder="예: 전라남도 해남군 북평면 덕도리 233" />
     <button onclick="searchAddress()">찾기</button>
     <button onclick="resetMap()">초기화</button>
   </div>
@@ -32,7 +35,7 @@
     const apiKey = "BE552462-0744-32DB-81E7-1B7317390D68";
     let map, markerLayer, vectorLayer;
 
-    // ✅ 지도 초기화
+    // 지도 초기화
     window.onload = function() {
       map = new vworld.Map("map", {
         basemapType: vworld.BasemapType.GRAPHIC,
@@ -49,80 +52,118 @@
       map.addLayer(vectorLayer);
     };
 
-    // ✅ 주소 검색
-    async function searchAddress() {
-      const address = document.getElementById('address').value.trim();
+    // 주소 검색(JSONP)
+    function searchAddress() {
+      const address = $('#address').val().trim();
       if (!address) { alert('주소를 입력하세요.'); return; }
 
-      document.getElementById('info').innerText = "주소 좌표 검색 중...";
+      $('#info').text('주소 좌표 조회 중...');
 
-      try {
-        // 1️⃣ 주소 → 좌표 변환
-        const geoUrl = `https://api.vworld.kr/req/address?service=address&request=getCoord&type=ROAD&key=${apiKey}&format=json&address=${encodeURIComponent(address)}`;
-        const geoRes = await fetch(geoUrl);
-        const geoJson = await geoRes.json();
-        const point = geoJson?.response?.result?.point;
-        if (!point) throw new Error('좌표를 찾을 수 없습니다.');
-        const lon = parseFloat(point.x);
-        const lat = parseFloat(point.y);
+      // 1️⃣ 주소 → 좌표 변환 (JSONP)
+      $.ajax({
+        url: 'https://api.vworld.kr/req/address',
+        dataType: 'jsonp',
+        data: {
+          service: 'address',
+          request: 'getCoord',
+          key: apiKey,
+          type: 'ROAD',
+          format: 'json',
+          address: address
+        },
+        success: function(res) {
+          try {
+            const point = res.response.result.point;
+            const lon = parseFloat(point.x);
+            const lat = parseFloat(point.y);
 
-        // 마커 추가
-        addMarker(lon, lat, address);
-        map.setCenter(new OpenLayers.LonLat(lon, lat).transform("EPSG:4326", "EPSG:900913"), 18);
+            addMarker(lon, lat, address);
+            map.setCenter(new OpenLayers.LonLat(lon, lat).transform("EPSG:4326", "EPSG:900913"), 18);
 
-        // 2️⃣ 좌표로 PNU 코드 찾기
-        document.getElementById('info').innerText = "PNU 코드 조회 중...";
-        const landUrl = `https://api.vworld.kr/ned/data/getLandCharacteristics?key=${apiKey}&domain=&format=json&numOfRows=1&pageNo=1&geomFilter=point(${lon} ${lat})&stdrYear=2020`;
-        const landRes = await fetch(landUrl);
-        const landJson = await landRes.json();
-        const pnu = landJson?.response?.field?.pnu;
-        if (!pnu) throw new Error('PNU 코드를 찾을 수 없습니다.');
-
-        document.getElementById('info').innerText = `PNU: ${pnu} (필지 경계선 조회 중...)`;
-
-        // 3️⃣ LP_PA_CBND_BUBUN에서 polygon 가져오기
-        const dataUrl = `https://api.vworld.kr/req/data?service=data&request=getFeature&key=${apiKey}&data=LP_PA_CBND_BUBUN&attrFilter=pnu:${pnu}&format=json`;
-        const dataRes = await fetch(dataUrl);
-        const dataJson = await dataRes.json();
-
-        const polygon = dataJson?.response?.result?.featureCollection?.features?.[0]?.properties?.polygon;
-        if (!polygon) throw new Error('경계선 정보를 찾을 수 없습니다.');
-
-        // 4️⃣ polygon 좌표로 경계선 표시
-        drawPolygon(polygon);
-        document.getElementById('info').innerText += " ✅ 경계선 표시 완료!";
-      } catch (err) {
-        console.error(err);
-        document.getElementById('info').innerText = "오류: " + err.message;
-        alert(err.message);
-      }
+            $('#info').text(`좌표: ${lon}, ${lat} → PNU 조회 중...`);
+            getPNU(lon, lat);
+          } catch {
+            alert('좌표를 찾을 수 없습니다.');
+          }
+        },
+        error: () => alert('지오코딩 실패')
+      });
     }
 
-    // ✅ 마커 추가
+    // 2️⃣ PNU 코드 조회 (JSONP)
+    function getPNU(lon, lat) {
+      $.ajax({
+        url: 'https://api.vworld.kr/ned/data/getLandCharacteristics',
+        dataType: 'jsonp',
+        data: {
+          key: apiKey,
+          domain: '',
+          format: 'json',
+          numOfRows: 1,
+          pageNo: 1,
+          geomFilter: `point(${lon} ${lat})`,
+          stdrYear: '2020'
+        },
+        success: function(res) {
+          const pnu = res?.response?.field?.pnu;
+          if (pnu) {
+            $('#info').text(`PNU: ${pnu} → 필지 경계 조회 중...`);
+            getParcelBoundary(pnu);
+          } else {
+            $('#info').text('PNU 코드 없음');
+          }
+        },
+        error: () => $('#info').text('PNU 조회 실패')
+      });
+    }
+
+    // 3️⃣ LP_PA_CBND_BUBUN에서 polygon 가져오기 (JSONP)
+    function getParcelBoundary(pnu) {
+      $.ajax({
+        url: 'https://api.vworld.kr/req/data',
+        dataType: 'jsonp',
+        data: {
+          service: 'data',
+          request: 'getFeature',
+          key: apiKey,
+          data: 'LP_PA_CBND_BUBUN',
+          attrFilter: `pnu:${pnu}`,
+          format: 'json'
+        },
+        success: function(res) {
+          const polygon = res?.response?.result?.featureCollection?.features?.[0]?.properties?.polygon;
+          if (polygon) {
+            drawPolygon(polygon);
+            $('#info').text('✅ 필지 경계선 표시 완료!');
+          } else {
+            $('#info').text('필지 경계 정보 없음');
+          }
+        },
+        error: () => $('#info').text('경계선 데이터 조회 실패')
+      });
+    }
+
+    // 마커 추가
     function addMarker(lon, lat, title) {
       markerLayer.removeAllFeatures();
       const marker = new vworld.Marker(lon, lat, { title });
       markerLayer.addMarker(marker);
     }
 
-    // ✅ polygon (WKT 형식) → 지도에 표시
+    // polygon → 지도 표시
     function drawPolygon(wkt) {
       vectorLayer.removeAllFeatures();
-      const format = new OpenLayers.Format.WKT();
-      const feature = format.read(wkt);
+      const feature = new OpenLayers.Format.WKT().read(wkt);
       feature.geometry.transform("EPSG:4326", "EPSG:900913");
-
       vectorLayer.addFeatures([feature]);
-
-      const bounds = feature.geometry.getBounds();
-      map.zoomToExtent(bounds);
+      map.zoomToExtent(feature.geometry.getBounds());
     }
 
-    // ✅ 초기화
+    // 초기화
     function resetMap() {
       markerLayer.removeAllFeatures();
       vectorLayer.removeAllFeatures();
-      document.getElementById('info').innerText = "지도 초기화 완료.";
+      $('#info').text('지도 초기화 완료.');
     }
   </script>
 </body>
