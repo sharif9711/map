@@ -1,4 +1,6 @@
-﻿// project-detail.js 수정완성본
+﻿// ===============================
+// project-detail.js (완성본)
+// ===============================
 console.log("✅ js/project-detail.js loaded successfully.");
 
 // ===============================
@@ -9,28 +11,71 @@ function showProjectDetail() {
     document.getElementById('projectDetailScreen').classList.add('active');
     document.getElementById('currentProjectName').textContent = currentProject.projectName;
 
-    const mapBtn = document.getElementById('mapViewButton');
-    if (mapBtn) {
-        const mapTypeText = currentProject.mapType === 'vworld' ? 'VWorld' : '카카오맵';
-        mapBtn.innerHTML = `
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path>
-                <circle cx="12" cy="10" r="3"></circle>
-            </svg>
-            지도 (${mapTypeText})
-        `;
-    }
-
     switchTab('자료입력');
     renderDataInputTable();
     renderReportTable();
-    updateMapCount();
 }
 
 function backToList() {
     document.getElementById('projectDetailScreen').classList.remove('active');
     document.getElementById('projectListScreen').classList.add('active');
     currentProject = null;
+}
+
+// ===============================
+// 엑셀형 자료입력 테이블 렌더링
+// ===============================
+function renderDataInputTable() {
+    const tbody = document.getElementById('dataInputTable');
+    if (!tbody || !currentProject) return;
+
+    tbody.innerHTML = currentProject.data.map((row, index) => `
+        <tr class="hover:bg-slate-50">
+            <td class="border border-slate-300 px-2 py-1 text-center text-xs text-slate-700">${row.순번}</td>
+            <td class="border border-slate-300 px-1">
+                <input type="text" value="${row.이름 || ''}"
+                    onchange="updateCellAndRefresh('${row.id}', '이름', this.value)"
+                    onpaste="handlePaste(event, ${index}, '이름')"
+                    class="w-full px-2 py-1 text-xs rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </td>
+            <td class="border border-slate-300 px-1">
+                <input type="text" value="${row.연락처 || ''}"
+                    onchange="updateCellAndRefresh('${row.id}', '연락처', this.value)"
+                    onpaste="handlePaste(event, ${index}, '연락처')"
+                    class="w-full px-2 py-1 text-xs rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </td>
+            <td class="border border-slate-300 px-1">
+                <input type="text" value="${row.주소 || ''}"
+                    onchange="updateCellAndRefresh('${row.id}', '주소', this.value)"
+                    onpaste="handlePaste(event, ${index}, '주소')"
+                    class="w-full px-2 py-1 text-xs rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </td>
+        </tr>
+    `).join('');
+}
+
+// 셀 값 변경 시 데이터 반영
+function updateCellAndRefresh(id, field, value) {
+    const row = currentProject.data.find(r => r.id === id);
+    if (row) row[field] = value;
+}
+
+// 붙여넣기 처리
+function handlePaste(event, rowIndex, field) {
+    event.preventDefault();
+    const text = (event.clipboardData || window.clipboardData).getData('text');
+    const lines = text.trim().split('\n').map(line => line.split('\t'));
+
+    for (let i = 0; i < lines.length; i++) {
+        const row = currentProject.data[rowIndex + i];
+        if (!row) continue;
+        const cols = lines[i];
+        row.이름 = cols[0] || row.이름;
+        row.연락처 = cols[1] || row.연락처;
+        row.주소 = cols[2] || row.주소;
+    }
+
+    renderDataInputTable();
 }
 
 // ===============================
@@ -46,8 +91,7 @@ function switchTab(tabName) {
             if (tab === tabName) {
                 tabBtn.classList.add('text-blue-600', 'border-b-2', 'border-blue-600');
                 content.style.display = 'block';
-                if (tab === '지도') onMapTabActivated();
-                if (tab === '보고서') fetchLandInfoForReport(true); // ✅ 자동 시 PNU 없는 행만 조회
+                if (tab === '보고서') fetchLandInfoForReport(true);
             } else {
                 tabBtn.classList.remove('text-blue-600', 'border-b-2', 'border-blue-600');
                 content.style.display = 'none';
@@ -57,7 +101,7 @@ function switchTab(tabName) {
 }
 
 // ===============================
-// 보고서 탭 - PNU 없는 행만 조회
+// PNU 없는 행만 토지정보 수집
 // ===============================
 async function fetchLandInfoForReport(autoMode = false) {
     if (!currentProject) return;
@@ -72,7 +116,6 @@ async function fetchLandInfoForReport(autoMode = false) {
         return;
     }
 
-    // 진행 표시바 생성
     let progressBar = document.getElementById('progressBar');
     if (!progressBar) {
         progressBar = document.createElement('div');
@@ -108,7 +151,6 @@ async function fetchLandInfoForReport(autoMode = false) {
         await new Promise(r => setTimeout(r, 400));
     }
 
-    // 저장 및 렌더링
     const idx = projects.findIndex(p => p.id === currentProject.id);
     if (idx !== -1) projects[idx] = currentProject;
     if (typeof renderReportTable === 'function') renderReportTable();
@@ -160,7 +202,7 @@ function downloadExcel() {
 }
 
 // ===============================
-// 기존 VWorld + Kakao 주소 조회 함수 유지
+// VWorld API 상세조회 함수
 // ===============================
 async function getAddressDetailInfo(address) {
     if (!address || address.trim() === "") return null;
