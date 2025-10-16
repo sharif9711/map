@@ -2,10 +2,11 @@
 <html lang="ko">
 <head>
 <meta charset="utf-8">
-<title>브이월드 2D 항공영상 지도</title>
+<title>브이월드 2D 항공영상 지도11 (주소 자동 인식)</title>
 
-<!-- ✅ 브이월드 2.0 SDK -->
+<!-- ✅ 브이월드 SDK -->
 <script src="https://map.vworld.kr/js/vworldMapInit.js.do?version=2.0&apiKey=BE552462-0744-32DB-81E7-1B7317390D68"></script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
 <style>
 body { margin:0; font-family:Arial,sans-serif; }
@@ -26,32 +27,27 @@ button {
 <body>
   <div id="topbar">
     <span>주소 입력:</span>
-    <input id="addrInput" placeholder="예: 전라남도 해남군 북평면 동해길 43-36">
+    <input id="addrInput" placeholder="예: 광주광역시 광산구 송도로트 202 또는 전라남도 해남군 북평면 동해길 43-36">
     <button id="searchBtn">찾기</button>
     <button id="resetBtn">초기화</button>
   </div>
   <div id="map"></div>
   <div id="info">지도 준비 중...</div>
 
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
 const apiKey = "BE552462-0744-32DB-81E7-1B7317390D68";
 let vmap, markerLayer;
 
-// ✅ 지도 초기화 (항공영상 2D)
+// ✅ 지도 초기화 (항공영상)
 function initMap() {
   vw.ol3.MapOptions = {
-    basemapType: vw.ol3.BasemapType.PHOTO, // ✅ 항공영상(위성지도)
+    basemapType: vw.ol3.BasemapType.PHOTO, // 항공영상 지도
     controlDensity: vw.ol3.DensityType.BASIC,
     interactionDensity: vw.ol3.DensityType.BASIC,
-    controlsAutoArrange: true,
-    homePosition: vw.ol3.CameraPosition, 
-    initPosition: vw.ol3.CameraPosition
+    controlsAutoArrange: true
   };
 
   vmap = new vw.ol3.Map("map", vw.ol3.MapOptions);
-
-  // ✅ 마커 레이어 생성
   markerLayer = new vw.ol3.layer.Marker(vmap);
   vmap.addLayer(markerLayer);
 
@@ -61,12 +57,36 @@ function initMap() {
   $("#resetBtn").on("click", resetMap);
 }
 
-// ✅ 주소 검색
+// ✅ 주소 검색 (도로명 → 실패 시 지번 자동 재시도)
 function searchAddress() {
   const addr = $("#addrInput").val().trim();
   if (!addr) return alert("주소를 입력하세요.");
   $("#info").text("주소 좌표 변환 중...");
 
+  requestAddress(addr, "ROAD", function(success, data) {
+    if (success) {
+      const lon = parseFloat(data.x);
+      const lat = parseFloat(data.y);
+      addMarker(lon, lat);
+      $("#info").text(`좌표(${lon}, ${lat})`);
+    } else {
+      $("#info").text("도로명주소 검색 실패, 지번주소로 재시도 중...");
+      requestAddress(addr, "PARCEL", function(success2, data2) {
+        if (success2) {
+          const lon = parseFloat(data2.x);
+          const lat = parseFloat(data2.y);
+          addMarker(lon, lat);
+          $("#info").text(`좌표(${lon}, ${lat})`);
+        } else {
+          $("#info").text("❌ 주소를 찾을 수 없습니다.");
+        }
+      });
+    }
+  });
+}
+
+// ✅ 주소 변환 요청
+function requestAddress(address, type, callback) {
   $.ajax({
     url: "https://api.vworld.kr/req/address",
     dataType: "jsonp",
@@ -74,27 +94,29 @@ function searchAddress() {
       service: "address",
       request: "getCoord",
       key: apiKey,
-      type: "ROAD",
+      type: type, // ROAD 또는 PARCEL
       format: "json",
-      address: addr
+      address: address
     },
     success: function(res) {
-      const point = res?.response?.result?.point;
-      if (!point) return $("#info").text("주소를 찾을 수 없습니다.");
-      const lon = parseFloat(point.x);
-      const lat = parseFloat(point.y);
-      addMarker(lon, lat);
-      $("#info").text(`좌표(${lon}, ${lat})`);
+      try {
+        const point = res?.response?.result?.point;
+        if (point) callback(true, point);
+        else callback(false, null);
+      } catch (e) { callback(false, null); }
     },
-    error: () => $("#info").text("주소 변환 실패")
+    error: function() { callback(false, null); }
   });
 }
 
 // ✅ 마커 표시
 function addMarker(lon, lat) {
-  markerLayer.clear();
+  try { markerLayer.removeAll(); } catch (e) {} // 기존 마커 제거
+
   vw.ol3.markerOption = {
-    x: lon, y: lat, epsg: "EPSG:4326",
+    x: lon,
+    y: lat,
+    epsg: "EPSG:4326",
     title: "검색 위치",
     contents: "입력한 주소의 위치입니다.",
     iconUrl: "https://map.vworld.kr/images/ol3/marker_blue.png"
@@ -108,11 +130,11 @@ function addMarker(lon, lat) {
 
 // ✅ 초기화
 function resetMap() {
-  markerLayer.clear();
+  try { markerLayer.removeAll(); } catch (e) {}
   $("#info").text("지도 초기화 완료.");
 }
 
-// ✅ 실행
+// ✅ 시작
 $(document).ready(initMap);
 </script>
 </body>
