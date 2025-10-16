@@ -27,7 +27,7 @@ function vworldJsonpRequest(url) {
 // 지번 외곽선 요청
 async function getParcelBoundary(pnuCode) {
     if (!pnuCode) return null;
-    const url = `https://api.vworld.kr/ned/data/getParcel?service=data&request=getParcel&format=json&key=${VWORLD_API_KEY}&pnu=${pnuCode}&domain=localhost`;
+    const url = `https://api.vworld.kr/ned/data/getParcel?service=data&request=getParcel&format=json&key=${VWORLD_API_KEY}&pnu=${pnuCode}&domain=sharif9711.github.io`;
 
     try {
         const data = await vworldJsonpRequest(url);
