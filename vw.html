@@ -60,7 +60,7 @@
 
     <script>
         // --- 설정 ---
-        // VWorld API 인증키를 여기에 입력하세요.
+        // VWorld API 인증키 (사용자 키로 적용 완료)
         const VWORD_API_KEY = "BE552462-0744-32DB-81E7-1B7317390D68"; 
 
         // --- 지도 초기화 ---
@@ -87,11 +87,6 @@
          * @param {string} address - 검색할 주소
          */
         async function searchAndDisplay(address) {
-            if (!VWORD_API_KEY || VWORD_API_KEY === "YOUR_VWORLD_API_KEY") {
-                alert("VWorld API 키가 설정되지 않았습니다. 코드를 확인해주세요.");
-                return;
-            }
-
             try {
                 // --- 1단계: 주소 -> 좌표 변환 (Geocoding) ---
                 const geocodeUrl = `https://api.vworld.kr/req/address?service=address&request=getcoord&version=2.0&crs=epsg:4326&address=${encodeURIComponent(address)}&format=json&type=parcel&key=${VWORD_API_KEY}`;
