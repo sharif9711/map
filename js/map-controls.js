@@ -81,12 +81,20 @@ function updateMarkerList() {
     }).join('');
 }
 
-// 특정 마커로 포커스
+// 특정 마커로 포커스 - ✅ 수정: 디버깅 로그 추가
 function focusOnMarker(index) {
-    if (index < 0 || index >= markerListData.length) return;
+    console.log(`🟡 [focusOnMarker] 호출됨, index: ${index}`);
+    console.log(' - markerListData:', markerListData);
+
+    if (index < 0 || index >= markerListData.length) {
+        console.error('❌ 유효하지 않은 마커 인덱스:', index);
+        return;
+    }
     
     const item = markerListData[index];
     const mapType = currentProject.mapType || 'kakao';
+    console.log(` - 이동할 마커 정보:`, item);
+    console.log(` - 지도 타입: ${mapType}`);
     
     if (mapType === 'kakao') {
         if (item.lat && item.lng && kakaoMap) {
@@ -95,14 +103,24 @@ function focusOnMarker(index) {
             kakaoMap.setLevel(3);
         }
     } else if (mapType === 'vworld') {
-        if (item.lat && item.lng && vworldMap) {
-            const position = ol.proj.fromLonLat([item.lng, item.lat]);
-            vworldMap.getView().animate({
-                center: position,
-                zoom: 17,
-                duration: 500
-            });
+        if (!vworldMap) {
+            console.error('❌ VWorld 지도 객체가 없습니다.');
+            return;
         }
+        if (!item.lat || !item.lng) {
+            console.error('❌ 마커에 좌표 정보가 없습니다.', item);
+            return;
+        }
+        
+        const position = ol.proj.fromLonLat([item.lng, item.lat]);
+        console.log(' - 이동할 좌표 (EPSG:3857):', position);
+        
+        vworldMap.getView().animate({
+            center: position,
+            zoom: 17,
+            duration: 500
+        });
+        console.log('✅ VWorld 지도 이동 명령 실행 완료');
     }
 }
 
@@ -592,8 +610,12 @@ async function drawRoadRoute(start, waypoints) {
 
 // VWorld 경로 그리기 (OSRM 사용) - ✅ 핵심 수정: zIndex 변경
 async function drawVWorldRoute(start, waypoints) {
+    console.log('🔵 [drawVWorldRoute] 함수 시작');
+    console.log(' - 시작점:', start);
+    console.log(' - 경유지:', waypoints);
+
     if (!vworldMap) {
-        console.error('오류: VWorld 지도가 초기화되지 않음.');
+        console.error('❌ VWorld 지도가 초기화되지 않음.');
         showMapMessage('지도가 초기화되지 않았습니다.', 'error');
         return;
     }
@@ -603,74 +625,60 @@ async function drawVWorldRoute(start, waypoints) {
     
     // 시작점 추가
     pathCoords.push(ol.proj.fromLonLat([start.lng, start.lat]));
+    console.log(' - 시작점 좌표 추가 완료');
     
     // 각 구간을 OSRM으로 경로 찾기
     for (let i = 0; i < allPoints.length - 1; i++) {
         const origin = allPoints[i];
         const destination = allPoints[i + 1];
+        console.log(` - [${i+1}/${allPoints.length-1}] 구간 경로 탐색 중...`);
         
         try {
             const url = `https://router.project-osrm.org/route/v1/driving/${origin.lng},${origin.lat};${destination.lng},${destination.lat}?overview=full&geometries=geojson`;
-            
             const response = await fetch(url);
             
             if (response.ok) {
                 const data = await response.json();
-                
                 if (data.routes && data.routes[0] && data.routes[0].geometry) {
                     const coordinates = data.routes[0].geometry.coordinates;
-                    
-                    coordinates.forEach(coord => {
-                        pathCoords.push(ol.proj.fromLonLat(coord));
-                    });
+                    coordinates.forEach(coord => pathCoords.push(ol.proj.fromLonLat(coord)));
+                    console.log(`   ✅ OSRM 경로 탐색 성공 (${coordinates.length}개 좌표)`);
                 } else {
+                    console.warn(`   ⚠️ OSRM 경로 없음. 직선으로 연결.`);
                     pathCoords.push(ol.proj.fromLonLat([destination.lng, destination.lat]));
                 }
             } else {
+                console.warn(`   ⚠️ OSRM API 실패. 직선으로 연결.`);
                 pathCoords.push(ol.proj.fromLonLat([destination.lng, destination.lat]));
             }
         } catch (error) {
-            console.error('OSRM routing error:', error);
+            console.error(`   ❌ OSRM 오류. 직선으로 연결.`, error);
             pathCoords.push(ol.proj.fromLonLat([destination.lng, destination.lat]));
         }
-        
         await new Promise(resolve => setTimeout(resolve, 200));
     }
     
+    console.log(` - 최종 경로 좌표 수: ${pathCoords.length}`);
+    
     if (pathCoords.length < 2) {
+        console.error('❌ 경로를 그릴 좌표가 부족합니다.');
         showMapMessage('경로를 그릴 수 없습니다.', 'error');
         return;
     }
     
     // 경로 선 생성
     const routeLine = new ol.geom.LineString(pathCoords);
-    
-    const routeFeature = new ol.Feature({
-        geometry: routeLine
-    });
-    
+    const routeFeature = new ol.Feature({ geometry: routeLine });
     const routeStyle = new ol.style.Style({
-        stroke: new ol.style.Stroke({
-            color: '#4A90E2',
-            width: 6,
-            lineCap: 'round',
-            lineJoin: 'round'
-        })
+        stroke: new ol.style.Stroke({ color: '#4A90E2', width: 6, lineCap: 'round', lineJoin: 'round' })
     });
-    
     routeFeature.setStyle(routeStyle);
+    const vectorSource = new ol.source.Vector({ features: [routeFeature] });
     
-    const vectorSource = new ol.source.Vector({
-        features: [routeFeature]
-    });
-    
-    // ✅ 핵심 수정: zIndex를 10으로 높여 필지 경계선(z-index: 5)보다 위에 표시되도록 함
-    vworldRouteLayer = new ol.layer.Vector({
-        source: vectorSource,
-        zIndex: 10 
-    });
-    
+    // ✅ 핵심 수정: zIndex를 15로 높여 필지 경계선(z-index: 5)보다 위에 표시되도록 함
+    vworldRouteLayer = new ol.layer.Vector({ source: vectorSource, zIndex: 15 });
     vworldMap.addLayer(vworldRouteLayer);
+    console.log('✅ VWorld 경로 레이어가 지도에 추가됨 (z-index: 15)');
     
     // 순번 마커 추가
     if (!vworldRouteMarkers) vworldRouteMarkers = [];
@@ -705,6 +713,7 @@ async function drawVWorldRoute(start, waypoints) {
         vworldMap.addOverlay(markerOverlay);
         vworldRouteMarkers.push(markerOverlay);
     });
+    console.log('✅ [drawVWorldRoute] 완료');
 }
 
 // 지도 메시지 표시
