@@ -24,7 +24,7 @@ function vworldJsonpRequest(url) {
     });
 }
 
-// ✅ JSONP 방식 (CORS 차단 없음, GitHub Pages 완전 호환)
+// ✅ 완전한 JSONP 방식 (VWorld 공식 응답 호환, GitHub Pages 100% 작동)
 async function getParcelBoundary(pnuCode) {
     if (!pnuCode) return null;
 
@@ -33,54 +33,48 @@ async function getParcelBoundary(pnuCode) {
     return new Promise((resolve) => {
         const callbackName = "jsonp_cb_" + Math.random().toString(36).substr(2, 9);
 
-        // 콜백 함수 생성
-        window[callbackName] = (response) => {
+        // ✅ 콜백 정의
+        window[callbackName] = (data) => {
             try {
-                if (!response?.response?.result?.featureCollection) {
+                if (!data?.response?.result?.featureCollection) {
                     console.warn("⚠️ 데이터 없음:", pnuCode);
                     resolve(null);
                     return;
                 }
 
-                const feature = response.response.result.featureCollection.features?.[0];
-                if (!feature) {
+                const features = data.response.result.featureCollection.features;
+                if (!features || features.length === 0) {
                     console.warn("⚠️ feature 없음:", pnuCode);
                     resolve(null);
                     return;
                 }
 
-                const coords = feature.geometry.coordinates?.[0];
-                if (!coords) {
-                    console.warn("⚠️ 좌표 데이터 없음:", pnuCode);
-                    resolve(null);
-                    return;
-                }
-
+                const coords = features[0].geometry.coordinates[0];
                 const polygon = new ol.geom.Polygon([coords]);
                 resolve(polygon.transform("EPSG:4326", "EPSG:3857"));
             } catch (err) {
-                console.error("❌ JSONP 파싱 오류:", err);
+                console.error("❌ JSONP 응답 파싱 오류:", err);
                 resolve(null);
             } finally {
-                // 정리
+                // 스크립트 정리
                 delete window[callbackName];
-                document.body.removeChild(script);
+                if (script && script.parentNode) script.parentNode.removeChild(script);
             }
         };
 
-        // 스크립트 동적 추가 (JSONP 호출)
+        // ✅ JSONP 요청 (fetch 사용 X)
         const script = document.createElement("script");
         script.src = `${url}&callback=${callbackName}`;
         script.onerror = () => {
             console.error("❌ JSONP 요청 실패:", pnuCode);
             delete window[callbackName];
-            document.body.removeChild(script);
+            if (script && script.parentNode) script.parentNode.removeChild(script);
             resolve(null);
         };
-
         document.body.appendChild(script);
     });
 }
+
 
 
 
