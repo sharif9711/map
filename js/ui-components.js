@@ -363,3 +363,44 @@ function getCreateModalHTML() {
         </div>
     `;
 }
+
+
+// === 상단 진행바 + 알림 ===
+function createProgressAndToastUI() {
+    const bar = document.createElement('div');
+    bar.id = 'progressBar';
+    bar.style.cssText = `
+        position: fixed; top: 0; left: 0; height: 5px;
+        width: 0%; background: linear-gradient(90deg,#3b82f6,#8b5cf6);
+        z-index: 9999; transition: width 0.3s ease;
+    `;
+    document.body.appendChild(bar);
+
+    const toast = document.createElement('div');
+    toast.id = 'toastMessage';
+    toast.style.cssText = `
+        position: fixed; top: 15px; right: 20px; 
+        background: rgba(30,41,59,0.9); color: #fff; 
+        padding: 10px 16px; border-radius: 8px; 
+        font-size: 14px; font-weight: 600; 
+        box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        opacity: 0; pointer-events: none; z-index: 10000;
+        transition: opacity 0.4s ease;
+    `;
+    document.body.appendChild(toast);
+}
+
+function showProgress(percent) {
+    const bar = document.getElementById('progressBar');
+    if (bar) bar.style.width = percent + '%';
+}
+
+function showToast(message, duration = 2500) {
+    const toast = document.getElementById('toastMessage');
+    if (!toast) return;
+    toast.textContent = message;
+    toast.style.opacity = '1';
+    setTimeout(() => {
+        toast.style.opacity = '0';
+    }, duration);
+}
