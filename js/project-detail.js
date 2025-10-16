@@ -173,8 +173,8 @@ async function getAddressDetailInfo(address) {
         }
     }
 
-    // ✅ 4️⃣ 카카오맵: 주소 → 우편번호 조회
-    const zipCode = await getKakaoPostalCode(address);
+    // ✅ 4️⃣ 우체국: 주소 → 우편번호 조회
+    const zipCode = await getPostOfficePostalCode(address);
     if (zipCode) {
         console.log(` - 우편번호 조회 성공: ${zipCode}`);
     }
@@ -335,43 +335,53 @@ function getVWorldLandCharacteristics(pnu) {
     });
 }
 
-// 카카오맵: 주소 -> 우편번호
-function getKakaoPostalCode(address) {
+// 우체국 우편번호 API 사용 (카카오 대신)
+function getPostOfficePostalCode(address) {
     return new Promise((resolve) => {
-        // 1️⃣ 카카오맵 API가 로드되었는지 확인
-        if (typeof kakao === 'undefined' || 
-            typeof kakao.maps === 'undefined' || 
-            typeof kakao.maps.services === 'undefined') {
-            console.warn("Kakao Maps API is not loaded. Cannot fetch postal code.");
+        const API_KEY = 'a1199b81cbb627fb81760591690282';
+        
+        // 주소에서 검색어 추출 (시/도, 시/군/구, 동/읍/면)
+        const addressParts = address.split(' ').filter(p => p.trim() !== '');
+        if (addressParts.length < 2) {
+            console.warn(' - 주소가 너무 짧아 우편번호 검색 불가');
             resolve(null);
             return;
         }
-
-        // 2️⃣ Geocoder 객체가 없으면 새로 생성
-        if (!window.kakaoGeocoder) {
-            try {
-                window.kakaoGeocoder = new kakao.maps.services.Geocoder();
-                console.log(' - Kakao Geocoder 생성 완료');
-            } catch (error) {
-                console.error(' - Kakao Geocoder 생성 실패:', error);
-                resolve(null);
-                return;
-            }
-        }
-
-        // 3️⃣ 주소 검색 실행
-        window.kakaoGeocoder.addressSearch(address, (result, status) => {
-            if (status === kakao.maps.services.Status.OK && result[0]) {
-                const zip = result[0].road_address?.zone_no || 
-                           result[0].address?.zip_code;
-                if (zip) {
-                    console.log(` - 카카오 우편번호 찾음: ${zip}`);
+        
+        // 처음 2-3개 단어만 사용 (예: "전남 강진군 남")
+        const searchQuery = addressParts.slice(0, 3).join(' ');
+        
+        $.ajax({
+            type: "get",
+            dataType: "json",
+            url: "https://business.juso.go.kr/addrlink/addrLinkApi.do",
+            data: {
+                confmKey: API_KEY,
+                currentPage: 1,
+                countPerPage: 1,
+                keyword: searchQuery,
+                resultType: "json"
+            },
+            success: (data) => {
+                console.log(' - 우체국 우편번호 조회 응답:', data);
+                
+                if (data.results && data.results.common && data.results.common.errorCode === "0") {
+                    const juso = data.results.juso;
+                    if (juso && juso.length > 0) {
+                        const zipCode = juso[0].zipNo;
+                        console.log(` - 우편번호 찾음: ${zipCode}`);
+                        resolve(zipCode);
+                    } else {
+                        console.warn(' - 검색 결과 없음');
+                        resolve(null);
+                    }
                 } else {
-                    console.warn(' - 카카오 우편번호 없음');
+                    console.warn(' - 우체국 API 오류:', data.results?.common?.errorMessage);
+                    resolve(null);
                 }
-                resolve(zip || null);
-            } else {
-                console.warn(`Kakao address search failed for "${address}" with status:`, status);
+            },
+            error: (xhr, status, error) => {
+                console.error(' - 우체국 우편번호 조회 실패:', error);
                 resolve(null);
             }
         });
