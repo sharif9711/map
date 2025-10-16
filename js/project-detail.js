@@ -1,126 +1,184 @@
-// ================================
 // ✅ project-detail.js
-// 지도 프로젝트 상세 화면 기능
-// ================================
-
-// 전역 변수
-let currentProject = null;
-let projectData = [];
-let gridInstance = null;
 
 // ================================
-// ✅ 프로젝트 데이터 불러오기
+// 프로젝트 상세화면 표시 함수
 // ================================
-async function loadProjectDetail(projectId) {
-    try {
-        const { data, error } = await supabase
-            .from('project-detail')
-            .select('*')
-            .eq('project_id', projectId)
-            .order('id', { ascending: true });
+function showProjectDetail() {
+    document.getElementById('projectListScreen').classList.remove('active');
+    document.getElementById('projectDetailScreen').classList.add('active');
 
-        if (error) throw error;
-        projectData = data || [];
-        renderProjectTable(projectData);
-        console.log(`✅ ${projectData.length}행 불러옴`);
-    } catch (err) {
-        console.error('❌ 프로젝트 상세 불러오기 실패:', err);
-        showToast('프로젝트 데이터를 불러오지 못했습니다.');
+    const projectNameElement = document.getElementById('currentProjectName');
+    if (projectNameElement && currentProject) {
+        projectNameElement.textContent = currentProject.projectName;
     }
+
+    // 기본 탭은 자료입력
+    switchTab('자료입력');
+
+    if (typeof renderDataInputTable === 'function') renderDataInputTable();
+    if (typeof renderReportTable === 'function') renderReportTable();
+
+    console.log('✅ Project detail view opened for:', currentProject.projectName);
 }
 
 // ================================
-// ✅ 보고서 테이블(Grid) 렌더링
+// 탭 전환
 // ================================
-function renderProjectTable(data) {
-    const table = document.getElementById('reportTableBody');
-    table.innerHTML = '';
+function switchTab(tabName) {
+    const tabs = ['자료입력', '보고서', '연결'];
+    tabs.forEach(name => {
+        document.getElementById(`content-${name}`).style.display =
+            name === tabName ? 'block' : 'none';
+        const tabButton = document.getElementById(`tab-${name}`);
+        if (tabButton) {
+            tabButton.classList.toggle('text-blue-600', name === tabName);
+            tabButton.classList.toggle('border-blue-600', name === tabName);
+            tabButton.classList.toggle('text-slate-600', name !== tabName);
+            tabButton.classList.toggle('border-transparent', name !== tabName);
+        }
+    });
+}
 
-    if (!data || data.length === 0) {
-        table.innerHTML = `<tr><td colspan="10" style="text-align:center;">데이터가 없습니다.</td></tr>`;
-        return;
-    }
+// ================================
+// 자료입력 테이블 렌더링
+// ================================
+function renderDataInputTable() {
+    const tableBody = document.getElementById('dataInputTable');
+    if (!tableBody || !currentProject) return;
+    tableBody.innerHTML = '';
 
-    // 실제 데이터 행 수만큼만 표시 (기존 1500행 제거)
-    const rowCount = data.length;
-    for (let i = 0; i < rowCount; i++) {
-        const row = data[i];
+    currentProject.data.forEach((row, i) => {
         const tr = document.createElement('tr');
-
         tr.innerHTML = `
-            <td>${i + 1}</td>
-            <td>${row.이름 || ''}</td>
-            <td>${row.주소 || ''}</td>
-            <td>${pad4(row.본번)}</td>
-            <td>${pad4(row.부번)}</td>
-            <td>${row.지목 || ''}</td>
-            <td>${row.면적 || ''}</td>
-            <td>${row.상태 || ''}</td>
-            <td>${row.메모 || ''}</td>
+            <td class="border border-slate-300 px-3 py-1 text-sm text-center">${row.순번}</td>
+            <td class="border border-slate-300 px-3 py-1 text-sm">
+                <input type="text" class="w-full px-2 py-1 border border-slate-300 rounded"
+                       value="${row.이름 || ''}" 
+                       onchange="updateCell('${row.id}', '이름', this.value)">
+            </td>
+            <td class="border border-slate-300 px-3 py-1 text-sm">
+                <input type="text" class="w-full px-2 py-1 border border-slate-300 rounded"
+                       value="${row.연락처 || ''}" 
+                       onchange="updateCell('${row.id}', '연락처', this.value)">
+            </td>
+            <td class="border border-slate-300 px-3 py-1 text-sm">
+                <input type="text" class="w-full px-2 py-1 border border-slate-300 rounded"
+                       value="${row.주소 || ''}" 
+                       onchange="updateCell('${row.id}', '주소', this.value)">
+            </td>
         `;
-
-        table.appendChild(tr);
-    }
+        tableBody.appendChild(tr);
+    });
 }
 
 // ================================
-// ✅ 숫자를 4자리 문자열로 변환 (예: 1 → 0001)
+// 보고서 테이블 렌더링
 // ================================
-function pad4(value) {
-    if (value === null || value === undefined || value === '') return '';
-    const str = value.toString();
-    return str.padStart(4, '0');
+function renderReportTable() {
+    const tableBody = document.getElementById('reportTable');
+    if (!tableBody || !currentProject) return;
+    tableBody.innerHTML = '';
+
+    currentProject.data.forEach(row => {
+        if (!row.주소 || row.주소.trim() === '') return;
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td class="border border-slate-300 px-2 py-1 text-center">${row.순번}</td>
+            <td class="border border-slate-300 px-2 py-1">${row.이름 || ''}</td>
+            <td class="border border-slate-300 px-2 py-1">${row.연락처 || ''}</td>
+            <td class="border border-slate-300 px-2 py-1">${row.주소 || ''}</td>
+            <td class="border border-slate-300 px-2 py-1">${row.우편번호 || ''}</td>
+            <td class="border border-slate-300 px-2 py-1">${row.상태 || ''}</td>
+            <td class="border border-slate-300 px-2 py-1">${row.법정동코드 || ''}</td>
+            <td class="border border-slate-300 px-2 py-1">${row.pnu코드 || ''}</td>
+            <td class="border border-slate-300 px-2 py-1">${row.대장구분 || ''}</td>
+            <td class="border border-slate-300 px-2 py-1">${row.본번 || ''}</td>
+            <td class="border border-slate-300 px-2 py-1">${row.부번 || ''}</td>
+            <td class="border border-slate-300 px-2 py-1">${row.지목 || ''}</td>
+            <td class="border border-slate-300 px-2 py-1">${row.면적 || ''}</td>
+            <td class="border border-slate-300 px-2 py-1">${row.기록사항 || ''}</td>
+        `;
+        tableBody.appendChild(tr);
+    });
 }
 
 // ================================
-// ✅ 엑셀 다운로드 기능 (보고서)
+// PNU 코드 없는 행만 조회
 // ================================
-function downloadExcel() {
-    if (!projectData || projectData.length === 0) {
-        showToast('⚠️ 다운로드할 데이터가 없습니다.');
+async function fetchLandInfoForReport() {
+    if (!currentProject || !currentProject.data) return;
+
+    const rowsToFetch = currentProject.data.filter(r => !r.pnu코드 || r.pnu코드.trim() === '');
+    if (rowsToFetch.length === 0) {
+        showToast('✅ 모든 행에 PNU 코드가 이미 있습니다.');
         return;
     }
 
-    const worksheetData = projectData.map((row, idx) => ({
-        순번: idx + 1,
-        이름: row.이름 || '',
-        주소: row.주소 || '',
-        본번: pad4(row.본번),
-        부번: pad4(row.부번),
-        지목: row.지목 || '',
-        면적: row.면적 || '',
-        상태: row.상태 || '',
-        메모: row.메모 || '',
-    }));
+    // 진행 막대
+    const progressBar = document.getElementById('progressBar');
+    if (progressBar) {
+        progressBar.style.width = '0%';
+        progressBar.parentElement.style.display = 'block';
+    }
 
-    const ws = XLSX.utils.json_to_sheet(worksheetData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, '보고서');
-    XLSX.writeFile(wb, `토지_보고서_${new Date().toISOString().slice(0, 10)}.xlsx`);
-    console.log('✅ 엑셀 다운로드 완료');
+    for (let i = 0; i < rowsToFetch.length; i++) {
+        const row = rowsToFetch[i];
+        try {
+            const info = await getAddressDetailInfo(row.주소);
+            if (info) {
+                row.pnu코드 = info.pnu;
+                row.지목 = info.jimok;
+                row.면적 = info.area;
+                row.본번 = info.main;
+                row.부번 = info.sub;
+                row.법정동코드 = info.pnu ? info.pnu.substring(0, 10) : '';
+            }
+        } catch (e) {
+            console.error('토지 정보 조회 실패:', e);
+        }
+
+        if (progressBar) {
+            const percent = Math.round(((i + 1) / rowsToFetch.length) * 100);
+            progressBar.style.width = percent + '%';
+        }
+    }
+
+    renderReportTable();
+    showToast(`📍 PNU 없는 ${rowsToFetch.length}건의 토지정보 조회 완료`);
 }
 
 // ================================
-// ✅ UI 이벤트 연결
+// PNU, 지목, 면적 조회 (VWorld API 사용)
 // ================================
-document.addEventListener('DOMContentLoaded', () => {
-    const downloadBtn = document.getElementById('btnExcelDownload');
-    if (downloadBtn) {
-        downloadBtn.addEventListener('click', downloadExcel);
+async function getAddressDetailInfo(address) {
+    const key = 'BE552462-0744-32DB-81E7-1B7317390D68';
+    const url = `https://api.vworld.kr/ned/data/getLandCharacteristics?pnu=${encodeURIComponent(address)}&stdrYear=2017&format=json&numOfRows=10&pageNo=1&key=${key}`;
+
+    try {
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (data && data.response && data.response.result && data.response.result.featureCollection) {
+            const field = data.response.result.featureCollection.features[0].properties;
+            return {
+                pnu: field.pnu || '',
+                jimok: field.jimok || '',
+                area: field.area || '',
+                main: field.bonbun || '',
+                sub: field.bubun || ''
+            };
+        }
+    } catch (err) {
+        console.error('Error fetching VWorld land info:', err);
     }
-
-    // 프로젝트 선택 후 불러오기
-    const projectId = localStorage.getItem('selectedProjectId');
-    if (projectId) loadProjectDetail(projectId);
-});
+    return null;
+}
 
 // ================================
-// ✅ 유틸리티 함수
+// 목록으로 돌아가기
 // ================================
-function showToast(msg) {
-    const toast = document.getElementById('toast');
-    if (!toast) return;
-    toast.innerText = msg;
-    toast.style.display = 'block';
-    setTimeout(() => (toast.style.display = 'none'), 2500);
+function backToList() {
+    document.getElementById('projectDetailScreen').classList.remove('active');
+    document.getElementById('projectListScreen').classList.add('active');
 }
