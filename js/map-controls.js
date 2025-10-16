@@ -253,12 +253,6 @@ function toggleMyLocation() {
                             <div style="position: absolute;top: 50%;left: 50%;transform: translate(-50%, -50%);width: 24px;height: 24px;background: rgba(66, 133, 244, 0.5);border-radius: 50%;border: 3px solid white;box-shadow: 0 2px 8px rgba(0,0,0,0.3);"></div>
                             <div style="position: absolute;top: 50%;left: 50%;transform: translate(-50%, -50%);width: 12px;height: 12px;background: #4285F4;border-radius: 50%;border: 2px solid white;"></div>
                         </div>
-                        <style>
-                            @keyframes pulse {
-                                0% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
-                                100% { transform: translate(-50%, -50%) scale(2); opacity: 0; }
-                            }
-                        </style>
                     `;
                     
                     myLocationMarker = new ol.Overlay({
@@ -360,16 +354,23 @@ function checkDuplicateAddresses(addresses) {
 async function calculateOptimalRoute() {
     const btn = document.getElementById('optimalRouteBtn');
     
+    // ✅ 디버깅 로그 1: 최적경로 함수 시작
+    console.log('--- 최적경로 계산 시작 ---');
+    console.log('1. 현재 프로젝트:', currentProject);
+    console.log('2. markerListData:', markerListData);
+    console.log('3. 현재 위치(myCurrentLocation):', myCurrentLocation);
+
     if (!currentProject) {
         showMapMessage('프로젝트를 먼저 선택해주세요.', 'warning');
         return;
     }
     
     const mapType = currentProject.mapType || 'kakao';
+    console.log('4. 지도 타입:', mapType);
     
     // 이미 경로가 표시되어 있으면 제거 (OFF)
     if (isRouteActive) {
-        // 경로 제거
+        console.log('경로 제거 모드');
         if (mapType === 'kakao') {
             if (routePolyline) {
                 routePolyline.setMap(null);
@@ -403,19 +404,23 @@ async function calculateOptimalRoute() {
     // 경로 계산 시작 (ON)
     if (!myCurrentLocation) {
         showMapMessage('먼저 GPS 버튼을 눌러 현재 위치를 설정해주세요.', 'warning');
+        console.error('오류: 현재 위치가 설정되지 않음.');
         return;
     }
     
     if (markerListData.length === 0) {
-        showMapMessage('표시할 마커가 없습니다.', 'warning');
+        showMapMessage('표시할 마커가 없습니다. 지도를 새로고침해주세요.', 'warning');
+        console.error('오류: markerListData가 비어있음.');
         return;
     }
     
     // 예정 상태인 마커만 필터링
     const pendingMarkers = markerListData.filter(marker => marker.상태 === '예정');
+    console.log('5. 예정 상태인 마커:', pendingMarkers);
     
     if (pendingMarkers.length === 0) {
         showMapMessage('예정 상태인 마커가 없습니다. (완료/보류 제외)', 'warning');
+        console.error('오류: 예정 상태인 마커가 없음.');
         return;
     }
     
@@ -460,6 +465,8 @@ async function calculateOptimalRoute() {
             };
         }
     }
+    
+    console.log('6. 계산된 경로 순서:', routeOrder);
     
     // 경로 그리기 (지도 유형별)
     try {
@@ -599,8 +606,18 @@ async function drawRoadRoute(start, waypoints) {
     });
 }
 
-// VWorld 경로 그리기 (OSRM 사용)
+// VWorld 경로 그리기 (OSRM 사용) - ✅ 디버깅 로그 추가
 async function drawVWorldRoute(start, waypoints) {
+    console.log('--- VWorld 경로 그리기 시작 ---');
+    console.log('시작점:', start);
+    console.log('경유지:', waypoints);
+
+    if (!vworldMap) {
+        console.error('오류: VWorld 지도가 초기화되지 않음.');
+        showMapMessage('지도가 초기화되지 않았습니다.', 'error');
+        return;
+    }
+
     const allPoints = [start, ...waypoints];
     const pathCoords = [];
     
@@ -615,6 +632,7 @@ async function drawVWorldRoute(start, waypoints) {
         try {
             // OSRM API 호출 (무료 공개 서버)
             const url = `https://router.project-osrm.org/route/v1/driving/${origin.lng},${origin.lat};${destination.lng},${destination.lat}?overview=full&geometries=geojson`;
+            console.log(`OSRM 요청 URL: ${url}`);
             
             const response = await fetch(url);
             
@@ -629,13 +647,15 @@ async function drawVWorldRoute(start, waypoints) {
                         pathCoords.push(ol.proj.fromLonLat(coord));
                     });
                     
-                    console.log(`OSRM route segment ${i + 1}: ${coordinates.length} points`);
+                    console.log(`OSRM 경로 구간 ${i + 1} 성공: ${coordinates.length}개 좌표`);
                 } else {
                     // OSRM 실패 시 직선으로
+                    console.warn(`OSRM 경로 구간 ${i + 1} 실패. 직선으로 연결.`);
                     pathCoords.push(ol.proj.fromLonLat([destination.lng, destination.lat]));
                 }
             } else {
                 // API 실패 시 직선으로
+                console.warn(`OSRM API 응답 실패. 상태 코드: ${response.status}. 직선으로 연결.`);
                 pathCoords.push(ol.proj.fromLonLat([destination.lng, destination.lat]));
             }
         } catch (error) {
@@ -648,7 +668,12 @@ async function drawVWorldRoute(start, waypoints) {
         await new Promise(resolve => setTimeout(resolve, 200));
     }
     
-    console.log('Total route points:', pathCoords.length);
+    console.log('총 경로 좌표 수:', pathCoords.length);
+    
+    if (pathCoords.length < 2) {
+        showMapMessage('경로를 그릴 수 없습니다.', 'error');
+        return;
+    }
     
     // 경로 선 생성
     const routeLine = new ol.geom.LineString(pathCoords);
@@ -678,8 +703,10 @@ async function drawVWorldRoute(start, waypoints) {
     });
     
     vworldMap.addLayer(vworldRouteLayer);
+    console.log('VWorld 경로 레이어가 지도에 추가되었습니다.');
     
     // 순번 마커 추가
+    if (!vworldRouteMarkers) vworldRouteMarkers = [];
     waypoints.forEach((point, index) => {
         const markerElement = document.createElement('div');
         markerElement.innerHTML = `
@@ -711,6 +738,7 @@ async function drawVWorldRoute(start, waypoints) {
         vworldMap.addOverlay(markerOverlay);
         vworldRouteMarkers.push(markerOverlay);
     });
+    console.log('VWorld 경로 순번 마커가 추가되었습니다.');
 }
 
 // 지도 메시지 표시
