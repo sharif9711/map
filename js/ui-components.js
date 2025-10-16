@@ -53,7 +53,8 @@ function getProjectListHTML() {
 function getProjectDetailHTML() {
     return `
         <div id="normalView">
-            <header class="border-b border-slate-300/50 bg-white/50 backdrop-blur-sm sticky top-0 z-10">
+            <!-- ✅ 수정: z-20 클래스를 추가하여 다른 UI 요소보다 위에 표시되도록 함 -->
+            <header class="border-b border-slate-300/50 bg-white/90 backdrop-blur-sm sticky top-0 z-20">
                 <div class="container mx-auto px-4 py-4">
                     <div class="flex items-center justify-between">
                         <button onclick="backToList()" class="p-2 hover:bg-slate-100 rounded-lg transition-colors" title="프로젝트 목록으로">
@@ -195,7 +196,8 @@ function getProjectDetailHTML() {
 
         <!-- 지도 뷰 -->
         <div id="mapView" style="display: none;">
-            <header class="border-b border-slate-300/50 bg-white/90 backdrop-blur-sm sticky top-0 z-10">
+            <!-- ✅ 수정: z-20 클래스를 추가하여 다른 UI 요소보다 위에 표시되도록 함 -->
+            <header class="border-b border-slate-300/50 bg-white/90 backdrop-blur-sm sticky top-0 z-20">
                 <div class="container mx-auto px-4 py-4">
                     <div class="flex items-center justify-between">
                         <button onclick="hideMapView()" class="p-2 hover:bg-slate-100 rounded-lg transition-colors" title="돌아가기">
@@ -205,7 +207,7 @@ function getProjectDetailHTML() {
                             </svg>
                         </button>
                         <h1 class="text-xl font-bold text-slate-900">지도</h1>
-                        <button onclick="if(currentProject && currentProject.data) { displayProjectOnKakaoMap(currentProject.data); } else { console.log('No project data'); }" class="px-4 py-2 text-sm bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-colors">
+                        <button onclick="if(currentProject && currentProject.data) { if(currentProject.mapType === 'vworld') { displayProjectOnVWorldMap(currentProject.data); } else { displayProjectOnKakaoMap(currentProject.data); } } else { console.log('No project data'); } }" class="px-4 py-2 text-sm bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-colors">
                             주소 새로고침
                         </button>
                     </div>
