@@ -1,10 +1,7 @@
-/*
- * vworld-map-display.js
- * v3.8.6_final - GitHub Pages / CORB 완전 대응 버전
- * by ChatGPT
- */
+// vworld-map-display.js (v3.8.6_final)
+// 기존 const VWORLD_API_KEY 선언 제거
+const VWORLD_PROXY = "https://api.allorigins.win/get?url=";
 
-const VWORLD_API_KEY = "BE552462-0744-32DB-81E7-1B7317390D68";
 
 // ✅ 공통 Proxy URL (allorigins.win 사용)
 const VWORLD_PROXY = "https://api.allorigins.win/get?url=";
