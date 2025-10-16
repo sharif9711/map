@@ -71,8 +71,8 @@ function addVWorldMarker(coordinate, label, status, rowData, isDuplicate, marker
         labelOverlay = new ol.Overlay({
             position: position,
             element: labelElement,
-            positioning: 'top-center',
-            offset: [0, 5],
+            positioning: 'bottom-center',
+            offset: [0, -45], // ✅ 수정: vworld-map-display.js와 위치 통일
             stopEvent: false
         });
 
@@ -95,7 +95,7 @@ function clearVWorldMarkers() {
     vworldMarkers = [];
 }
 
-// 상태 변경 (VWorld용) - ✅ 수정: 라벨 오버레이까지 완벽하게 관리
+// 상태 변경 (VWorld용) - ✅ 수정: 오버레이를 제거/생성 대신 내용만 교체
 function changeVWorldMarkerStatus(markerIndex, newStatus) {
     if (!currentProject || !vworldMarkers[markerIndex]) return;
     
@@ -111,50 +111,21 @@ function changeVWorldMarkerStatus(markerIndex, newStatus) {
     const projectIndex = projects.findIndex(p => p.id === currentProject.id);
     if (projectIndex !== -1) projects[projectIndex] = currentProject;
     
-    // ✅ 수정: 기존 마커와 라벨 모두 제거
-    const oldOverlays = vworldMarkers[markerIndex];
-    vworldMap.removeOverlay(oldOverlays.marker);
-    if (oldOverlays.labelOverlay) {
-        vworldMap.removeOverlay(oldOverlays.labelOverlay);
-    }
-
-    // ✅ 수정: 새로운 마커와 라벨 생성 및 추가
-    const position = ol.proj.fromLonLat([markerData.lng || markerData.lon, markerData.lat]);
-    
+    // ✅ 핵심 수정: 오버레이를 새로 만드는 대신 기존 오버레이의 HTML만 교체
+    const existingMarkerOverlay = vworldMarkers[markerIndex].marker;
     const newMarkerElement = createVWorldMarker(
         { lon: markerData.lng || markerData.lon, lat: markerData.lat },
         markerData.순번,
         newStatus
     );
     
-    newMarkerElement.onclick = () => showBottomInfoPanelVWorld(markerData, markerIndex);
+    // 기존 오버레이의 내용을 새로운 HTML로 교체
+    existingMarkerOverlay.getElement().innerHTML = newMarkerElement.innerHTML;
+    // 클릭 이벤트도 다시 바인딩
+    existingMarkerOverlay.getElement().onclick = () => showBottomInfoPanelVWorld(markerData, markerIndex);
     
-    const newMarker = new ol.Overlay({
-        position: position,
-        element: newMarkerElement,
-        positioning: 'bottom-center',
-        stopEvent: false
-    });
-    vworldMap.addOverlay(newMarker);
-
-    let newLabelOverlay = null;
-    if (showLabels) {
-        const labelEl = document.createElement('div');
-        labelEl.textContent = markerData.이름 || '이름없음';
-        labelEl.style.cssText = `background: rgba(255,255,255,0.9); color: #1e293b; font-size: 12px; font-weight: 700; padding: 3px 8px; border-radius: 12px; white-space: nowrap; box-shadow: 0 2px 5px rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.8); pointer-events: none;`;
-        
-        newLabelOverlay = new ol.Overlay({
-            position: position,
-            element: labelEl,
-            positioning: 'top-center',
-            offset: [0, 5],
-            stopEvent: false
-        });
-        vworldMap.addOverlay(newLabelOverlay);
-    }
-
-    // ✅ 수정: vworldMarkers 배열의 정보를 새 오버레이로 업데이트
-    vworldMarkers[markerIndex] = { marker: newMarker, labelOverlay: newLabelOverlay, rowData: markerData };
+    // vworldMarkers 배열의 데이터만 업데이트
+    vworldMarkers[markerIndex].rowData = markerData;
     
     showBottomInfoPanelVWorld(markerData, markerIndex);
 }
