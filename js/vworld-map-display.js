@@ -1,3 +1,40 @@
+// excelExport.js 내용을 여기에 통합
+function downloadExcel() {
+    if (!currentProject || !currentProject.data) return;
+
+    // 실제 데이터가 입력된 행만 필터링 (이름, 연락처, 주소 중 하나라도 있으면)
+    const filteredData = currentProject.data.filter(row => 
+        row.이름 || row.연락처 || row.주소
+    );
+
+    // id 필드 제거하고 엑셀용 데이터 생성
+    const excelData = filteredData.map(row => {
+        const { id, ...rowWithoutId } = row; // id 제거
+        
+        // 메모 배열을 문자열로 변환
+        if (rowWithoutId.메모 && Array.isArray(rowWithoutId.메모)) {
+            rowWithoutId.메모 = rowWithoutId.메모
+                .map((m, i) => `${i + 1}. ${m.내용} (${m.시간})`)
+                .join('\n');
+        }
+        
+        return rowWithoutId;
+    });
+
+    if (excelData.length === 0) {
+        showToast('⚠️ 다운로드할 데이터가 없습니다.');
+        return;
+    }
+
+    const worksheet = XLSX.utils.json_to_sheet(excelData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "토지정보");
+
+    const filename = `${currentProject.projectName || 'project'}_report.xlsx`;
+    XLSX.writeFile(workbook, filename);
+
+    showToast(`📄 ${excelData.length}개 행이 다운로드되었습니다.`);
+}
 // VWorld 지도 표시 및 프로젝트 데이터 렌더링 (개선 버전)
 
 // 프로젝트 데이터로 지도에 마커 표시
