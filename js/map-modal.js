@@ -5,22 +5,18 @@ function showMapView() {
     document.getElementById('mapView').style.display = 'block';
     
     const mapType = currentProject.mapType || 'kakao';
-    const parcelControl = document.getElementById('vworldParcelControl'); // ✅ 추가
     
     console.log('showMapView called, mapType:', mapType);
     
+    // 지도 초기화 (충분한 지연 시간)
     setTimeout(() => {
         console.log('Initializing map, type:', mapType);
         
         if (mapType === 'kakao') {
+            // 카카오맵 표시, VWorld 숨기기
             document.getElementById('kakaoMap').style.display = 'block';
             if (document.getElementById('vworldMap')) {
                 document.getElementById('vworldMap').style.display = 'none';
-            }
-            
-            // ✅ 필지 버튼 숨김 (카카오맵은 지원 안함)
-            if (parcelControl) {
-                parcelControl.style.display = 'none';
             }
             
             if (!kakaoMap) {
@@ -31,6 +27,7 @@ function showMapView() {
                 }
             }
             
+            // 지도 초기화 후 자동으로 마커 표시
             setTimeout(() => {
                 if (currentProject && currentProject.data && typeof displayProjectOnKakaoMap === 'function') {
                     console.log('Auto-displaying markers on Kakao map...');
@@ -38,14 +35,11 @@ function showMapView() {
                 }
             }, 500);
         } else if (mapType === 'vworld') {
+            // VWorld 표시, 카카오맵 숨기기
             document.getElementById('kakaoMap').style.display = 'none';
             
-            // ✅ 필지 버튼 표시 (VWorld만 지원)
-            if (parcelControl) {
-                parcelControl.style.display = 'block';
-            }
-            
             if (!document.getElementById('vworldMap')) {
+                // VWorld 지도 컨테이너 생성
                 const mapView = document.getElementById('mapView');
                 const mapContainer = mapView.querySelector('[style*="height: calc"]');
                 const vworldDiv = document.createElement('div');
@@ -55,10 +49,12 @@ function showMapView() {
                 
                 console.log('VWorld container created');
                 
+                // 컨테이너 생성 후 지도 초기화
                 setTimeout(() => {
                     initVWorldMap();
                     initParcelLayer(); // ✅ 필지 레이어 초기화
                     
+                    // 지도 초기화 후 마커 표시 (시간 증가)
                     setTimeout(() => {
                         if (currentProject && currentProject.data && typeof displayProjectOnVWorldMap === 'function') {
                             console.log('Auto-displaying markers on VWorld map...');
@@ -73,6 +69,7 @@ function showMapView() {
                     initVWorldMap();
                     initParcelLayer(); // ✅ 필지 레이어 초기화
                     
+                    // 지도 초기화 후 마커 표시 (시간 증가)
                     setTimeout(() => {
                         if (currentProject && currentProject.data && typeof displayProjectOnVWorldMap === 'function') {
                             console.log('Auto-displaying markers on VWorld map...');
@@ -80,11 +77,12 @@ function showMapView() {
                         }
                     }, 2000);
                 } else {
-                    // ✅ 필지 레이어 확인
+                    // 이미 지도가 있으면 필지 레이어만 확인
                     if (!parcelLayer) {
                         initParcelLayer();
                     }
                     
+                    // 즉시 마커 표시
                     setTimeout(() => {
                         if (currentProject && currentProject.data && typeof displayProjectOnVWorldMap === 'function') {
                             console.log('Displaying markers on existing VWorld map...');
@@ -101,15 +99,8 @@ function hideMapView() {
     document.getElementById('mapView').style.display = 'none';
     document.getElementById('normalView').style.display = 'block';
     
-    // ✅ 필지 외곽선 초기화
-    if (typeof isParcelBoundaryVisible !== 'undefined' && isParcelBoundaryVisible) {
+    // 필지 외곽선 초기화 (뷰를 나갈 때 정리)
+    if (typeof clearParcelBoundaries === 'function') {
         clearParcelBoundaries();
-        isParcelBoundaryVisible = false;
-        const btn = document.getElementById('toggleParcelBtn');
-        if (btn) {
-            btn.classList.remove('bg-green-600', 'text-white');
-            btn.classList.add('bg-white', 'text-slate-700');
-            btn.textContent = '📐 필지외곽선';
-        }
     }
 }
