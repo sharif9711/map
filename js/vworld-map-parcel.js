@@ -13,7 +13,7 @@ function getParcelStyle(status) {
             width: 3
         }),
         fill: new ol.style.Fill({
-            color: colors.main.replace(')', ', 0.2)').replace('rgb', 'rgba')
+            color: colors.main.replace(')', ', 0.05)').replace('rgb', 'rgba')
         })
     });
 }
