@@ -75,7 +75,7 @@ function initVWorldMap() {
                         url: 'https://api.vworld.kr/req/wmts/1.0.0/' + VWORLD_API_KEY + '/gray/{z}/{y}/{x}.png',
                         crossOrigin: 'anonymous'
                     }),
-                    opacity: 0.9,
+                    opacity: 0.4,
                     zIndex: 1
                 }),
                 // 라벨(지명) 레이어
