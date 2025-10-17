@@ -1,6 +1,4 @@
-// ==============================
-// VWorld 지도 초기화 및 필지 외곽선 데이터 요청
-// ==============================
+// VWorld 지도 초기화 및 기본 설정
 
 var vworldMap = null;
 var vworldMarkers = [];
@@ -10,19 +8,20 @@ var vworldRouteMarkers = [];
 var parcelBoundaryLayer = null;
 const VWORLD_API_KEY = 'BE552462-0744-32DB-81E7-1B7317390D68';
 
-// JSONP 카운터
+// JSONP 콜백 함수를 위한 글로벌 카운터
 let vworldCallbackId = 0;
 
-// JSONP 방식 (주소좌표 변환용)
+// JSONP 방식으로 VWorld API 호출 (CORS 우회)
 function vworldJsonp(url) {
     return new Promise((resolve, reject) => {
         const callbackName = 'vworldCallback' + vworldCallbackId++;
-        window[callbackName] = function (data) {
+        
+        window[callbackName] = function(data) {
             delete window[callbackName];
             document.body.removeChild(script);
             resolve(data);
         };
-
+        
         const script = document.createElement('script');
         script.src = url + '&callback=' + callbackName;
         script.onerror = () => {
@@ -30,9 +29,9 @@ function vworldJsonp(url) {
             document.body.removeChild(script);
             reject(new Error('JSONP request failed'));
         };
-
+        
         document.body.appendChild(script);
-
+        
         setTimeout(() => {
             if (window[callbackName]) {
                 delete window[callbackName];
@@ -45,9 +44,7 @@ function vworldJsonp(url) {
     });
 }
 
-// ==============================
-// 지도 초기화 (항공영상 + 지적도 + 라벨)
-// ==============================
+// 지도 초기화 (위성 영상 + 라벨)
 function initVWorldMap() {
     const mapContainer = document.getElementById('vworldMap');
     if (!mapContainer) {
@@ -64,6 +61,7 @@ function initVWorldMap() {
         vworldMap = new ol.Map({
             target: 'vworldMap',
             layers: [
+                // VWorld 기본 위성 영상
                 new ol.layer.Tile({
                     source: new ol.source.XYZ({
                         url: 'https://api.vworld.kr/req/wmts/1.0.0/' + VWORLD_API_KEY + '/Satellite/{z}/{y}/{x}.jpeg',
@@ -71,6 +69,7 @@ function initVWorldMap() {
                     }),
                     zIndex: 0
                 }),
+                // VWorld 기본 지번도 (gray - 지적 경계 포함)
                 new ol.layer.Tile({
                     source: new ol.source.XYZ({
                         url: 'https://api.vworld.kr/req/wmts/1.0.0/' + VWORLD_API_KEY + '/gray/{z}/{y}/{x}.png',
@@ -79,6 +78,7 @@ function initVWorldMap() {
                     opacity: 0.4,
                     zIndex: 1
                 }),
+                // 라벨(지명) 레이어
                 new ol.layer.Tile({
                     source: new ol.source.XYZ({
                         url: 'https://api.vworld.kr/req/wmts/1.0.0/' + VWORLD_API_KEY + '/Hybrid/{z}/{y}/{x}.png',
@@ -94,31 +94,81 @@ function initVWorldMap() {
             }),
             controls: [
                 new ol.control.Zoom(),
+                new ol.control.Attribution(),
                 new ol.control.FullScreen(),
                 new ol.control.ScaleLine()
             ]
         });
 
-        console.log('✅ VWorld map initialized successfully');
+        console.log('✅ VWorld map initialized with default layers');
+        
     } catch (error) {
         console.error('❌ Failed to initialize VWorld map:', error);
     }
 }
 
-// ==============================
-// 필지 외곽선 GeoJSON 요청
-// ==============================
-async function getParcelBoundaryGeoJSON(pnu) {
-    try {
-        const url = `https://api.vworld.kr/req/data?service=data&version=2.0&request=GetFeature&type=LP_PA_CBND_BUBUN&format=geojson&key=${VWORLD_API_KEY}&domain=sharif9711.github.io&crs=EPSG:4326&attrFilter=pnu:like:${pnu}`;
-        const response = await fetch(url);
-        if (!response.ok) throw new Error('WFS 요청 실패');
-        const data = await response.json();
-        if (data && data.features && data.features.length > 0) {
-            return data.features[0];
-        }
-    } catch (err) {
-        console.warn('❌ 필지 외곽선 요청 실패:', pnu, err);
+// VWorld 기본 지번도 사용
+function showParcelBoundaries() {
+    if (!vworldMap) {
+        console.error('VWorld map not initialized for parcel boundaries');
+        return;
     }
+    
+    // 이미 레이어가 있으면 제거
+    if (parcelBoundaryLayer) {
+        vworldMap.removeLayer(parcelBoundaryLayer);
+        parcelBoundaryLayer = null;
+    }
+    
+    try {
+        console.log('🗺️ Adding VWorld default parcel layer...');
+        
+        // VWorld에서 제공하는 기본 지적도 레이어
+        parcelBoundaryLayer = new ol.layer.Tile({
+            source: new ol.source.XYZ({
+                url: 'https://api.vworld.kr/req/wmts/1.0.0/' + VWORLD_API_KEY + '/gray/{z}/{y}/{x}.png',
+                crossOrigin: 'anonymous'
+            }),
+            opacity: 0.4,
+            zIndex: 1,
+            visible: true
+        });
+        
+        vworldMap.addLayer(parcelBoundaryLayer);
+        console.log('✅ VWorld default parcel layer added');
+        
+    } catch (error) {
+        console.error('❌ Failed to add parcel layer:', error);
+    }
+}
+
+// 주소를 좌표로 변환 (JSONP 방식으로 변경)
+async function geocodeAddressVWorld(address) {
+    if (!address || address.trim() === '') {
+        return null;
+    }
+
+    try {
+        const url = 'https://api.vworld.kr/req/address?service=address&request=getcoord&version=2.0&crs=epsg:4326&address=' + encodeURIComponent(address) + '&refine=true&simple=false&format=json&type=road&key=' + VWORLD_API_KEY;
+        
+        const data = await vworldJsonp(url);
+
+        if (data && data.response && data.response.status === 'OK' && data.response.result) {
+            const point = data.response.result.point;
+            return {
+                lon: parseFloat(point.x),
+                lat: parseFloat(point.y),
+                address: address
+            };
+        }
+    } catch (error) {
+        console.error('Geocoding error for address:', address, error);
+    }
+    
     return null;
 }
+
+// ===================================================================
+// 참고: getAddressDetailInfo 함수는 이제 js/project-detail.js 파일에 있습니다.
+// 이 파일에서는 더 이상 관리하지 않습니다.
+// ===================================================================

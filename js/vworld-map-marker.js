@@ -1,122 +1,159 @@
-// ==============================
-// VWorld 마커 및 필지 외곽선 표시
-// ==============================
+// VWorld 마커 생성 및 관리
 
-let vworldMarkerLayer = null;
-let vworldPolygonLayer = null;
+// VWorld 기본 마커 사용 (간단한 핀 모양)
+function createVWorldMarker(coordinate, 순번, status) {
+    let color = '#3b82f6';  // 파란색
+    if (status === '완료') color = '#10b981';  // 초록색
+    if (status === '보류') color = '#f59e0b';  // 주황색
 
-// 상태별 색상
-function getStatusColor(status) {
-    if (status === '완료') return '#10b981';
-    if (status === '보류') return '#f59e0b';
-    return '#3b82f6'; // 기본 파랑
+    const markerElement = document.createElement('div');
+    markerElement.innerHTML = `
+        <div style="
+            position: relative;
+            cursor: pointer;
+            transform: translate(-50%, -100%);
+        ">
+            <!-- 기본 핀 모양 -->
+            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="40" viewBox="0 0 32 40">
+                <path d="M16 0 C7.16 0 0 7.16 0 16 C0 24 16 40 16 40 C16 40 32 24 32 16 C32 7.16 24.84 0 16 0 Z" 
+                      fill="${color}" 
+                      stroke="#fff" 
+                      stroke-width="2"/>
+                <circle cx="16" cy="16" r="8" fill="white" opacity="0.9"/>
+                <text x="16" y="20" 
+                      font-family="Arial" 
+                      font-size="10" 
+                      font-weight="bold" 
+                      fill="${color}" 
+                      text-anchor="middle">${순번}</text>
+            </svg>
+        </div>
+    `;
+
+    return markerElement;
 }
 
-// 마커 스타일
-function getVWorldMarkerStyle(rowData, isDuplicate) {
-    const baseColor = getStatusColor(rowData.상태);
-
-    return new ol.style.Style({
-        image: new ol.style.Icon({
-            src: `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='32' height='40' viewBox='0 0 32 40'>
-                <path d='M16 0 C7.16 0 0 7.16 0 16 C0 24 16 40 16 40 C16 40 32 24 32 16 C32 7.16 24.84 0 16 0 Z' 
-                      fill='${baseColor}' stroke='white' stroke-width='2'/>
-                <circle cx='16' cy='16' r='8' fill='white' opacity='0.9'/>
-                <text x='16' y='20' font-family='Arial' font-size='10' font-weight='bold' fill='${baseColor}' text-anchor='middle'>${rowData.순번}</text>
-            </svg>`,
-            scale: 1,
-            anchor: [0.5, 1]
-        }),
-        text: new ol.style.Text({
-            text: rowData.이름 || '이름없음',
-            offsetY: -45,
-            font: 'bold 12px Arial',
-            fill: new ol.style.Fill({ color: isDuplicate ? '#fff' : '#1e293b' }),
-            backgroundFill: new ol.style.Fill({
-                color: isDuplicate ? 'rgba(239,68,68,0.9)' : 'rgba(255,255,255,0.9)'
-            }),
-            padding: [4, 8, 4, 8],
-            textAlign: 'center',
-            placement: 'point'
-        })
-    });
-}
-
-// 외곽선 스타일
-function getParcelPolygonStyle(status) {
-    const color = getStatusColor(status);
-    return new ol.style.Style({
-        stroke: new ol.style.Stroke({
-            color: color,
-            width: 3
-        }),
-        fill: new ol.style.Fill({
-            color: 'rgba(0,0,0,0.05)'
-        })
-    });
-}
-
-// 마커 + 외곽선 추가
-async function addVWorldMarker(coordinate, label, status, rowData, isDuplicate, markerIndex) {
-    if (!vworldMap) return null;
-
-    // 레이어 생성
-    if (!vworldMarkerLayer) {
-        vworldMarkerLayer = new ol.layer.Vector({
-            source: new ol.source.Vector(),
-            zIndex: 7
-        });
-        vworldMap.addLayer(vworldMarkerLayer);
+// 마커 추가 (간소화)
+function addVWorldMarker(coordinate, label, status, rowData, isDuplicate, markerIndex) {
+    if (!vworldMap) {
+        console.error('VWorld map not initialized');
+        return null;
     }
 
-    if (!vworldPolygonLayer) {
-        vworldPolygonLayer = new ol.layer.Vector({
-            source: new ol.source.Vector(),
-            zIndex: 6
-        });
-        vworldMap.addLayer(vworldPolygonLayer);
-    }
-
-    // 마커 생성
-    const feature = new ol.Feature({
-        geometry: new ol.geom.Point(ol.proj.fromLonLat([coordinate.lon, coordinate.lat])),
-        rowData
+    const markerElement = createVWorldMarker(coordinate, rowData.순번, status);
+    
+    const position = ol.proj.fromLonLat([coordinate.lon, coordinate.lat]);
+    
+    const marker = new ol.Overlay({
+        position: position,
+        element: markerElement,
+        positioning: 'bottom-center',
+        stopEvent: false
     });
-    feature.setStyle(getVWorldMarkerStyle(rowData, isDuplicate));
-    vworldMarkerLayer.getSource().addFeature(feature);
-    vworldMarkers.push({ feature, rowData });
 
-    // 필지 외곽선
-    if (rowData.PNU코드 && rowData.PNU코드.trim() !== '') {
-        const parcel = await getParcelBoundaryGeoJSON(rowData.PNU코드.trim());
-        if (parcel && parcel.geometry && parcel.geometry.coordinates) {
-            const polygon = new ol.geom.Polygon(parcel.geometry.coordinates);
-            polygon.transform('EPSG:4326', 'EPSG:3857');
-
-            const polygonFeature = new ol.Feature({
-                geometry: polygon,
-                rowData
-            });
-            polygonFeature.setStyle(getParcelPolygonStyle(rowData.상태));
-            vworldPolygonLayer.getSource().addFeature(polygonFeature);
-        }
-    }
+    vworldMap.addOverlay(marker);
 
     // 클릭 이벤트
-    vworldMap.on('click', function (evt) {
-        vworldMap.forEachFeatureAtPixel(evt.pixel, function (clickedFeature) {
-            if (clickedFeature === feature) {
-                showBottomInfoPanelVWorld(rowData, markerIndex);
-            }
-        });
-    });
+    markerElement.onclick = () => {
+        showBottomInfoPanelVWorld(rowData, markerIndex);
+    };
 
-    return feature;
+    // 이름 라벨 (선택사항 - showLabels가 true일 때만)
+    let labelOverlay = null;
+    if (showLabels) {
+        const labelBg = isDuplicate ? '#ef4444' : '#ffffff';
+        const labelColor = isDuplicate ? '#ffffff' : '#1e293b';
+        
+        const labelElement = document.createElement('div');
+        labelElement.innerHTML = `
+            <div style="
+                background: ${labelBg};
+                color: ${labelColor};
+                padding: 4px 8px;
+                border-radius: 12px;
+                font-size: 11px;
+                font-weight: 600;
+                white-space: nowrap;
+                box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+                border: 1px solid rgba(255,255,255,0.8);
+                pointer-events: none;
+            ">${rowData.이름 || '이름없음'}</div>
+        `;
+
+        labelOverlay = new ol.Overlay({
+            position: position,
+            element: labelElement,
+            positioning: 'bottom-center',
+            offset: [0, -45],
+            stopEvent: false
+        });
+
+        vworldMap.addOverlay(labelOverlay);
+    }
+
+    vworldMarkers.push({ marker, labelOverlay, rowData });
+    
+    return marker;
 }
 
-// 제거
+// 모든 마커 제거
 function clearVWorldMarkers() {
-    if (vworldMarkerLayer && vworldMarkerLayer.getSource()) vworldMarkerLayer.getSource().clear();
-    if (vworldPolygonLayer && vworldPolygonLayer.getSource()) vworldPolygonLayer.getSource().clear();
+    vworldMarkers.forEach(item => {
+        vworldMap.removeOverlay(item.marker);
+        if (item.labelOverlay) {
+            vworldMap.removeOverlay(item.labelOverlay);
+        }
+    });
     vworldMarkers = [];
+}
+
+// 상태 변경 (VWorld용)
+function changeVWorldMarkerStatus(markerIndex, newStatus) {
+    if (!currentProject || !vworldMarkers[markerIndex]) return;
+    
+    const markerData = vworldMarkers[markerIndex].rowData;
+    markerData.상태 = newStatus;
+    
+    const row = currentProject.data.find(r => r.id === markerData.id);
+    if (row) {
+        row.상태 = newStatus;
+        if (typeof renderReportTable === 'function') renderReportTable();
+    }
+    
+    const projectIndex = projects.findIndex(p => p.id === currentProject.id);
+    if (projectIndex !== -1) projects[projectIndex] = currentProject;
+    
+    // 마커 다시 그리기
+    const oldMarker = vworldMarkers[markerIndex];
+    vworldMap.removeOverlay(oldMarker.marker);
+    
+    const newMarkerElement = createVWorldMarker(
+        { lon: markerData.lon || markerData.lng, lat: markerData.lat },
+        markerData.순번,
+        newStatus
+    );
+    
+    newMarkerElement.onclick = () => showBottomInfoPanelVWorld(markerData, markerIndex);
+    
+    const newMarker = new ol.Overlay({
+        position: ol.proj.fromLonLat([markerData.lon || markerData.lng, markerData.lat]),
+        element: newMarkerElement,
+        positioning: 'bottom-center',
+        stopEvent: false
+    });
+    
+    vworldMap.addOverlay(newMarker);
+    vworldMarkers[markerIndex].marker = newMarker;
+    
+    showBottomInfoPanelVWorld(markerData, markerIndex);
+}
+
+// 메모 모달 (VWorld용)
+function openMemoModalVWorld(markerIndex) {
+    const modal = document.getElementById('memoModal');
+    if (!modal) return;
+    modal.dataset.markerIndex = markerIndex;
+    modal.dataset.mapType = 'vworld';
+    document.getElementById('memoInput').value = '';
+    modal.style.display = 'flex';
 }
