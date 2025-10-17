@@ -327,7 +327,7 @@ function getCreateModalHTML() {
                             <label class="block text-sm font-medium text-slate-700">지도 유형</label>
                             <div class="flex gap-3">
                                 <label class="flex-1 cursor-pointer">
-                                    <input type="radio" name="mapType" value="kakao" id="mapTypeKakao" checked class="peer hidden">
+                                    <input type="radio" name="mapType" value="kakao" id="mapTypeKakao" class="peer hidden">
                                     <div class="border-2 border-slate-300 peer-checked:border-blue-600 peer-checked:bg-blue-50 rounded-lg p-4 transition-all hover:border-slate-400">
                                         <div class="flex items-center gap-2 mb-2">
                                             <div class="w-5 h-5 rounded-full border-2 border-slate-300 peer-checked:border-blue-600 peer-checked:bg-blue-600 flex items-center justify-center">
@@ -339,7 +339,7 @@ function getCreateModalHTML() {
                                     </div>
                                 </label>
                                 <label class="flex-1 cursor-pointer">
-                                    <input type="radio" name="mapType" value="vworld" id="mapTypeVworld" class="peer hidden">
+                                    <input type="radio" name="mapType" value="vworld" id="mapTypeVworld" checked class="peer hidden">
                                     <div class="border-2 border-slate-300 peer-checked:border-blue-600 peer-checked:bg-blue-50 rounded-lg p-4 transition-all hover:border-slate-400">
                                         <div class="flex items-center gap-2 mb-2">
                                             <div class="w-5 h-5 rounded-full border-2 border-slate-300 peer-checked:border-blue-600 peer-checked:bg-blue-600 flex items-center justify-center">
