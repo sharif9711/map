@@ -53,7 +53,7 @@ function getProjectListHTML() {
 function getProjectDetailHTML() {
     return `
         <div id="normalView">
-            <header class="border-b border-slate-300/50 bg-white/90 backdrop-blur-sm sticky top-0 z-20">
+            <header class="border-b border-slate-300/50 bg-white/50 backdrop-blur-sm sticky top-0 z-10">
                 <div class="container mx-auto px-4 py-4">
                     <div class="flex items-center justify-between">
                         <button onclick="backToList()" class="p-2 hover:bg-slate-100 rounded-lg transition-colors" title="프로젝트 목록으로">
@@ -63,8 +63,12 @@ function getProjectDetailHTML() {
                             </svg>
                         </button>
                         <h1 id="currentProjectName" class="text-xl font-bold text-slate-900"></h1>
-                        <button onclick="refreshMap()" class="px-4 py-2 text-sm bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-colors">
-                            주소 새로고침
+                        <button onclick="showMapView()" class="px-4 py-2 text-sm bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-colors flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path>
+                                <circle cx="12" cy="10" r="3"></circle>
+                            </svg>
+                            지도
                         </button>
                     </div>
                 </div>
@@ -91,13 +95,6 @@ function getProjectDetailHTML() {
                                 <line x1="12" y1="9" x2="8" y2="9"></line>
                             </svg>
                             보고서
-                        </button>
-                        <button onclick="switchTab('지도')" id="tab-지도" class="px-6 py-3 font-medium transition-colors flex items-center gap-2 text-slate-600 hover:text-slate-900">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                                <circle cx="12" cy="10" r="3"></circle>
-                            </svg>
-                            지도
                         </button>
                         <button onclick="switchTab('연결')" id="tab-연결" class="px-6 py-3 font-medium transition-colors flex items-center gap-2 text-slate-600 hover:text-slate-900">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -178,30 +175,6 @@ function getProjectDetailHTML() {
                         </div>
                     </div>
                 </div>
-                <div id="content-지도" class="tab-content" style="display: none;">
-                    <div class="bg-white rounded-lg shadow-sm p-6">
-                        <div class="flex justify-between items-center mb-4">
-                            <h2 class="text-lg font-bold text-slate-900">지도</h2>
-                            <button onclick="showMapView()" class="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-colors flex items-center gap-2">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                                    <circle cx="12" cy="10" r="3"></circle>
-                                </svg>
-                                지도 보기
-                            </button>
-                        </div>
-                        <div class="border-2 border-dashed border-slate-300 rounded-lg h-96 flex items-center justify-center">
-                            <div class="text-center">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-12 w-12 text-slate-400 mx-auto mb-3">
-                                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                                    <circle cx="12" cy="10" r="3"></circle>
-                                </svg>
-                                <p class="text-slate-600 font-medium">지도 보기</p>
-                                <p class="text-sm text-slate-500 mt-2">위 버튼을 클릭하여 지도를 표시하세요</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
                 <div id="content-연결" class="tab-content" style="display: none;">
                     <div class="bg-white rounded-lg shadow-sm p-6">
                         <h2 class="text-lg font-bold text-slate-900 mb-4">연결</h2>
@@ -222,7 +195,7 @@ function getProjectDetailHTML() {
 
         <!-- 지도 뷰 -->
         <div id="mapView" style="display: none;">
-            <header class="border-b border-slate-300/50 bg-white/90 backdrop-blur-sm sticky top-0 z-20">
+            <header class="border-b border-slate-300/50 bg-white/90 backdrop-blur-sm sticky top-0 z-10">
                 <div class="container mx-auto px-4 py-4">
                     <div class="flex items-center justify-between">
                         <button onclick="hideMapView()" class="p-2 hover:bg-slate-100 rounded-lg transition-colors" title="돌아가기">
@@ -232,6 +205,9 @@ function getProjectDetailHTML() {
                             </svg>
                         </button>
                         <h1 class="text-xl font-bold text-slate-900">지도</h1>
+                        <button onclick="if(currentProject && currentProject.data) { displayProjectOnKakaoMap(currentProject.data); } else { console.log('No project data'); }" class="px-4 py-2 text-sm bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-colors">
+                            주소 새로고침
+                        </button>
                     </div>
                 </div>
             </header>

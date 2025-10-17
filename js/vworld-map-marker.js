@@ -8,11 +8,24 @@ function createVWorldMarker(coordinate, 순번, status) {
 
     const markerElement = document.createElement('div');
     markerElement.innerHTML = `
-        <div style="position: relative; cursor: pointer;">
+        <div style="
+            position: relative;
+            cursor: pointer;
+            transform: translate(-50%, -100%);
+        ">
+            <!-- 기본 핀 모양 -->
             <svg xmlns="http://www.w3.org/2000/svg" width="32" height="40" viewBox="0 0 32 40">
-                <path d="M16 0 C7.16 0 0 7.16 0 16 C0 24 16 40 16 40 C16 40 32 24 32 16 C32 7.16 24.84 0 16 0 Z" fill="${color}" stroke="#fff" stroke-width="2"/>
+                <path d="M16 0 C7.16 0 0 7.16 0 16 C0 24 16 40 16 40 C16 40 32 24 32 16 C32 7.16 24.84 0 16 0 Z" 
+                      fill="${color}" 
+                      stroke="#fff" 
+                      stroke-width="2"/>
                 <circle cx="16" cy="16" r="8" fill="white" opacity="0.9"/>
-                <text x="16" y="20" font-family="Arial" font-size="10" font-weight="bold" fill="${color}" text-anchor="middle">${순번}</text>
+                <text x="16" y="20" 
+                      font-family="Arial" 
+                      font-size="10" 
+                      font-weight="bold" 
+                      fill="${color}" 
+                      text-anchor="middle">${순번}</text>
             </svg>
         </div>
     `;
@@ -64,7 +77,7 @@ function addVWorldMarker(coordinate, label, status, rowData, isDuplicate, marker
                 box-shadow: 0 2px 6px rgba(0,0,0,0.2);
                 border: 1px solid rgba(255,255,255,0.8);
                 pointer-events: none;
-            ">${label || '이름없음'}</div>
+            ">${rowData.이름 || '이름없음'}</div>
         `;
 
         labelOverlay = new ol.Overlay({
@@ -94,93 +107,45 @@ function clearVWorldMarkers() {
     vworldMarkers = [];
 }
 
-// 상태 변경 (VWorld용) - ✅ 수정: 오버레이를 제거/생성 대신 내용만 교체
+// 상태 변경 (VWorld용)
 function changeVWorldMarkerStatus(markerIndex, newStatus) {
-    console.log(`🟠 [changeVWorldMarkerStatus] 호출됨: index=${markerIndex}, newStatus=${newStatus}`);
-    
-    if (!currentProject || !vworldMarkers[markerIndex]) {
-        console.error('❌ 프로젝트 또는 마커를 찾을 수 없습니다.');
-        return;
-    }
+    if (!currentProject || !vworldMarkers[markerIndex]) return;
     
     const markerData = vworldMarkers[markerIndex].rowData;
     markerData.상태 = newStatus;
     
-    // 원본 데이터도 업데이트
     const row = currentProject.data.find(r => r.id === markerData.id);
     if (row) {
         row.상태 = newStatus;
-        console.log(' - 원본 데이터 업데이트 완료');
-        
-        // 보고서 테이블 갱신
-        if (typeof renderReportTable === 'function') {
-            renderReportTable();
-        }
+        if (typeof renderReportTable === 'function') renderReportTable();
     }
     
-    // 프로젝트 저장
     const projectIndex = projects.findIndex(p => p.id === currentProject.id);
-    if (projectIndex !== -1) {
-        projects[projectIndex] = currentProject;
-    }
+    if (projectIndex !== -1) projects[projectIndex] = currentProject;
     
-    // ✅ 핵심 수정: 오버레이를 새로 만드는 대신 기존 오버레이의 HTML만 교체
-    const existingMarkerOverlay = vworldMarkers[markerIndex].marker;
+    // 마커 다시 그리기
+    const oldMarker = vworldMarkers[markerIndex];
+    vworldMap.removeOverlay(oldMarker.marker);
+    
     const newMarkerElement = createVWorldMarker(
-        { lon: markerData.lng || markerData.lon, lat: markerData.lat },
+        { lon: markerData.lon || markerData.lng, lat: markerData.lat },
         markerData.순번,
         newStatus
     );
     
-    // 기존 오버레이의 내용을 새로운 HTML로 교체
-    existingMarkerOverlay.getElement().innerHTML = newMarkerElement.innerHTML;
+    newMarkerElement.onclick = () => showBottomInfoPanelVWorld(markerData, markerIndex);
     
-    // 클릭 이벤트도 다시 바인딩
-    existingMarkerOverlay.getElement().onclick = () => showBottomInfoPanelVWorld(markerData, markerIndex);
-    
-    // vworldMarkers 배열의 데이터만 업데이트
-    vworldMarkers[markerIndex].rowData = markerData;
-    
-    console.log(`✅ 마커 상태 변경 완료: ${newStatus}`);
-    
-    // markerListData도 업데이트 (목록에서도 상태가 보이도록)
-    const markerListItem = markerListData.find(m => m.순번 === markerData.순번);
-    if (markerListItem) {
-        markerListItem.상태 = newStatus;
-        console.log(' - markerListData 업데이트 완료');
-    }
-    
-    // 필지 경계선도 색상 업데이트 (있다면)
-    if (parcelVectorLayer && row.pnu코드) {
-        console.log(' - 필지 경계선 색상 업데이트 시작...');
-        updateParcelBoundaryColor(row.pnu코드, newStatus);
-    }
-    
-    // 정보창 다시 표시
-    showBottomInfoPanelVWorld(markerData, markerIndex);
-}
-
-// 필지 경계선 색상 업데이트 함수 추가
-function updateParcelBoundaryColor(pnuCode, newStatus) {
-    if (!parcelVectorLayer) return;
-    
-    const source = parcelVectorLayer.getSource();
-    const features = source.getFeatures();
-    
-    // PNU 코드로 해당 필지 찾기
-    features.forEach(feature => {
-        const featurePnu = feature.get('pnu') || '';
-        if (featurePnu === pnuCode) {
-            const color = getStatusColor(newStatus);
-            feature.setStyle(
-                new ol.style.Style({
-                    stroke: new ol.style.Stroke({ color, width: 2.5 }),
-                    fill: new ol.style.Fill({ color: color + '33' })
-                })
-            );
-            console.log(` - 필지 경계선 색상 업데이트 완료: ${pnuCode}`);
-        }
+    const newMarker = new ol.Overlay({
+        position: ol.proj.fromLonLat([markerData.lon || markerData.lng, markerData.lat]),
+        element: newMarkerElement,
+        positioning: 'bottom-center',
+        stopEvent: false
     });
+    
+    vworldMap.addOverlay(newMarker);
+    vworldMarkers[markerIndex].marker = newMarker;
+    
+    showBottomInfoPanelVWorld(markerData, markerIndex);
 }
 
 // 메모 모달 (VWorld용)
