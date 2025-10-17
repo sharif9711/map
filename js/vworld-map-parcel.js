@@ -3,7 +3,7 @@
 var parcelLayer = null;
 var parcelFeatureMap = {}; // 좌표별 필지 저장
 
-// 상태별 필지 스타일
+// 상태별 필지 스타일 (내부 완전 투명)
 function getParcelStyle(status) {
     const colors = STATUS_COLORS[status] || STATUS_COLORS['예정'];
     
@@ -13,7 +13,7 @@ function getParcelStyle(status) {
             width: 3
         }),
         fill: new ol.style.Fill({
-            color: colors.main.replace(')', ', 0)').replace('rgb', 'rgba') // 0.2 → 0.05로 변경 (95% 투명)
+            color: 'rgba(0, 0, 0, 0)' // 완전 투명 (외곽선만 표시)
         })
     });
 }
