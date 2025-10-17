@@ -177,6 +177,8 @@ function setupVWorldMarkerClick() {
     vworldMap.on('click', function(evt) {
         const feature = vworldMap.forEachFeatureAtPixel(evt.pixel, function(feature) {
             return feature;
+        }, {
+            hitTolerance: 5
         });
         
         if (feature && feature.get('rowData')) {
@@ -188,11 +190,26 @@ function setupVWorldMarkerClick() {
         }
     });
     
-    // 마커 위에서 커서 변경
+    // 마커 위에서 커서 변경 (오류 방지 개선)
     vworldMap.on('pointermove', function(evt) {
+        if (evt.dragging) {
+            return;
+        }
+        
         const pixel = vworldMap.getEventPixel(evt.originalEvent);
-        const hit = vworldMap.hasFeatureAtPixel(pixel);
-        vworldMap.getTarget().style.cursor = hit ? 'pointer' : '';
+        const hit = vworldMap.hasFeatureAtPixel(pixel, {
+            layerFilter: function(layer) {
+                return layer === window.vworldMarkerLayer;
+            }
+        });
+        
+        const target = vworldMap.getTarget();
+        if (target) {
+            const element = typeof target === 'string' ? document.getElementById(target) : target;
+            if (element) {
+                element.style.cursor = hit ? 'pointer' : '';
+            }
+        }
     });
 }
 
