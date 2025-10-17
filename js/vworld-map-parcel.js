@@ -3,17 +3,35 @@
 var parcelLayer = null;
 var parcelFeatureMap = {}; // 좌표별 필지 저장
 
-// 상태별 필지 스타일 (외곽선 색상 + 5% 불투명도)
+// 상태별 필지 스타일 (rgba 직접 정의)
 function getParcelStyle(status) {
-    const colors = STATUS_COLORS[status] || STATUS_COLORS['예정'];
+    let strokeColor, fillColor;
+    
+    switch(status) {
+        case '예정':
+            strokeColor = 'rgba(59, 130, 246, 0.9)';  // 파란색 외곽선
+            fillColor = 'rgba(59, 130, 246, 0.05)';    // 파란색 내부 5% 불투명
+            break;
+        case '완료':
+            strokeColor = 'rgba(16, 185, 129, 0.9)';  // 초록색 외곽선
+            fillColor = 'rgba(16, 185, 129, 0.05)';    // 초록색 내부 5% 불투명
+            break;
+        case '보류':
+            strokeColor = 'rgba(245, 158, 11, 0.9)';  // 주황색 외곽선
+            fillColor = 'rgba(245, 158, 11, 0.05)';    // 주황색 내부 5% 불투명
+            break;
+        default:
+            strokeColor = 'rgba(59, 130, 246, 0.9)';  // 기본 파란색
+            fillColor = 'rgba(59, 130, 246, 0.05)';
+    }
     
     return new ol.style.Style({
         stroke: new ol.style.Stroke({
-            color: colors.main,
+            color: strokeColor,
             width: 3
         }),
         fill: new ol.style.Fill({
-            color: colors.main.replace('rgb(', 'rgba(').replace(')', ', 0.95)') // 외곽선과 동일한 색상, 5% 불투명도
+            color: fillColor
         })
     });
 }
