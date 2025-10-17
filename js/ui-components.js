@@ -250,6 +250,19 @@ function getProjectDetailHTML() {
                     </div>
                 </div>
 
+                <!-- ✅ VWorld 전용: 필지 외곽선 버튼 (우측 상단) -->
+                <div id="vworldParcelControl" style="display: none; position: absolute; top: 16px; right: 16px; z-index: 10;">
+                    <button id="toggleParcelBtn" onclick="toggleParcelBoundaries()" class="px-4 py-2 bg-white text-slate-700 rounded-lg shadow-lg hover:bg-slate-50 transition-colors font-medium text-sm border border-slate-200 whitespace-nowrap flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="3" width="7" height="7"></rect>
+                            <rect x="14" y="3" width="7" height="7"></rect>
+                            <rect x="14" y="14" width="7" height="7"></rect>
+                            <rect x="3" y="14" width="7" height="7"></rect>
+                        </svg>
+                        필지외곽선
+                    </button>
+                </div>
+
                 <!-- 지도 -->
                 <div id="kakaoMap" style="width: 100%; height: 100%;"></div>
                 
