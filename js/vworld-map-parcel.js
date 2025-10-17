@@ -1,18 +1,22 @@
-// VWorld 필지 외곽선 표시 기능
+// VWorld 필지 외곽선 표시 (상태별 색상 + 자동 표시)
 
 var parcelLayer = null;
-var currentParcelFeatures = [];
+var parcelFeatureMap = {}; // 좌표별 필지 저장
 
-// 필지 외곽선 스타일
-const parcelPolygonStyle = new ol.style.Style({
-    stroke: new ol.style.Stroke({
-        color: 'rgba(0, 128, 255, 0.9)',
-        width: 3
-    }),
-    fill: new ol.style.Fill({
-        color: 'rgba(0, 128, 255, 0.2)'
-    })
-});
+// 상태별 필지 스타일
+function getParcelStyle(status) {
+    const colors = STATUS_COLORS[status] || STATUS_COLORS['예정'];
+    
+    return new ol.style.Style({
+        stroke: new ol.style.Stroke({
+            color: colors.main,
+            width: 3
+        }),
+        fill: new ol.style.Fill({
+            color: colors.main.replace(')', ', 0.2)').replace('rgb', 'rgba')
+        })
+    });
+}
 
 // 필지 레이어 초기화
 function initParcelLayer() {
@@ -27,7 +31,6 @@ function initParcelLayer() {
 
     parcelLayer = new ol.layer.Vector({
         source: new ol.source.Vector(),
-        style: parcelPolygonStyle,
         zIndex: 3
     });
 
@@ -39,18 +42,19 @@ function initParcelLayer() {
 function clearParcelBoundaries() {
     if (parcelLayer) {
         parcelLayer.getSource().clear();
-        currentParcelFeatures = [];
+        parcelFeatureMap = {};
     }
 }
 
 // 좌표로 필지 외곽선 조회 및 표시
-function showParcelBoundary(lon, lat) {
+function showParcelBoundary(lon, lat, status) {
     if (!parcelLayer) {
         initParcelLayer();
     }
 
     const point3857 = ol.proj.transform([lon, lat], 'EPSG:4326', 'EPSG:3857');
     const geomfilter = `POINT(${point3857[0]} ${point3857[1]})`;
+    const key = `${lon}_${lat}`;
 
     const params = {
         key: VWORLD_API_KEY,
@@ -82,12 +86,17 @@ function showParcelBoundary(lon, lat) {
             );
 
             if (features.length > 0) {
+                const parcelStyle = getParcelStyle(status);
+                
                 features.forEach(f => {
-                    f.setStyle(parcelPolygonStyle);
+                    f.setStyle(parcelStyle);
+                    f.set('coordKey', key);
+                    f.set('status', status);
                     parcelLayer.getSource().addFeature(f);
-                    currentParcelFeatures.push(f);
                 });
-                console.log(`✅ ${features.length}개의 필지 외곽선 표시 완료`);
+                
+                parcelFeatureMap[key] = { features, status };
+                console.log(`✅ 필지 외곽선 표시: ${key} (${status})`);
             }
         },
         error: function(error) {
@@ -96,10 +105,24 @@ function showParcelBoundary(lon, lat) {
     });
 }
 
-// 모든 마커에 대해 필지 외곽선 표시
-function showAllParcelBoundaries() {
+// 필지 색상 업데이트 (상태 변경 시)
+function updateParcelColor(lon, lat, newStatus) {
+    const key = `${lon}_${lat}`;
+    
+    if (parcelFeatureMap[key]) {
+        const newStyle = getParcelStyle(newStatus);
+        parcelFeatureMap[key].features.forEach(f => {
+            f.setStyle(newStyle);
+            f.set('status', newStatus);
+        });
+        parcelFeatureMap[key].status = newStatus;
+        console.log(`✅ 필지 색상 변경: ${key} -> ${newStatus}`);
+    }
+}
+
+// 모든 마커에 대해 필지 자동 표시
+function showAllParcelBoundariesAuto() {
     if (!vworldMap || vworldMarkers.length === 0) {
-        showMapMessage('표시할 마커가 없습니다.', 'warning');
         return;
     }
 
@@ -109,54 +132,18 @@ function showAllParcelBoundaries() {
 
     clearParcelBoundaries();
 
-    let processedCount = 0;
-    const totalMarkers = vworldMarkers.length;
-
-    showMapMessage(`필지 외곽선 조회 중... (0/${totalMarkers})`, 'info');
+    console.log(`🗺️ ${vworldMarkers.length}개 필지 자동 표시 시작`);
 
     vworldMarkers.forEach((markerItem, index) => {
         const rowData = markerItem.rowData;
         const lon = rowData.vworld_lon || rowData.lng || rowData.lon;
         const lat = rowData.vworld_lat || rowData.lat;
+        const status = rowData.상태 || '예정';
 
         if (lon && lat) {
             setTimeout(() => {
-                showParcelBoundary(lon, lat);
-                processedCount++;
-                
-                if (processedCount === totalMarkers) {
-                    showMapMessage(`✔ ${totalMarkers}개 필지 외곽선 표시 완료`, 'success');
-                }
-            }, index * 500);
+                showParcelBoundary(lon, lat, status);
+            }, index * 400); // 400ms 간격
         }
     });
-}
-
-// 필지 외곽선 토글
-var isParcelBoundaryVisible = false;
-
-function toggleParcelBoundaries() {
-    const btn = document.getElementById('toggleParcelBtn');
-    
-    if (!btn) {
-        console.error('toggleParcelBtn not found');
-        return;
-    }
-
-    if (!isParcelBoundaryVisible) {
-        btn.classList.add('bg-green-600', 'text-white');
-        btn.classList.remove('bg-white', 'text-slate-700');
-        btn.textContent = '✔ 필지표시중';
-        
-        showAllParcelBoundaries();
-        isParcelBoundaryVisible = true;
-    } else {
-        btn.classList.remove('bg-green-600', 'text-white');
-        btn.classList.add('bg-white', 'text-slate-700');
-        btn.textContent = '📐 필지외곽선';
-        
-        clearParcelBoundaries();
-        isParcelBoundaryVisible = false;
-        showMapMessage('필지 외곽선이 숨겨졌습니다.', 'info');
-    }
 }
