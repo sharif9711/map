@@ -1,18 +1,18 @@
-// =======================
-// VWorld 마커 + 외곽선 표시 개선 버전
-// =======================
+// ==============================
+// VWorld 마커 및 필지 외곽선 표시
+// ==============================
 
 let vworldMarkerLayer = null;
 let vworldPolygonLayer = null;
 
-// 상태별 색상 반환 함수
+// 상태별 색상
 function getStatusColor(status) {
-    if (status === '완료') return '#10b981';   // 초록
-    if (status === '보류') return '#f59e0b';   // 주황
-    return '#3b82f6';                          // 기본 파랑 (예정)
+    if (status === '완료') return '#10b981';
+    if (status === '보류') return '#f59e0b';
+    return '#3b82f6'; // 기본 파랑
 }
 
-// 마커 스타일 함수
+// 마커 스타일
 function getVWorldMarkerStyle(rowData, isDuplicate) {
     const baseColor = getStatusColor(rowData.상태);
 
@@ -42,16 +42,16 @@ function getVWorldMarkerStyle(rowData, isDuplicate) {
     });
 }
 
-// 폴리곤 스타일 함수
+// 외곽선 스타일
 function getParcelPolygonStyle(status) {
     const color = getStatusColor(status);
     return new ol.style.Style({
         stroke: new ol.style.Stroke({
             color: color,
-            width: 2
+            width: 3
         }),
         fill: new ol.style.Fill({
-            color: 'rgba(0,0,0,0)'  // 투명
+            color: 'rgba(0,0,0,0.05)'
         })
     });
 }
@@ -60,25 +60,24 @@ function getParcelPolygonStyle(status) {
 async function addVWorldMarker(coordinate, label, status, rowData, isDuplicate, markerIndex) {
     if (!vworldMap) return null;
 
-    // 마커 레이어
+    // 레이어 생성
     if (!vworldMarkerLayer) {
         vworldMarkerLayer = new ol.layer.Vector({
             source: new ol.source.Vector(),
-            zIndex: 5
+            zIndex: 7
         });
         vworldMap.addLayer(vworldMarkerLayer);
     }
 
-    // 외곽선 레이어
     if (!vworldPolygonLayer) {
         vworldPolygonLayer = new ol.layer.Vector({
             source: new ol.source.Vector(),
-            zIndex: 3
+            zIndex: 6
         });
         vworldMap.addLayer(vworldPolygonLayer);
     }
 
-    // ✅ 마커 생성
+    // 마커 생성
     const feature = new ol.Feature({
         geometry: new ol.geom.Point(ol.proj.fromLonLat([coordinate.lon, coordinate.lat])),
         rowData
@@ -87,7 +86,7 @@ async function addVWorldMarker(coordinate, label, status, rowData, isDuplicate, 
     vworldMarkerLayer.getSource().addFeature(feature);
     vworldMarkers.push({ feature, rowData });
 
-    // ✅ 필지 외곽선 표시 (PNU 기준)
+    // 필지 외곽선
     if (rowData.PNU코드 && rowData.PNU코드.trim() !== '') {
         const parcel = await getParcelBoundaryGeoJSON(rowData.PNU코드.trim());
         if (parcel && parcel.geometry && parcel.geometry.coordinates) {
@@ -103,7 +102,7 @@ async function addVWorldMarker(coordinate, label, status, rowData, isDuplicate, 
         }
     }
 
-    // ✅ 클릭 이벤트
+    // 클릭 이벤트
     vworldMap.on('click', function (evt) {
         vworldMap.forEachFeatureAtPixel(evt.pixel, function (clickedFeature) {
             if (clickedFeature === feature) {
@@ -115,7 +114,7 @@ async function addVWorldMarker(coordinate, label, status, rowData, isDuplicate, 
     return feature;
 }
 
-// 모두 제거
+// 제거
 function clearVWorldMarkers() {
     if (vworldMarkerLayer && vworldMarkerLayer.getSource()) vworldMarkerLayer.getSource().clear();
     if (vworldPolygonLayer && vworldPolygonLayer.getSource()) vworldPolygonLayer.getSource().clear();
