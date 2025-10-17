@@ -107,6 +107,23 @@ function initVWorldMap() {
     }
 }
 
+// ✅ 필지 외곽선(Polygon) GeoJSON 가져오기 (PNU 기반)
+async function getParcelBoundaryGeoJSON(pnu) {
+    try {
+        const url = `https://api.vworld.kr/req/data?service=data&version=2.0&request=GetFeature&type=LP_PA_CBND_BUBUN&format=geojson&key=${VWORLD_API_KEY}&domain=localhost&crs=EPSG:4326&attrFilter=pnu:like:${pnu}`;
+        const response = await fetch(url);
+        if (!response.ok) throw new Error('WFS 요청 실패');
+        const data = await response.json();
+        if (data && data.features && data.features.length > 0) {
+            return data.features[0];
+        }
+    } catch (err) {
+        console.warn('❌ 필지 외곽선 요청 실패:', pnu, err);
+    }
+    return null;
+}
+
+
 // VWorld 기본 지번도 사용
 function showParcelBoundaries() {
     if (!vworldMap) {
