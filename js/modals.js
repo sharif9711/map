@@ -7,8 +7,8 @@ function openCreateModal() {
 function closeCreateModal() {
     document.getElementById('createModal').classList.remove('active');
     document.getElementById('projectName').value = '';
-    // 카카오맵을 기본값으로 체크
-    document.getElementById('mapTypeKakao').checked = true;
+    // VWorld를 기본값으로 체크
+    document.getElementById('mapTypeVworld').checked = true;
 }
 
 function createProject() {
