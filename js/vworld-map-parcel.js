@@ -13,7 +13,7 @@ function getParcelStyle(status) {
             width: 3
         }),
         fill: new ol.style.Fill({
-            color: colors.main.replace('rgb(', 'rgba(').replace(')', ', 0.05)') // 외곽선과 동일한 색상, 5% 불투명도
+            color: colors.main.replace('rgb(', 'rgba(').replace(')', ', 0.95)') // 외곽선과 동일한 색상, 5% 불투명도
         })
     });
 }
