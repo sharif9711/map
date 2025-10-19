@@ -1,38 +1,57 @@
-// 기존 js/map-controls.js 파일의 맨 위에 이 두 함수를 추가하세요
+// ✅ 기존 js/map-controls.js 파일의 맨 위에 이 함수들을 추가하세요
 
-// ✅ 모바일 메뉴 토글 함수 (삼각형 버튼)
-function toggleMobileMenu() {
-    const container = document.getElementById('mobileMenuContainer');
-    const overlay = document.getElementById('mobileMenuOverlay');
-    const toggle = document.getElementById('menuTriangleToggle');
+// 사이드바 토글 함수
+function toggleSidebar() {
+    const sidebar = document.getElementById('mapSidebar');
+    const overlay = document.getElementById('sidebarOverlay');
+    const toggleBtn = document.getElementById('sidebarToggle');
     
-    if (container && overlay && toggle) {
-        container.classList.toggle('open');
-        overlay.classList.toggle('open');
-        toggle.classList.toggle('open');
+    if (sidebar && overlay) {
+        sidebar.classList.toggle('hidden');
+        overlay.classList.toggle('active');
+        
+        // 아이콘 변경
+        if (toggleBtn) {
+            const icon = toggleBtn.querySelector('svg');
+            if (sidebar.classList.contains('hidden')) {
+                // 닫힌 상태 - 햄버거 아이콘
+                icon.innerHTML = `
+                    <line x1="3" y1="12" x2="21" y2="12"></line>
+                    <line x1="3" y1="6" x2="21" y2="6"></line>
+                    <line x1="3" y1="18" x2="21" y2="18"></line>
+                `;
+            } else {
+                // 열린 상태 - X 아이콘
+                icon.innerHTML = `
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                `;
+            }
+        }
     }
 }
 
-// ✅ 전체화면 토글 함수 (헤더 포함 전체화면)
+// 전체화면 토글 함수
 function toggleFullscreen() {
-    const mapView = document.getElementById('mapView');
+    const elem = document.documentElement;
     const text = document.getElementById('fullscreenText');
+    const icon = document.getElementById('fullscreenIcon');
     
     if (!document.fullscreenElement) {
         // 전체화면 진입
-        if (mapView.requestFullscreen) {
-            mapView.requestFullscreen();
-        } else if (mapView.webkitRequestFullscreen) {
-            mapView.webkitRequestFullscreen();
-        } else if (mapView.msRequestFullscreen) {
-            mapView.msRequestFullscreen();
+        if (elem.requestFullscreen) {
+            elem.requestFullscreen();
+        } else if (elem.webkitRequestFullscreen) {
+            elem.webkitRequestFullscreen();
+        } else if (elem.msRequestFullscreen) {
+            elem.msRequestFullscreen();
         }
-        
-        // 전체화면 모드 클래스 추가
-        setTimeout(() => {
-            mapView.classList.add('fullscreen-mode');
-            if (text) text.textContent = '나가기';
-        }, 100);
+        if (text) text.textContent = '종료';
+        if (icon) {
+            icon.innerHTML = `
+                <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"></path>
+            `;
+        }
     } else {
         // 전체화면 종료
         if (document.exitFullscreen) {
@@ -42,12 +61,19 @@ function toggleFullscreen() {
         } else if (document.msExitFullscreen) {
             document.msExitFullscreen();
         }
-        
-        // 전체화면 모드 클래스 제거
-        mapView.classList.remove('fullscreen-mode');
-        if (text) text.textContent = '전체';
+        if (text) text.textContent = '전체화면';
+        if (icon) {
+            icon.innerHTML = `
+                <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+            `;
+        }
     }
 }
+
+// 아래는 기존 코드 그대로 유지
+// var showLabels = true;
+// var myLocationMarker = null;
+// ... 등등
 
 // 전체화면 변경 이벤트 리스너
 document.addEventListener('fullscreenchange', handleFullscreenChange);
