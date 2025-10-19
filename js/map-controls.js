@@ -40,16 +40,6 @@ function collapseSidebar() {
     }
 }
 
-// 아래는 기존 코드 그대로 유지
-// var showLabels = true;
-// var myLocationMarker = null;
-// ... 등등
-
-// 아래는 기존 코드 그대로 유지
-// var showLabels = true;
-// var myLocationMarker = null;
-// ... 등등
-
 // 전체화면 변경 이벤트 리스너
 document.addEventListener('fullscreenchange', handleFullscreenChange);
 document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
