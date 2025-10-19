@@ -339,7 +339,8 @@ function showBottomInfoPanel(rowData, markerIndex) {
                         <span class="text-xs">${data.주소}</span>
                         <button id="naviBtn-${mIdx}" data-address="${(data.주소 || '').replace(/"/g, '&quot;')}" data-lat="${markerLat}" data-lng="${markerLng}" class="ml-2 p-1.5 bg-yellow-400 hover:bg-yellow-500 rounded-full transition-colors ${!markerLat || !markerLng ? 'opacity-50 cursor-not-allowed' : ''}" title="카카오내비로 안내" ${!markerLat || !markerLng ? 'disabled' : ''}>
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+                                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13a9 9 0 0 1 18 0z"/>
+                                <circle cx="12" cy="10" r="3"/>
                             </svg>
                         </button>
                     </div>
@@ -353,12 +354,16 @@ function showBottomInfoPanel(rowData, markerIndex) {
                     <button onclick="changeMarkerStatus(${mIdx}, '보류')" class="px-4 py-2 rounded-lg font-medium transition-all ${data.상태 === '보류' ? 'bg-amber-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}">보류</button>
                 </div>
             </div>
-            <div>
+            <div class="mb-4">
                 <div class="flex items-center justify-between mb-2">
                     <label class="block text-sm font-medium text-slate-700">메모</label>
                     <button onclick="openMemoModal(${mIdx})" class="px-3 py-1 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700">+ 메모 추가</button>
                 </div>
                 <div class="bg-slate-50 rounded-lg p-4 max-h-32 overflow-y-auto">${memosHtml}</div>
+            </div>
+            <div class="text-xs text-slate-500 border-t pt-2 mt-2">
+                <p><strong>지목:</strong> ${data.지목 || '-'}</p>
+                <p><strong>면적:</strong> ${data.면적 || '-'}</p>
             </div>
         </div>`;
     }).join('');
@@ -472,24 +477,48 @@ function openKakaoNavi(address, lat, lng) {
 function changeMarkerStatus(markerIndex, newStatus) {
     if (!currentProject || !kakaoMarkers[markerIndex]) return;
     const markerData = kakaoMarkers[markerIndex].rowData;
-    markerData.상태 = newStatus;
+    const oldStatus = markerData.상태;
+
+    // ✅ 상태 변경 메모 추가
+    const now = new Date();
+    const timeStr = `${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, '0')}.${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    const memoText = `상태변경: ${oldStatus}->${newStatus} (${timeStr})`;
+    if (!markerData.메모) markerData.메모 = [];
+    markerData.메모.push({ 내용: memoText, 시간: timeStr });
     
+    // ✅ 기록사항 업데이트
+    const memoEntry = `${markerData.메모.length}. ${memoText}`;
+    markerData.기록사항 = (!markerData.기록사항 || markerData.기록사항.trim() === '' || markerData.기록사항 === '-') 
+        ? memoEntry 
+        : markerData.기록사항 + '\n\n' + memoEntry;
+
+    // 같은 주소를 가진 모든 마커의 상태를 변경
+    const targetAddress = markerData.주소;
+    kakaoMarkers.forEach((item, index) => {
+        if (item.rowData.주소 === targetAddress) {
+            item.rowData.상태 = newStatus;
+            
+            const oldMarker = item.marker;
+            oldMarker.setMap(null);
+            if (item.customOverlay) item.customOverlay.setMap(null);
+            
+            oldMarker.setImage(createNumberedMarkerImage(item.rowData.순번, newStatus));
+            oldMarker.setMap(kakaoMap);
+            if (item.customOverlay && showLabels) item.customOverlay.setMap(kakaoMap);
+        }
+    });
+
+    // 원본 데이터 업데이트
     const row = currentProject.data.find(r => r.id === markerData.id);
     if (row) {
         row.상태 = newStatus;
+        row.메모 = markerData.메모;
+        row.기록사항 = markerData.기록사항;
         if (typeof renderReportTable === 'function') renderReportTable();
     }
     
     const projectIndex = projects.findIndex(p => p.id === currentProject.id);
     if (projectIndex !== -1) projects[projectIndex] = currentProject;
-    
-    const oldMarker = kakaoMarkers[markerIndex];
-    oldMarker.marker.setMap(null);
-    if (oldMarker.customOverlay) oldMarker.customOverlay.setMap(null);
-    
-    oldMarker.marker.setImage(createNumberedMarkerImage(markerData.순번, newStatus));
-    oldMarker.marker.setMap(kakaoMap);
-    if (oldMarker.customOverlay && showLabels) oldMarker.customOverlay.setMap(kakaoMap);
     
     currentDisplayedMarkers.forEach(item => {
         if (item.index === markerIndex) item.data.상태 = newStatus;
@@ -557,7 +586,9 @@ function saveMemo() {
     }
     
     const projectIndex = projects.findIndex(p => p.id === currentProject.id);
-    if (projectIndex !== -1) projects[projectIndex] = currentProject;
+    if (projectIndex !== -1) {
+        projects[projectIndex] = currentProject;
+    }
     
     closeMemoModal();
     
