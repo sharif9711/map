@@ -193,8 +193,6 @@ function getProjectDetailHTML() {
             </main>
         </div>
 
-// getProjectDetailHTML() 함수 내부의 지도뷰 부분을 이렇게 완전히 교체하세요:
-// "<!-- 지도 뷰 -->" 부분을 찾아서 아래 코드로 교체
 
         <!-- 지도 뷰 -->
         <div id="mapView" style="display: none;">
