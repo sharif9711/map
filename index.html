@@ -19,18 +19,46 @@
                 position: fixed;
                 left: -100%;
                 top: 73px;
-                width: 70%;
-                max-width: 280px;
+                width: 240px;
                 height: calc(100vh - 73px);
                 background: white;
                 z-index: 1000;
                 transition: left 0.3s ease;
                 box-shadow: 2px 0 10px rgba(0,0,0,0.1);
                 overflow-y: auto;
+                padding: 12px;
             }
             
             .mobile-menu-container.open {
                 left: 0;
+            }
+            
+            /* 삼각형 토글 버튼 */
+            .menu-triangle-toggle {
+                position: fixed;
+                top: 50%;
+                left: 0;
+                transform: translateY(-50%);
+                z-index: 1001;
+                width: 0;
+                height: 0;
+                border-top: 30px solid transparent;
+                border-bottom: 30px solid transparent;
+                border-left: 20px solid white;
+                cursor: pointer;
+                box-shadow: 2px 0 8px rgba(0,0,0,0.15);
+                transition: left 0.3s ease, border-left-color 0.2s ease;
+            }
+            
+            .menu-triangle-toggle:hover {
+                border-left-color: #f1f5f9;
+            }
+            
+            .menu-triangle-toggle.open {
+                left: 240px;
+                border-left: 20px solid white;
+                border-right: 0;
+                transform: translateY(-50%) rotate(180deg);
             }
             
             .mobile-menu-overlay {
@@ -39,7 +67,7 @@
                 left: 0;
                 right: 0;
                 bottom: 0;
-                background: rgba(0,0,0,0.5);
+                background: rgba(0,0,0,0.3);
                 z-index: 999;
                 display: none;
             }
@@ -47,60 +75,47 @@
             .mobile-menu-overlay.open {
                 display: block;
             }
-            
-            .mobile-menu-toggle {
-                position: fixed;
-                top: 85px;
-                left: 10px;
-                z-index: 1001;
-                width: 44px;
-                height: 44px;
-                background: white;
-                border-radius: 50%;
-                box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                cursor: pointer;
-                transition: transform 0.3s ease;
-            }
-            
-            .mobile-menu-toggle.open {
-                transform: translateX(calc(70vw - 10px));
-                max-transform: translateX(270px);
-            }
         }
         
-        /* 전체화면 버튼 스타일 */
+        /* 전체화면 버튼 스타일 - 아주 작게 */
         .fullscreen-button {
             position: absolute;
-            top: 10px;
+            top: 8px;
             left: 50%;
             transform: translateX(-50%);
             z-index: 100;
             background: white;
-            border: 2px solid rgba(0,0,0,0.1);
-            border-radius: 8px;
-            padding: 8px 12px;
+            border: 1px solid rgba(0,0,0,0.1);
+            border-radius: 4px;
+            padding: 4px 8px;
             cursor: pointer;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            box-shadow: 0 1px 4px rgba(0,0,0,0.1);
             display: flex;
             align-items: center;
-            gap: 6px;
-            font-size: 14px;
+            gap: 4px;
+            font-size: 11px;
             font-weight: 500;
-            color: #334155;
+            color: #475569;
             transition: all 0.2s ease;
         }
         
         .fullscreen-button:hover {
             background: #f8fafc;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
         }
         
         .fullscreen-button svg {
-            width: 18px;
-            height: 18px;
+            width: 12px;
+            height: 12px;
+        }
+        
+        /* 전체화면 모드일 때 헤더 숨기기 */
+        .fullscreen-mode header {
+            display: none !important;
+        }
+        
+        .fullscreen-mode #mapView > div:first-child {
+            height: 100vh !important;
         }
     </style>
 </head>
