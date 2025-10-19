@@ -134,6 +134,31 @@ function initVWorldMap() {
         });
 
         console.log('✅ VWorld map initialized with multiple base layers');
+
+        // ✅ [수정] 지도와 레이어가 모두 생성된 후에 이벤트 리스너를 연결합니다.
+        // 기본 지도 선택 이벤트 리스너
+        const baseMapSelector = document.getElementById('baseMapSelector');
+        if (baseMapSelector) {
+            baseMapSelector.addEventListener('change', function(e) {
+                changeBaseMap(e.target.value);
+            });
+        } else {
+            console.warn('baseMapSelector element not found.');
+        }
+
+        // 지적도 투명도 조절 이벤트 리스너
+        const parcelOpacitySlider = document.getElementById('parcelOpacitySlider');
+        if (parcelOpacitySlider) {
+            parcelOpacitySlider.addEventListener('input', function(e) {
+                const opacity = parseFloat(e.target.value);
+                // vworld-map-parcel.js에서 window.parcelLayer로 접근하도록 설정
+                if (window.parcelLayer) {
+                    window.parcelLayer.setOpacity(opacity);
+                }
+            });
+        } else {
+            console.warn('parcelOpacitySlider element not found.');
+        }
         
     } catch (error) {
         console.error('❌ Failed to initialize VWorld map:', error);
