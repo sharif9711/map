@@ -231,20 +231,23 @@ function getProjectDetailHTML() {
                         🏷️ 이름
                     </button>
 
-                    <!-- ✅ 기본 지도 선택 -->
-                    <div class="bg-white p-2 rounded-lg shadow-lg border border-slate-200">
-                        <label for="baseMapSelector" class="text-xs font-semibold text-slate-700 block mb-1">기본 지도</label>
-                        <select id="baseMapSelector" class="w-full text-sm border border-slate-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-500">
-                            <option value="satellite">영상 지도</option>
-                            <option value="graphic" selected>그래픽 지도</option>
-                            <option value="osm">OSM 지도</option>
-                        </select>
-                    </div>
+                    <!-- ✅ VWorld 전용 컨트롤들을 감싸는 div -->
+                    <div id="vworldSpecificControls" class="flex flex-col gap-2">
+                        <!-- ✅ 기본 지도 선택 -->
+                        <div class="bg-white p-2 rounded-lg shadow-lg border border-slate-200">
+                            <label for="baseMapSelector" class="text-xs font-semibold text-slate-700 block mb-1">기본 지도</label>
+                            <select id="baseMapSelector" class="w-full text-sm border border-slate-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                                <option value="satellite">영상 지도</option>
+                                <option value="graphic" selected>그래픽 지도</option>
+                                <option value="osm">OSM 지도</option>
+                            </select>
+                        </div>
 
-                    <!-- ✅ 연속 지적도 투명도 조절 -->
-                    <div class="bg-white p-2 rounded-lg shadow-lg border border-slate-200">
-                        <label for="parcelOpacitySlider" class="text-xs font-semibold text-slate-700 block mb-1">연속 지적도 투명도</label>
-                        <input id="parcelOpacitySlider" type="range" min="0" max="1" step="0.1" value="0.5" class="w-full">
+                        <!-- ✅ 연속 지적도 투명도 조절 -->
+                        <div class="bg-white p-2 rounded-lg shadow-lg border border-slate-200">
+                            <label for="parcelOpacitySlider" class="text-xs font-semibold text-slate-700 block mb-1">연속 지적도 투명도</label>
+                            <input id="parcelOpacitySlider" type="range" min="0" max="1" step="0.1" value="0.5" class="w-full">
+                        </div>
                     </div>
                 </div>
 
