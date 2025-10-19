@@ -1,3 +1,49 @@
+// 기존 js/map-controls.js 파일의 맨 위에 이 두 함수를 추가하세요
+
+// ✅ 모바일 메뉴 토글 함수
+function toggleMobileMenu() {
+    const container = document.getElementById('mobileMenuContainer');
+    const overlay = document.getElementById('mobileMenuOverlay');
+    const toggle = document.getElementById('mobileMenuToggle');
+    
+    if (container && overlay && toggle) {
+        container.classList.toggle('open');
+        overlay.classList.toggle('open');
+        toggle.classList.toggle('open');
+    }
+}
+
+// ✅ 전체화면 토글 함수
+function toggleFullscreen() {
+    const elem = document.documentElement;
+    const text = document.getElementById('fullscreenText');
+    
+    if (!document.fullscreenElement) {
+        if (elem.requestFullscreen) {
+            elem.requestFullscreen();
+        } else if (elem.webkitRequestFullscreen) {
+            elem.webkitRequestFullscreen();
+        } else if (elem.msRequestFullscreen) {
+            elem.msRequestFullscreen();
+        }
+        if (text) text.textContent = '전체화면 종료';
+    } else {
+        if (document.exitFullscreen) {
+            document.exitFullscreen();
+        } else if (document.webkitExitFullscreen) {
+            document.webkitExitFullscreen();
+        } else if (document.msExitFullscreen) {
+            document.msExitFullscreen();
+        }
+        if (text) text.textContent = '전체화면';
+    }
+}
+
+// 아래는 기존 코드 그대로 유지
+// var showLabels = true;
+// var myLocationMarker = null;
+// ... 등등
+
 // 지도 컨트롤 기능
 
 var showLabels = true;
