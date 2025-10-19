@@ -1,10 +1,10 @@
 // 기존 js/map-controls.js 파일의 맨 위에 이 두 함수를 추가하세요
 
-// ✅ 모바일 메뉴 토글 함수
+// ✅ 모바일 메뉴 토글 함수 (삼각형 버튼)
 function toggleMobileMenu() {
     const container = document.getElementById('mobileMenuContainer');
     const overlay = document.getElementById('mobileMenuOverlay');
-    const toggle = document.getElementById('mobileMenuToggle');
+    const toggle = document.getElementById('menuTriangleToggle');
     
     if (container && overlay && toggle) {
         container.classList.toggle('open');
@@ -13,21 +13,28 @@ function toggleMobileMenu() {
     }
 }
 
-// ✅ 전체화면 토글 함수
+// ✅ 전체화면 토글 함수 (헤더 포함 전체화면)
 function toggleFullscreen() {
-    const elem = document.documentElement;
+    const mapView = document.getElementById('mapView');
     const text = document.getElementById('fullscreenText');
     
     if (!document.fullscreenElement) {
-        if (elem.requestFullscreen) {
-            elem.requestFullscreen();
-        } else if (elem.webkitRequestFullscreen) {
-            elem.webkitRequestFullscreen();
-        } else if (elem.msRequestFullscreen) {
-            elem.msRequestFullscreen();
+        // 전체화면 진입
+        if (mapView.requestFullscreen) {
+            mapView.requestFullscreen();
+        } else if (mapView.webkitRequestFullscreen) {
+            mapView.webkitRequestFullscreen();
+        } else if (mapView.msRequestFullscreen) {
+            mapView.msRequestFullscreen();
         }
-        if (text) text.textContent = '전체화면 종료';
+        
+        // 전체화면 모드 클래스 추가
+        setTimeout(() => {
+            mapView.classList.add('fullscreen-mode');
+            if (text) text.textContent = '나가기';
+        }, 100);
     } else {
+        // 전체화면 종료
         if (document.exitFullscreen) {
             document.exitFullscreen();
         } else if (document.webkitExitFullscreen) {
@@ -35,9 +42,34 @@ function toggleFullscreen() {
         } else if (document.msExitFullscreen) {
             document.msExitFullscreen();
         }
-        if (text) text.textContent = '전체화면';
+        
+        // 전체화면 모드 클래스 제거
+        mapView.classList.remove('fullscreen-mode');
+        if (text) text.textContent = '전체';
     }
 }
+
+// 전체화면 변경 이벤트 리스너
+document.addEventListener('fullscreenchange', handleFullscreenChange);
+document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+document.addEventListener('MSFullscreenChange', handleFullscreenChange);
+
+function handleFullscreenChange() {
+    const mapView = document.getElementById('mapView');
+    const text = document.getElementById('fullscreenText');
+    
+    if (!document.fullscreenElement) {
+        // 전체화면 종료됨
+        if (mapView) mapView.classList.remove('fullscreen-mode');
+        if (text) text.textContent = '전체';
+    }
+}
+
+// 아래는 기존 코드 그대로 유지
+// var showLabels = true;
+// var myLocationMarker = null;
+// ... 등등
 
 // 아래는 기존 코드 그대로 유지
 // var showLabels = true;
