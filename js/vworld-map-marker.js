@@ -136,36 +136,61 @@ function changeVWorldMarkerStatus(markerIndex, newStatus) {
     
     const markerItem = vworldMarkers[markerIndex];
     const markerData = markerItem.rowData;
-    markerData.상태 = newStatus;
+    const oldStatus = markerData.상태;
+
+    // ✅ 상태 변경 메모 추가
+    const now = new Date();
+    const timeStr = `${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, '0')}.${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    const memoText = `상태변경: ${oldStatus}->${newStatus} (${timeStr})`;
+    if (!markerData.메모) markerData.메모 = [];
+    markerData.메모.push({ 내용: memoText, 시간: timeStr });
     
+    // ✅ 기록사항 업데이트
+    const memoEntry = `${markerData.메모.length}. ${memoText}`;
+    markerData.기록사항 = (!markerData.기록사항 || markerData.기록사항.trim() === '' || markerData.기록사항 === '-') 
+        ? memoEntry 
+        : markerData.기록사항 + '\n\n' + memoEntry;
+
+    // 같은 주소를 가진 모든 마커의 상태를 변경
+    const targetAddress = markerData.주소;
+    vworldMarkers.forEach((item, index) => {
+        if (item.rowData.주소 === targetAddress) {
+            item.rowData.상태 = newStatus;
+            
+            // 마커 스타일만 변경 (위치는 그대로)
+            const newStyle = new ol.style.Style({
+                image: new ol.style.Icon({
+                    src: createVWorldMarkerSVG(item.rowData.순번, newStatus),
+                    anchor: [0.5, 1],
+                    anchorXUnits: 'fraction',
+                    anchorYUnits: 'fraction',
+                    scale: 1
+                }),
+                zIndex: 100
+            });
+            
+            item.feature.setStyle(newStyle);
+            
+            // 필지 외곽선 색상도 변경
+            if (typeof updateParcelColor === 'function') {
+                const lon = item.rowData.vworld_lon || item.rowData.lng || item.rowData.lon;
+                const lat = item.rowData.vworld_lat || item.rowData.lat;
+                updateParcelColor(lon, lat, newStatus);
+            }
+        }
+    });
+
     // 원본 데이터 업데이트
     const row = currentProject.data.find(r => r.id === markerData.id);
     if (row) {
         row.상태 = newStatus;
+        row.메모 = markerData.메모;
+        row.기록사항 = markerData.기록사항;
         if (typeof renderReportTable === 'function') renderReportTable();
     }
     
     const projectIndex = projects.findIndex(p => p.id === currentProject.id);
     if (projectIndex !== -1) projects[projectIndex] = currentProject;
-    
-    // 마커 스타일만 변경 (위치는 그대로)
-    const newStyle = new ol.style.Style({
-        image: new ol.style.Icon({
-            src: createVWorldMarkerSVG(markerData.순번, newStatus),
-            anchor: [0.5, 1],
-            anchorXUnits: 'fraction',
-            anchorYUnits: 'fraction',
-            scale: 1
-        }),
-        zIndex: 100
-    });
-    
-    markerItem.feature.setStyle(newStyle);
-    
-    // 필지 외곽선 색상도 변경
-    if (typeof updateParcelColor === 'function') {
-        updateParcelColor(markerData.lon || markerData.lng, markerData.lat, newStatus);
-    }
     
     showBottomInfoPanelVWorld(markerData, markerIndex);
 }
