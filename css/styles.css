@@ -18,12 +18,27 @@ body {
     display: block;
 }
 
-/* 반응형 사이드바 스타일 */
+/* 사이드바 상태 */
 .sidebar {
-    transform: translateX(0);
-    transition: transform 0.3s ease-in-out;
+    transition: all 0.3s ease-in-out;
 }
 
+/* 사이드바 접힌 상태 */
+.sidebar.collapsed {
+    width: 60px !important;
+}
+
+.sidebar.collapsed .sidebar-content {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.sidebar.collapsed .sidebar-header h3,
+.sidebar.collapsed .sidebar-content span {
+    display: none;
+}
+
+/* 사이드바 완전히 숨김 (모바일) */
 .sidebar.hidden {
     transform: translateX(-100%);
 }
@@ -40,21 +55,31 @@ body {
     pointer-events: auto;
 }
 
+/* 토글 버튼 회전 애니메이션 */
+.collapse-arrow {
+    transition: transform 0.3s ease;
+}
+
+.sidebar.collapsed .collapse-arrow {
+    transform: rotate(180deg);
+}
+
 /* 모바일 최적화 */
 @media (max-width: 768px) {
-    /* 사이드바가 화면 위에 떠있도록 */
+    /* 사이드바가 헤더 아래에 위치 */
     .sidebar {
         position: fixed !important;
+        top: 73px !important;
         z-index: 40;
+        max-height: calc(100vh - 73px) !important;
     }
     
     /* 마커 목록 패널 모바일 최적화 */
     #markerListPanel {
         width: 90vw !important;
         max-width: 350px !important;
-        left: 50% !important;
-        transform: translateX(-50%) !important;
-        top: 70px !important;
+        right: 1rem !important;
+        top: 85px !important;
     }
     
     /* 하단 정보 패널 모바일 최적화 */
@@ -75,13 +100,14 @@ body {
 @media (min-width: 769px) {
     .sidebar {
         position: absolute !important;
+        top: 1rem !important;
     }
     
     .sidebar-overlay {
         display: none !important;
     }
     
-    .sidebar-toggle {
+    .mobile-toggle-btn {
         display: none !important;
     }
 }
