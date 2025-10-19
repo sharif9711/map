@@ -4,6 +4,13 @@ console.log("✅ js/main.js loaded successfully.");
 
 // 애플리케이션 초기화 함수
 function initApp() {
+    // ✅ 앱이 이미 초기화되었는지 확인하여 중복 실행 방지
+    if (window.isAppInitialized) {
+        console.log('Application already initialized.');
+        return;
+    }
+    window.isAppInitialized = true;
+
     console.log('🚀 Initializing application...');
 
     // 1. localStorage에서 프로젝트 목록 불러오기
