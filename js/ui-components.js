@@ -217,22 +217,16 @@ function getProjectDetailHTML() {
                 <!-- 로딩 상태 -->
                 <div id="mapLoadingStatus" class="absolute top-2 left-1/2 transform -translate-x-1/2 z-10 px-4 py-2 text-sm text-white bg-slate-900/80 rounded-lg backdrop-blur-sm" style="display: none;"></div>
                 
-                <!-- ✅ 전체화면 버튼 (지도 상단 중앙) -->
+                <!-- ✅ 전체화면 버튼 (아주 작게) -->
                 <button id="fullscreenButton" class="fullscreen-button" onclick="toggleFullscreen()">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
                     </svg>
-                    <span id="fullscreenText">전체화면</span>
+                    <span id="fullscreenText">전체</span>
                 </button>
                 
-                <!-- ✅ 모바일 메뉴 토글 버튼 -->
-                <button class="mobile-menu-toggle" id="mobileMenuToggle" onclick="toggleMobileMenu()">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <line x1="3" y1="12" x2="21" y2="12"></line>
-                        <line x1="3" y1="6" x2="21" y2="6"></line>
-                        <line x1="3" y1="18" x2="21" y2="18"></line>
-                    </svg>
-                </button>
+                <!-- ✅ 삼각형 메뉴 토글 버튼 (모바일) -->
+                <div class="menu-triangle-toggle" id="menuTriangleToggle" onclick="toggleMobileMenu()"></div>
                 
                 <!-- ✅ 모바일 메뉴 오버레이 -->
                 <div class="mobile-menu-overlay" id="mobileMenuOverlay" onclick="toggleMobileMenu()"></div>
@@ -315,7 +309,8 @@ function getProjectDetailHTML() {
                 </div>
             </div>
         </div>
-        
+
+       
         <style>
             @keyframes slideUp {
                 from {
