@@ -63,6 +63,13 @@ async function displayProjectOnVWorldMap(projectData) {
             loadingStatus.style.display = 'block';
             loadingStatus.style.backgroundColor = '#f59e0b';
             loadingStatus.textContent = '⚠ 표시할 주소가 없습니다.';
+            
+            // 2초 후 자동으로 숨기기
+            setTimeout(() => {
+                if (loadingStatus) {
+                    loadingStatus.style.display = 'none';
+                }
+            }, 2000);
         }
         return;
     }
