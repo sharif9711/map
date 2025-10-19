@@ -281,7 +281,7 @@ function toggleMyLocation() {
     else if (isGpsActive && !gpsWatchId) {
         btn.classList.add('bg-blue-600', 'text-white');
         btn.classList.remove('bg-green-600');
-        btn.textContent = '🎯 추적중';
+        btn.textContent = '🎯 추적';
         showMapMessage('실시간 위치 추적을 시작합니다', 'info');
         
         gpsWatchId = navigator.geolocation.watchPosition(
