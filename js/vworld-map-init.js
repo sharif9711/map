@@ -44,7 +44,26 @@ function vworldJsonp(url) {
     });
 }
 
-// 지도 초기화 (위성 영상 + 라벨)
+// ✅ 새로 추가: 기본 지도 레이어들을 저장할 전역 변수
+var vworldSatelliteLayer, vworldGraphicLayer, vworldHybridLayer, osmLayer;
+
+// ✅ 새로 추가: 기본 지도를 변경하는 함수
+function changeBaseMap(mapType) {
+    if (!vworldMap) return;
+
+    const isSatellite = mapType === 'satellite';
+    const isGraphic = mapType === 'graphic';
+    const isOsm = mapType === 'osm';
+
+    if (vworldSatelliteLayer) vworldSatelliteLayer.setVisible(isSatellite);
+    if (vworldGraphicLayer) vworldGraphicLayer.setVisible(isGraphic);
+    if (osmLayer) osmLayer.setVisible(isOsm);
+    
+    // ✅ 하이브리드(라벨) 레이어는 항상 보이도록 수정
+    // if (vworldHybridLayer) vworldHybridLayer.setVisible(isSatellite);
+}
+
+// 지도 초기화 (여러 기본 지도 레이어 생성)
 function initVWorldMap() {
     const mapContainer = document.getElementById('vworldMap');
     if (!mapContainer) {
@@ -58,35 +77,49 @@ function initVWorldMap() {
     }
 
     try {
+        // ✅ 레이어들을 개별적으로 생성
+        vworldGraphicLayer = new ol.layer.Tile({
+            source: new ol.source.XYZ({
+                url: 'https://api.vworld.kr/req/wmts/1.0.0/' + VWORLD_API_KEY + '/Base/{z}/{y}/{x}.png',
+                crossOrigin: 'anonymous'
+            }),
+            zIndex: 0,
+            visible: true // 기본값
+        });
+
+        vworldSatelliteLayer = new ol.layer.Tile({
+            source: new ol.source.XYZ({
+                url: 'https://api.vworld.kr/req/wmts/1.0.0/' + VWORLD_API_KEY + '/Satellite/{z}/{y}/{x}.jpeg',
+                crossOrigin: 'anonymous'
+            }),
+            zIndex: 0,
+            visible: false
+        });
+
+        osmLayer = new ol.layer.Tile({
+            source: new ol.source.OSM(),
+            zIndex: 0,
+            visible: false
+        });
+
+        // ✅ 하이브리드(라벨) 레이어는 항상 보이도록 설정 (zIndex를 높여 위에 표시)
+        vworldHybridLayer = new ol.layer.Tile({
+            source: new ol.source.XYZ({
+                url: 'https://api.vworld.kr/req/wmts/1.0.0/' + VWORLD_API_KEY + '/Hybrid/{z}/{y}/{x}.png',
+                crossOrigin: 'anonymous'
+            }),
+            opacity: 0.8,
+            zIndex: 10,
+            visible: true // ✅ 항상 보이도록 설정
+        });
+
         vworldMap = new ol.Map({
             target: 'vworldMap',
             layers: [
-                // VWorld 기본 위성 영상
-                new ol.layer.Tile({
-                    source: new ol.source.XYZ({
-                        url: 'https://api.vworld.kr/req/wmts/1.0.0/' + VWORLD_API_KEY + '/Satellite/{z}/{y}/{x}.jpeg',
-                        crossOrigin: 'anonymous'
-                    }),
-                    zIndex: 0
-                }),
-                // VWorld 기본 지번도 (gray - 지적 경계 포함)
-                new ol.layer.Tile({
-                    source: new ol.source.XYZ({
-                        url: 'https://api.vworld.kr/req/wmts/1.0.0/' + VWORLD_API_KEY + '/gray/{z}/{y}/{x}.png',
-                        crossOrigin: 'anonymous'
-                    }),
-                    opacity: 0.4,
-                    zIndex: 1
-                }),
-                // 라벨(지명) 레이어
-                new ol.layer.Tile({
-                    source: new ol.source.XYZ({
-                        url: 'https://api.vworld.kr/req/wmts/1.0.0/' + VWORLD_API_KEY + '/Hybrid/{z}/{y}/{x}.png',
-                        crossOrigin: 'anonymous'
-                    }),
-                    opacity: 0.8,
-                    zIndex: 2
-                })
+                vworldGraphicLayer, // 기본 레이어로 추가
+                vworldSatelliteLayer,
+                osmLayer,
+                vworldHybridLayer // 라벨 레이어 추가
             ],
             view: new ol.View({
                 center: ol.proj.fromLonLat([126.978, 37.5665]),
@@ -100,7 +133,7 @@ function initVWorldMap() {
             ]
         });
 
-        console.log('✅ VWorld map initialized with default layers');
+        console.log('✅ VWorld map initialized with multiple base layers');
         
     } catch (error) {
         console.error('❌ Failed to initialize VWorld map:', error);
