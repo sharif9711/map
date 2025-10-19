@@ -193,11 +193,12 @@ function getProjectDetailHTML() {
             </main>
         </div>
 
-// getProjectDetailHTML() 함수 내부의 지도뷰 부분을 이렇게 수정하세요:
+// getProjectDetailHTML() 함수 내부의 지도뷰 부분을 이렇게 완전히 교체하세요:
+// "<!-- 지도 뷰 -->" 부분을 찾아서 아래 코드로 교체
 
         <!-- 지도 뷰 -->
         <div id="mapView" style="display: none;">
-            <header class="border-b border-slate-300/50 bg-white/90 backdrop-blur-sm sticky top-0 z-10">
+            <header class="border-b border-slate-300/50 bg-white/90 backdrop-blur-sm sticky top-0 z-50">
                 <div class="container mx-auto px-4 py-4">
                     <div class="flex items-center justify-between">
                         <button onclick="hideMapView()" class="p-2 hover:bg-slate-100 rounded-lg transition-colors" title="돌아가기">
@@ -213,66 +214,113 @@ function getProjectDetailHTML() {
                     </div>
                 </div>
             </header>
+            
             <div style="height: calc(100vh - 73px); position: relative;">
                 <!-- 로딩 상태 -->
-                <div id="mapLoadingStatus" class="absolute top-2 left-1/2 transform -translate-x-1/2 z-10 px-4 py-2 text-sm text-white bg-slate-900/80 rounded-lg backdrop-blur-sm" style="display: none;"></div>
+                <div id="mapLoadingStatus" class="absolute top-2 left-1/2 transform -translate-x-1/2 z-50 px-4 py-2 text-sm text-white bg-slate-900/80 rounded-lg backdrop-blur-sm" style="display: none;"></div>
                 
-                <!-- ✅ 전체화면 버튼 (아주 작게) -->
-                <button id="fullscreenButton" class="fullscreen-button" onclick="toggleFullscreen()">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <!-- ✅ 전체화면 버튼 (상단 중앙) -->
+                <button id="fullscreenButton" onclick="toggleFullscreen()" 
+                        class="absolute top-4 left-1/2 transform -translate-x-1/2 z-50 bg-white hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-lg shadow-lg border border-slate-200 transition-all flex items-center gap-2 font-medium text-sm">
+                    <svg id="fullscreenIcon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
                     </svg>
-                    <span id="fullscreenText">전체</span>
+                    <span id="fullscreenText">전체화면</span>
                 </button>
                 
-                <!-- ✅ 삼각형 메뉴 토글 버튼 (모바일) -->
-                <div class="menu-triangle-toggle" id="menuTriangleToggle" onclick="toggleMobileMenu()"></div>
+                <!-- ✅ 사이드바 토글 버튼 (모바일에서만 표시) -->
+                <button id="sidebarToggle" onclick="toggleSidebar()" 
+                        class="sidebar-toggle fixed top-20 left-4 z-50 md:hidden w-12 h-12 bg-white hover:bg-slate-50 rounded-full shadow-lg border border-slate-200 flex items-center justify-center transition-all">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="3" y1="12" x2="21" y2="12"></line>
+                        <line x1="3" y1="6" x2="21" y2="6"></line>
+                        <line x1="3" y1="18" x2="21" y2="18"></line>
+                    </svg>
+                </button>
                 
-                <!-- ✅ 모바일 메뉴 오버레이 -->
-                <div class="mobile-menu-overlay" id="mobileMenuOverlay" onclick="toggleMobileMenu()"></div>
+                <!-- ✅ 사이드바 오버레이 (모바일에서만) -->
+                <div id="sidebarOverlay" onclick="toggleSidebar()" 
+                     class="sidebar-overlay fixed inset-0 bg-black/50 z-30 md:hidden"></div>
                 
-                <!-- ✅ 왼쪽 상단 컨트롤 버튼들 (세로 정렬) - 모바일에서 슬라이딩 -->
-                <div class="absolute top-4 left-4 z-10 flex flex-col gap-2 w-48 mobile-menu-container" id="mobileMenuContainer">
-                    <!-- ✅ 4개 버튼을 세로로 나열 -->
-                    <button id="toggleGpsBtn" onclick="toggleMyLocation()" class="px-3 py-2 bg-white text-slate-700 rounded-lg shadow-lg hover:bg-slate-50 transition-colors font-medium text-sm border border-slate-200 whitespace-nowrap">
-                        📍 GPS
-                    </button>
-                    <button id="toggleListBtn" onclick="toggleMarkerList()" class="px-3 py-2 bg-white text-slate-700 rounded-lg shadow-lg hover:bg-slate-50 transition-colors font-medium text-sm border border-slate-200 whitespace-nowrap">
-                        📋 목록
-                    </button>
-                    <button id="optimalRouteBtn" onclick="calculateOptimalRoute()" class="px-3 py-2 bg-white text-slate-700 rounded-lg shadow-lg hover:bg-slate-50 transition-colors font-medium text-sm border border-slate-200 whitespace-nowrap">
-                        🗺️ 최적경로
-                    </button>
-                    <button id="toggleLabelsBtn" onclick="toggleMarkerLabels()" class="px-3 py-2 bg-blue-600 text-white rounded-lg shadow-lg hover:bg-blue-700 transition-colors font-medium text-sm whitespace-nowrap">
-                        🏷️ 이름
-                    </button>
-
-                    <!-- ✅ VWorld 전용 컨트롤들을 감싸는 div -->
-                    <div id="vworldSpecificControls" class="flex flex-col gap-2">
-                        <!-- ✅ 기본 지도 선택 -->
-                        <div class="bg-white p-2 rounded-lg shadow-lg border border-slate-200">
-                            <label for="baseMapSelector" class="text-xs font-semibold text-slate-700 block mb-1">기본 지도</label>
-                            <select id="baseMapSelector" class="w-full text-sm border border-slate-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-500">
-                                <option value="satellite">영상 지도</option>
-                                <option value="graphic" selected>그래픽 지도</option>
-                                <option value="osm">OSM 지도</option>
-                            </select>
-                        </div>
-
-                        <!-- ✅ 연속 지적도 투명도 조절 -->
-                        <div class="bg-white p-2 rounded-lg shadow-lg border border-slate-200">
-                            <label for="parcelOpacitySlider" class="text-xs font-semibold text-slate-700 block mb-1">연속 지적도 투명도</label>
-                            <input id="parcelOpacitySlider" type="range" min="0" max="1" step="0.1" value="0.5" class="w-full">
+                <!-- ✅ 반응형 사이드바 -->
+                <aside id="mapSidebar" 
+                       class="sidebar absolute top-4 left-4 z-40 w-64 max-h-[calc(100vh-100px)] bg-white/95 backdrop-blur-sm rounded-xl shadow-2xl border border-slate-200 overflow-hidden md:translate-x-0">
+                    
+                    <!-- 사이드바 헤더 -->
+                    <div class="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-4">
+                        <div class="flex items-center justify-between">
+                            <h3 class="font-bold text-lg">지도 컨트롤</h3>
+                            <button onclick="toggleSidebar()" class="md:hidden p-1 hover:bg-white/20 rounded">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                                </svg>
+                            </button>
                         </div>
                     </div>
-                </div>
+                    
+                    <!-- 사이드바 컨텐츠 -->
+                    <div class="p-4 overflow-y-auto max-h-[calc(100vh-180px)] space-y-3">
+                        <!-- 기본 컨트롤 -->
+                        <div class="space-y-2">
+                            <button id="toggleGpsBtn" onclick="toggleMyLocation()" 
+                                    class="w-full px-4 py-2.5 bg-white hover:bg-slate-50 text-slate-700 rounded-lg shadow-md border border-slate-200 transition-all flex items-center gap-2 font-medium text-sm">
+                                <span class="text-lg">📍</span>
+                                <span>GPS</span>
+                            </button>
+                            
+                            <button id="toggleListBtn" onclick="toggleMarkerList()" 
+                                    class="w-full px-4 py-2.5 bg-white hover:bg-slate-50 text-slate-700 rounded-lg shadow-md border border-slate-200 transition-all flex items-center gap-2 font-medium text-sm">
+                                <span class="text-lg">📋</span>
+                                <span>마커 목록</span>
+                            </button>
+                            
+                            <button id="optimalRouteBtn" onclick="calculateOptimalRoute()" 
+                                    class="w-full px-4 py-2.5 bg-white hover:bg-slate-50 text-slate-700 rounded-lg shadow-md border border-slate-200 transition-all flex items-center gap-2 font-medium text-sm">
+                                <span class="text-lg">🗺️</span>
+                                <span>최적경로</span>
+                            </button>
+                            
+                            <button id="toggleLabelsBtn" onclick="toggleMarkerLabels()" 
+                                    class="w-full px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-md transition-all flex items-center gap-2 font-medium text-sm">
+                                <span class="text-lg">🏷️</span>
+                                <span>이름 표시</span>
+                            </button>
+                        </div>
+                        
+                        <!-- VWorld 전용 컨트롤 -->
+                        <div id="vworldSpecificControls" class="space-y-3 pt-3 border-t border-slate-200">
+                            <!-- 기본 지도 선택 -->
+                            <div class="bg-slate-50 p-3 rounded-lg">
+                                <label for="baseMapSelector" class="block text-xs font-semibold text-slate-700 mb-2">기본 지도</label>
+                                <select id="baseMapSelector" 
+                                        class="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                                    <option value="satellite">🛰️ 영상 지도</option>
+                                    <option value="graphic" selected>🗺️ 그래픽 지도</option>
+                                    <option value="osm">🌍 OSM 지도</option>
+                                </select>
+                            </div>
+                            
+                            <!-- 연속 지적도 투명도 -->
+                            <div class="bg-slate-50 p-3 rounded-lg">
+                                <label for="parcelOpacitySlider" class="block text-xs font-semibold text-slate-700 mb-2">
+                                    연속 지적도 투명도
+                                </label>
+                                <input id="parcelOpacitySlider" type="range" min="0" max="1" step="0.1" value="0.5" 
+                                       class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer">
+                            </div>
+                        </div>
+                    </div>
+                </aside>
 
                 <!-- 마커 목록 패널 -->
-                <div id="markerListPanel" class="absolute top-4 left-[220px] z-10 bg-white rounded-lg shadow-xl w-80 max-w-[calc(100vw-240px)] max-h-[calc(100vh-150px)] overflow-hidden" style="display: none;">
-                    <div class="p-4 border-b border-slate-200 flex items-center justify-between">
-                        <h3 class="font-bold text-slate-900">마커 목록</h3>
-                        <button onclick="toggleMarkerList()" class="p-1 hover:bg-slate-100 rounded">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <div id="markerListPanel" 
+                     class="absolute top-4 right-4 z-30 bg-white rounded-xl shadow-2xl w-80 max-w-[calc(100vw-2rem)] max-h-[calc(100vh-150px)] overflow-hidden border border-slate-200" 
+                     style="display: none;">
+                    <div class="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-4 flex items-center justify-between">
+                        <h3 class="font-bold">마커 목록</h3>
+                        <button onclick="toggleMarkerList()" class="p-1 hover:bg-white/20 rounded transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <line x1="18" y1="6" x2="6" y2="18"></line>
                                 <line x1="6" y1="6" x2="18" y2="18"></line>
                             </svg>
@@ -290,18 +338,18 @@ function getProjectDetailHTML() {
                 <div id="bottomInfoPanel" class="absolute bottom-0 left-0 right-0 z-20" style="display: none;"></div>
                 
                 <!-- 메모 모달 -->
-                <div id="memoModal" class="fixed inset-0 bg-black/50 items-center justify-center z-30" style="display: none;">
-                    <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
+                <div id="memoModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" style="display: none;">
+                    <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
                         <h3 class="text-lg font-bold text-slate-900 mb-4">메모 추가</h3>
                         <textarea id="memoInput" rows="4" placeholder="메모 내용을 입력하세요" 
                                   class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"></textarea>
                         <div class="flex gap-3 mt-4">
                             <button onclick="closeMemoModal()" 
-                                    class="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors">
+                                    class="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors font-medium">
                                 취소
                             </button>
                             <button onclick="saveMemo()" 
-                                    class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                                    class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium">
                                 저장
                             </button>
                         </div>
