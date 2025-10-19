@@ -113,13 +113,35 @@ function initVWorldMap() {
             visible: true // ✅ 항상 보이도록 설정
         });
 
+        // ✅ [수정] VWorld 연속 지적도 WMS 레이어 추가
+        const wms_title = '지적도';
+        const wms_val = 'LP_PA_CBND_BUBUN,LP_PA_CBND_BONBUN'.toLowerCase();
+        const vworldWmsLayer = new ol.layer.Tile({
+            name: "VWorld_WMS_LAYER", // ✅ 레이어를 식별할 고유 이름
+            source: new ol.source.TileWMS({
+                url: "https://api.vworld.kr/req/wms?",
+                params: {
+                    LAYERS: wms_val,
+                    STYLES: wms_val,
+                    CRS: "EPSG:3857",
+                    apikey: VWORLD_API_KEY,
+                    DOMAIN: "http://localhost:8080", // 실제 도메인으로 변경 필요
+                    title: wms_title,
+                    FORMAT: "image/png"
+                }
+            }),
+            opacity: 0.5, // 기본 투명도
+            zIndex: 1 // 기본 지도 위, 마커 아래
+        });
+
         vworldMap = new ol.Map({
             target: 'vworldMap',
             layers: [
                 vworldGraphicLayer, // 기본 레이어로 추가
                 vworldSatelliteLayer,
                 osmLayer,
-                vworldHybridLayer // 라벨 레이어 추가
+                vworldHybridLayer, // 라벨 레이어 추가
+                vworldWmsLayer // ✅ 연속 지적도 레이어 추가
             ],
             view: new ol.View({
                 center: ol.proj.fromLonLat([126.978, 37.5665]),
@@ -146,19 +168,18 @@ function initVWorldMap() {
             console.warn('baseMapSelector element not found.');
         }
 
-        // 지적도 투명도 조절 이벤트 리스너
+        // ✅ [수정] 연속 지적도 투명도 조절 이벤트 리스너
         const parcelOpacitySlider = document.getElementById('parcelOpacitySlider');
         if (parcelOpacitySlider) {
             parcelOpacitySlider.addEventListener('input', function(e) {
                 const opacity = parseFloat(e.target.value);
-                
-                // ✅ [오류 수정] parcelLayer가 아직 생성되지 않았을 경우를 대비한 방어 코드
-                if (window.parcelLayer) {
-                    window.parcelLayer.setOpacity(opacity);
-                } else {
-                    // parcelLayer가 없으면, 콘솔에 메시지를 남겨 상태를 알립니다.
-                    // 오류를 발생시키지 않고 안전하게 무시합니다.
-                    console.log('Parcel layer not yet initialized. Opacity will be applied when parcels are loaded.');
+                if (vworldMap) {
+                    vworldMap.getLayers().forEach(function(layer) {
+                        // ✅ name 속성을 이용해 WMS 레이어에 접근하여 투명도 설정
+                        if (layer.get('name') === 'VWorld_WMS_LAYER') {
+                            layer.setOpacity(opacity);
+                        }
+                    });
                 }
             });
         } else {
