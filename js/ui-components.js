@@ -218,20 +218,6 @@ function getProjectDetailHTML() {
                 <!-- 로딩 상태 -->
                 <div id="mapLoadingStatus" class="absolute top-2 left-1/2 transform -translate-x-1/2 z-50 px-4 py-2 text-sm text-white bg-slate-900/80 rounded-lg backdrop-blur-sm" style="display: none;"></div>
                 
-                <!-- ✅ 사이드바 토글 버튼 (모바일에서만 표시) -->
-                <button id="sidebarToggle" onclick="toggleSidebar()" 
-                        class="mobile-toggle-btn fixed top-20 left-4 z-50 md:hidden w-12 h-12 bg-white hover:bg-slate-50 rounded-full shadow-lg border border-slate-200 flex items-center justify-center transition-all">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <line x1="3" y1="12" x2="21" y2="12"></line>
-                        <line x1="3" y1="6" x2="21" y2="6"></line>
-                        <line x1="3" y1="18" x2="21" y2="18"></line>
-                    </svg>
-                </button>
-                
-                <!-- ✅ 사이드바 오버레이 (모바일에서만) -->
-                <div id="sidebarOverlay" onclick="toggleSidebar()" 
-                     class="sidebar-overlay fixed inset-0 bg-black/50 z-30 md:hidden"></div>
-                
                 <!-- ✅ 반응형 사이드바 (크기 축소: 130px) -->
                 <aside id="mapSidebar" 
                        class="sidebar left-4 z-40 w-32 bg-white/95 backdrop-blur-sm rounded-xl shadow-2xl border border-slate-200 overflow-hidden">
@@ -240,23 +226,14 @@ function getProjectDetailHTML() {
                     <div class="sidebar-header bg-gradient-to-r from-blue-600 to-purple-600 text-white p-3">
                         <div class="flex items-center justify-between">
                             <h3 class="font-bold text-sm whitespace-nowrap">지도컨트롤</h3>
-                            <div class="flex items-center gap-1">
-                                <!-- 접기/펴기 버튼 -->
-                                <button onclick="collapseSidebar()" 
-                                        class="p-1 hover:bg-white/20 rounded transition-colors" 
-                                        title="접기/펴기">
-                                    <svg class="collapse-arrow" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                        <polyline points="15 18 9 12 15 6"></polyline>
-                                    </svg>
-                                </button>
-                                <!-- 닫기 버튼 (모바일만) -->
-                                <button onclick="toggleSidebar()" class="md:hidden p-1 hover:bg-white/20 rounded transition-colors">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                                    </svg>
-                                </button>
-                            </div>
+                            <!-- 접기/펴기 버튼만 표시 -->
+                            <button onclick="collapseSidebar()" 
+                                    class="p-1 hover:bg-white/20 rounded transition-colors" 
+                                    title="접기/펴기">
+                                <svg class="collapse-arrow" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="15 18 9 12 15 6"></polyline>
+                                </svg>
+                            </button>
                         </div>
                     </div>
                     
