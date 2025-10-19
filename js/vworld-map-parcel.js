@@ -64,7 +64,7 @@ function clearParcelBoundaries() {
     }
 }
 
-// 좌표로 필지 외곽선 조회 및 표시
+// 좌표로 필지 외곽선 조회 및 표시 + 면적 계산
 function showParcelBoundary(lon, lat, status) {
     if (!parcelLayer) {
         initParcelLayer();
@@ -111,6 +111,49 @@ function showParcelBoundary(lon, lat, status) {
                     f.set('coordKey', key);
                     f.set('status', status);
                     parcelLayer.getSource().addFeature(f);
+                    
+                    // ✅ 필지 면적 계산
+                    const geometry = f.getGeometry();
+                    if (geometry && geometry.getType() === 'Polygon') {
+                        const area = calculatePolygonArea(geometry);
+                        
+                        // 현재 프로젝트 데이터에서 해당 행 찾기
+                        if (currentProject && currentProject.data) {
+                            const row = currentProject.data.find(r => 
+                                (r.vworld_lon === lon || r.lng === lon) && 
+                                (r.vworld_lat === lat || r.lat === lat)
+                            );
+                            
+                            if (row) {
+                                // 계산된 면적을 저장 (제곱미터, 소수점 2자리)
+                                row.계산면적 = area.toFixed(2);
+                                
+                                console.log(`📐 면적 계산 완료: ${row.주소} - ${area.toFixed(2)}㎡`);
+                                
+                                // 기존 면적과 비교
+                                if (row.면적 && row.면적 !== '-') {
+                                    const originalArea = parseFloat(row.면적);
+                                    const diff = Math.abs(area - originalArea);
+                                    const diffPercent = ((diff / originalArea) * 100).toFixed(2);
+                                    
+                                    if (diff > 0.1) { // 0.1㎡ 이상 차이나면
+                                        console.log(`⚠️ 면적 차이: 대장 ${originalArea}㎡ vs 계산 ${area.toFixed(2)}㎡ (차이: ${diff.toFixed(2)}㎡, ${diffPercent}%)`);
+                                    }
+                                }
+                                
+                                // 프로젝트 데이터 저장
+                                const projectIndex = projects.findIndex(p => p.id === currentProject.id);
+                                if (projectIndex !== -1) {
+                                    projects[projectIndex] = currentProject;
+                                }
+                                
+                                // 보고서 테이블 갱신
+                                if (typeof renderReportTable === 'function') {
+                                    renderReportTable();
+                                }
+                            }
+                        }
+                    }
                 });
                 
                 parcelFeatureMap[key] = { features, status };
@@ -121,6 +164,37 @@ function showParcelBoundary(lon, lat, status) {
             console.error('필지 외곽선 조회 오류:', error);
         }
     });
+}
+
+// ✅ 폴리곤 면적 계산 함수 (제곱미터)
+function calculatePolygonArea(geometry) {
+    // OpenLayers Polygon geometry에서 좌표 추출
+    const coordinates = geometry.getCoordinates()[0]; // 외곽선 좌표
+    
+    // EPSG:3857 (Web Mercator) 좌표를 EPSG:4326 (WGS84)로 변환
+    const wgs84Coords = coordinates.map(coord => {
+        return ol.proj.transform(coord, 'EPSG:3857', 'EPSG:4326');
+    });
+    
+    // Shoelace 공식으로 면적 계산 (구면 좌표계 고려)
+    let area = 0;
+    const earthRadius = 6378137; // 지구 반지름 (미터)
+    
+    for (let i = 0; i < wgs84Coords.length - 1; i++) {
+        const p1 = wgs84Coords[i];
+        const p2 = wgs84Coords[i + 1];
+        
+        const lon1 = p1[0] * Math.PI / 180;
+        const lat1 = p1[1] * Math.PI / 180;
+        const lon2 = p2[0] * Math.PI / 180;
+        const lat2 = p2[1] * Math.PI / 180;
+        
+        area += (lon2 - lon1) * (2 + Math.sin(lat1) + Math.sin(lat2));
+    }
+    
+    area = Math.abs(area * earthRadius * earthRadius / 2.0);
+    
+    return area; // 제곱미터 반환
 }
 
 // 필지 색상 업데이트 (상태 변경 시)
