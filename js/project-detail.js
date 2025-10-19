@@ -326,7 +326,7 @@ function getStatusColor(status) {
     }
 }
 
-// project-detail.js의 renderReportTable 함수 - 계산면적 컬럼 추가
+// project-detail.js의 renderReportTable 함수 - 계산면적 단순 표시
 
 function renderReportTable() {
     const tbody = document.getElementById('reportTable');
@@ -340,22 +340,9 @@ function renderReportTable() {
             const 본번 = row.본번 ? String(row.본번).padStart(4, '0') : '0000';
             const 부번 = row.부번 ? String(row.부번).padStart(4, '0') : '0000';
             
-            // 면적 비교
+            // 면적 값 (숫자만)
             const 대장면적 = row.면적 || '-';
             const 계산면적 = row.계산면적 || '-';
-            
-            // 면적 차이 계산 및 스타일 적용
-            let 면적차이표시 = '';
-            if (대장면적 !== '-' && 계산면적 !== '-') {
-                const 대장값 = parseFloat(대장면적);
-                const 계산값 = parseFloat(계산면적);
-                const 차이 = Math.abs(대장값 - 계산값);
-                const 차이율 = ((차이 / 대장값) * 100).toFixed(2);
-                
-                if (차이 > 0.1) { // 0.1㎡ 이상 차이
-                    면적차이표시 = `<div class="text-xs text-red-600 mt-1">차이: ${차이.toFixed(2)}㎡ (${차이율}%)</div>`;
-                }
-            }
 
             return `
             <tr class="hover:bg-slate-50">
@@ -379,15 +366,14 @@ function renderReportTable() {
                 <td class="border border-slate-300 px-3 py-2 text-center">${부번}</td>
                 <td class="border border-slate-300 px-3 py-2 text-center">${row.지목 || '-'}</td>
                 <td class="border border-slate-300 px-3 py-2 text-center">${대장면적}</td>
-                <td class="border border-slate-300 px-3 py-2 text-center bg-blue-50">
-                    <div class="font-semibold ${계산면적 !== '-' ? 'text-blue-600' : ''}">${계산면적}</div>
-                    ${면적차이표시}
-                </td>
+                <td class="border border-slate-300 px-3 py-2 text-center bg-blue-50 font-semibold text-blue-600">${계산면적}</td>
                 <td class="border border-slate-300 px-3 py-2 whitespace-pre-line">${row.기록사항 || '-'}</td>
             </tr>
             `;
         }).join('');
 }
+
+
 
 function updateReportStatus(rowId, status) {
     if (updateCell(rowId, '상태', status)) {
