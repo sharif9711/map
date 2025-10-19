@@ -166,7 +166,8 @@ function getProjectDetailHTML() {
                                         <th class="border border-slate-300 px-3 py-2 font-semibold text-slate-700">본번</th>
                                         <th class="border border-slate-300 px-3 py-2 font-semibold text-slate-700">부번</th>
                                         <th class="border border-slate-300 px-3 py-2 font-semibold text-slate-700">지목</th>
-                                        <th class="border border-slate-300 px-3 py-2 font-semibold text-slate-700">면적</th>
+                                        <th class="border border-slate-300 px-3 py-2 font-semibold text-slate-700">대장면적</th>
+                                        <th class="border border-slate-300 px-3 py-2 font-semibold text-slate-700 bg-blue-50">계산면적</th>
                                         <th class="border border-slate-300 px-3 py-2 font-semibold text-slate-700">기록사항</th>
                                     </tr>
                                 </thead>
