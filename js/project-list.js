@@ -1,14 +1,29 @@
+// project-list.js
+
+console.log("✅ js/project-list.js loaded successfully.");
+
 function renderProjects() {
+    // ✅ [수정] 1. 가장 먼저 프로젝트 목록 화면의 HTML 템플릿을 가져와 그립니다.
+    const projectListScreen = document.getElementById('projectListScreen');
+    if (!projectListScreen) {
+        console.error('projectListScreen element not found!');
+        return;
+    }
+    projectListScreen.innerHTML = getProjectListHTML();
+
+    // ✅ [수정] 2. HTML이 그려진 후, 그 안의 요소들을 안전하게 찾습니다.
     const emptyState = document.getElementById('emptyState');
     const projectsList = document.getElementById('projectsList');
     const projectsGrid = document.getElementById('projectsGrid');
     const projectCount = document.getElementById('projectCount');
 
+    // 만약 템플릿에 문제가 있어 요소를 찾지 못하면 중단합니다.
     if (!emptyState || !projectsList || !projectsGrid || !projectCount) {
-        console.error('Required elements not found');
+        console.error('Required elements not found in the rendered template.');
         return;
     }
 
+    // ✅ [수정] 3. 이후 로직은 기존과 동일합니다.
     if (projects.length === 0) {
         emptyState.style.display = 'flex';
         projectsList.style.display = 'none';
@@ -59,7 +74,7 @@ function renderProjects() {
                     </div>
                 </div>
             </div>
-        `;
+            `;
         }).join('');
     }
 }
@@ -75,6 +90,7 @@ function deleteProject(event, projectId) {
         if (index > -1) {
             projects.splice(index, 1);
         }
-        renderProjects();
+        // 삭제 후 다시 렌더링
+        renderProjects(); 
     }
 }
