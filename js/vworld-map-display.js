@@ -195,10 +195,15 @@ async function displayProjectOnVWorldMap(projectData) {
     const panel = document.getElementById('markerListPanel');
     if (panel && panel.style.display !== 'none') updateMarkerList();
     
-    // ✅ 마커 표시 완료 후 자동으로 필지 외곽선 표시
+    // ✅ 마커 표시 완료 후 자동으로 필지 외곽선 표시 및 면적 계산
     if (successCount > 0) {
+        console.log('✅ 마커 표시 완료, 1초 후 필지 외곽선 표시 시작');
         setTimeout(() => {
-            showAllParcelBoundariesAuto();
+            if (typeof showAllParcelBoundariesAuto === 'function') {
+                showAllParcelBoundariesAuto();
+            } else {
+                console.error('❌ showAllParcelBoundariesAuto 함수를 찾을 수 없습니다');
+            }
         }, 1000);
     }
 }
