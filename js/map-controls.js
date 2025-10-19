@@ -1,6 +1,6 @@
 // ✅ 기존 js/map-controls.js 파일의 맨 위에 이 함수들을 추가하세요
 
-// 사이드바 토글 함수
+// 사이드바 토글 함수 (모바일 - 완전히 숨김/보임)
 function toggleSidebar() {
     const sidebar = document.getElementById('mapSidebar');
     const overlay = document.getElementById('sidebarOverlay');
@@ -31,44 +31,19 @@ function toggleSidebar() {
     }
 }
 
-// 전체화면 토글 함수
-function toggleFullscreen() {
-    const elem = document.documentElement;
-    const text = document.getElementById('fullscreenText');
-    const icon = document.getElementById('fullscreenIcon');
+// 사이드바 접기/펴기 함수 (데스크톱/모바일 공통 - 아이콘만 보이기)
+function collapseSidebar() {
+    const sidebar = document.getElementById('mapSidebar');
     
-    if (!document.fullscreenElement) {
-        // 전체화면 진입
-        if (elem.requestFullscreen) {
-            elem.requestFullscreen();
-        } else if (elem.webkitRequestFullscreen) {
-            elem.webkitRequestFullscreen();
-        } else if (elem.msRequestFullscreen) {
-            elem.msRequestFullscreen();
-        }
-        if (text) text.textContent = '종료';
-        if (icon) {
-            icon.innerHTML = `
-                <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"></path>
-            `;
-        }
-    } else {
-        // 전체화면 종료
-        if (document.exitFullscreen) {
-            document.exitFullscreen();
-        } else if (document.webkitExitFullscreen) {
-            document.webkitExitFullscreen();
-        } else if (document.msExitFullscreen) {
-            document.msExitFullscreen();
-        }
-        if (text) text.textContent = '전체화면';
-        if (icon) {
-            icon.innerHTML = `
-                <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
-            `;
-        }
+    if (sidebar) {
+        sidebar.classList.toggle('collapsed');
     }
 }
+
+// 아래는 기존 코드 그대로 유지
+// var showLabels = true;
+// var myLocationMarker = null;
+// ... 등등
 
 // 아래는 기존 코드 그대로 유지
 // var showLabels = true;
