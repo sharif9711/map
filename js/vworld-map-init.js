@@ -151,9 +151,14 @@ function initVWorldMap() {
         if (parcelOpacitySlider) {
             parcelOpacitySlider.addEventListener('input', function(e) {
                 const opacity = parseFloat(e.target.value);
-                // vworld-map-parcel.js에서 window.parcelLayer로 접근하도록 설정
+                
+                // ✅ [오류 수정] parcelLayer가 아직 생성되지 않았을 경우를 대비한 방어 코드
                 if (window.parcelLayer) {
                     window.parcelLayer.setOpacity(opacity);
+                } else {
+                    // parcelLayer가 없으면, 콘솔에 메시지를 남겨 상태를 알립니다.
+                    // 오류를 발생시키지 않고 안전하게 무시합니다.
+                    console.log('Parcel layer not yet initialized. Opacity will be applied when parcels are loaded.');
                 }
             });
         } else {
