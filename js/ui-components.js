@@ -215,23 +215,37 @@ function getProjectDetailHTML() {
                 <!-- 로딩 상태 -->
                 <div id="mapLoadingStatus" class="absolute top-2 left-1/2 transform -translate-x-1/2 z-10 px-4 py-2 text-sm text-white bg-slate-900/80 rounded-lg backdrop-blur-sm" style="display: none;"></div>
                 
-                <!-- 왼쪽 상단 컨트롤 버튼들 -->
-                <div class="absolute top-4 left-4 z-10 grid grid-cols-2 gap-2">
-                    <!-- 첫 번째 줄 -->
+                <!-- 왼쪽 상단 컨트롤 버튼들 (세로 정렬) -->
+                <div class="absolute top-4 left-4 z-10 flex flex-col gap-2 w-48">
+                    <!-- ✅ 4개 버튼을 세로로 나열 -->
                     <button id="toggleGpsBtn" onclick="toggleMyLocation()" class="px-3 py-2 bg-white text-slate-700 rounded-lg shadow-lg hover:bg-slate-50 transition-colors font-medium text-sm border border-slate-200 whitespace-nowrap">
                         📍 GPS
                     </button>
                     <button id="toggleListBtn" onclick="toggleMarkerList()" class="px-3 py-2 bg-white text-slate-700 rounded-lg shadow-lg hover:bg-slate-50 transition-colors font-medium text-sm border border-slate-200 whitespace-nowrap">
                         📋 목록
                     </button>
-                    
-                    <!-- 두 번째 줄 -->
                     <button id="optimalRouteBtn" onclick="calculateOptimalRoute()" class="px-3 py-2 bg-white text-slate-700 rounded-lg shadow-lg hover:bg-slate-50 transition-colors font-medium text-sm border border-slate-200 whitespace-nowrap">
                         🗺️ 최적경로
                     </button>
                     <button id="toggleLabelsBtn" onclick="toggleMarkerLabels()" class="px-3 py-2 bg-blue-600 text-white rounded-lg shadow-lg hover:bg-blue-700 transition-colors font-medium text-sm whitespace-nowrap">
                         🏷️ 이름
                     </button>
+
+                    <!-- ✅ 기본 지도 선택 -->
+                    <div class="bg-white p-2 rounded-lg shadow-lg border border-slate-200">
+                        <label for="baseMapSelector" class="text-xs font-semibold text-slate-700 block mb-1">기본 지도</label>
+                        <select id="baseMapSelector" class="w-full text-sm border border-slate-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                            <option value="satellite">영상 지도</option>
+                            <option value="graphic" selected>그래픽 지도</option>
+                            <option value="osm">OSM 지도</option>
+                        </select>
+                    </div>
+
+                    <!-- ✅ 지적도 투명도 조절 -->
+                    <div class="bg-white p-2 rounded-lg shadow-lg border border-slate-200">
+                        <label for="parcelOpacitySlider" class="text-xs font-semibold text-slate-700 block mb-1">지적도 투명도</label>
+                        <input id="parcelOpacitySlider" type="range" min="0" max="1" step="0.1" value="0.5" class="w-full">
+                    </div>
                 </div>
 
                 <!-- 마커 목록 패널 -->
