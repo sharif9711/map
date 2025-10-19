@@ -12,6 +12,97 @@
     <script src="https://cdn.jsdelivr.net/npm/ol@v7.5.2/dist/ol.js"></script>
     
     <link rel="stylesheet" href="css/styles.css">
+    <style>
+        /* 모바일 슬라이딩 메뉴 스타일 */
+        @media (max-width: 768px) {
+            .mobile-menu-container {
+                position: fixed;
+                left: -100%;
+                top: 73px;
+                width: 70%;
+                max-width: 280px;
+                height: calc(100vh - 73px);
+                background: white;
+                z-index: 1000;
+                transition: left 0.3s ease;
+                box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+                overflow-y: auto;
+            }
+            
+            .mobile-menu-container.open {
+                left: 0;
+            }
+            
+            .mobile-menu-overlay {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0,0,0,0.5);
+                z-index: 999;
+                display: none;
+            }
+            
+            .mobile-menu-overlay.open {
+                display: block;
+            }
+            
+            .mobile-menu-toggle {
+                position: fixed;
+                top: 85px;
+                left: 10px;
+                z-index: 1001;
+                width: 44px;
+                height: 44px;
+                background: white;
+                border-radius: 50%;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                cursor: pointer;
+                transition: transform 0.3s ease;
+            }
+            
+            .mobile-menu-toggle.open {
+                transform: translateX(calc(70vw - 10px));
+                max-transform: translateX(270px);
+            }
+        }
+        
+        /* 전체화면 버튼 스타일 */
+        .fullscreen-button {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+            background: white;
+            border: 2px solid rgba(0,0,0,0.1);
+            border-radius: 8px;
+            padding: 8px 12px;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            color: #334155;
+            transition: all 0.2s ease;
+        }
+        
+        .fullscreen-button:hover {
+            background: #f8fafc;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+        
+        .fullscreen-button svg {
+            width: 18px;
+            height: 18px;
+        }
+    </style>
 </head>
 <body class="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-200">
     <!-- 두번째 화면: 프로젝트 목록 -->
@@ -24,8 +115,6 @@
     <div id="createModal" class="modal"></div>
 
     <!-- 중요: 스크립트 로드 순서 -->
-    <!-- ✅ 반드시 <script src="main.js"> 이전에 추가 -->
-<!-- ✅ index.html 중 일부 -->
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="js/data.js"></script>
@@ -41,10 +130,6 @@
 <script src="js/map-modal.js"></script>
 <script src="js/vworld-map-parcel.js"></script>
 <script src="js/excelExport.js"></script>
-<script src="js/main.js"></script>
-
-    
-<script src="js/excelExport.js"></script> <!-- ✅ 추가 -->
 <script src="js/main.js"></script>
 
 </body>
