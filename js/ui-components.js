@@ -193,6 +193,8 @@ function getProjectDetailHTML() {
             </main>
         </div>
 
+// getProjectDetailHTML() 함수 내부의 지도뷰 부분을 이렇게 수정하세요:
+
         <!-- 지도 뷰 -->
         <div id="mapView" style="display: none;">
             <header class="border-b border-slate-300/50 bg-white/90 backdrop-blur-sm sticky top-0 z-10">
@@ -215,8 +217,28 @@ function getProjectDetailHTML() {
                 <!-- 로딩 상태 -->
                 <div id="mapLoadingStatus" class="absolute top-2 left-1/2 transform -translate-x-1/2 z-10 px-4 py-2 text-sm text-white bg-slate-900/80 rounded-lg backdrop-blur-sm" style="display: none;"></div>
                 
-                <!-- 왼쪽 상단 컨트롤 버튼들 (세로 정렬) -->
-                <div class="absolute top-4 left-4 z-10 flex flex-col gap-2 w-48">
+                <!-- ✅ 전체화면 버튼 (지도 상단 중앙) -->
+                <button id="fullscreenButton" class="fullscreen-button" onclick="toggleFullscreen()">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+                    </svg>
+                    <span id="fullscreenText">전체화면</span>
+                </button>
+                
+                <!-- ✅ 모바일 메뉴 토글 버튼 -->
+                <button class="mobile-menu-toggle" id="mobileMenuToggle" onclick="toggleMobileMenu()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="3" y1="12" x2="21" y2="12"></line>
+                        <line x1="3" y1="6" x2="21" y2="6"></line>
+                        <line x1="3" y1="18" x2="21" y2="18"></line>
+                    </svg>
+                </button>
+                
+                <!-- ✅ 모바일 메뉴 오버레이 -->
+                <div class="mobile-menu-overlay" id="mobileMenuOverlay" onclick="toggleMobileMenu()"></div>
+                
+                <!-- ✅ 왼쪽 상단 컨트롤 버튼들 (세로 정렬) - 모바일에서 슬라이딩 -->
+                <div class="absolute top-4 left-4 z-10 flex flex-col gap-2 w-48 mobile-menu-container" id="mobileMenuContainer">
                     <!-- ✅ 4개 버튼을 세로로 나열 -->
                     <button id="toggleGpsBtn" onclick="toggleMyLocation()" class="px-3 py-2 bg-white text-slate-700 rounded-lg shadow-lg hover:bg-slate-50 transition-colors font-medium text-sm border border-slate-200 whitespace-nowrap">
                         📍 GPS
