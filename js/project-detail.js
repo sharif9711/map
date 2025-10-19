@@ -33,6 +33,18 @@ function showProjectDetail() {
             지도 (${mapTypeText})
         `;
     }
+
+    // ✅ [수정] 4. 지도 유형에 따라 VWorld 전용 컨트롤을 표시/숨깁니다.
+    const vworldControls = document.getElementById('vworldSpecificControls');
+    if (vworldControls) {
+        if (currentProject.mapType === 'kakao') {
+            // 카카오맵이면 VWorld 전용 컨트롤을 숨깁니다.
+            vworldControls.style.display = 'none';
+        } else {
+            // VWorld이면 VWorld 전용 컨트롤을 보여줍니다.
+            vworldControls.style.display = 'flex';
+        }
+    }
     
     switchTab('자료입력');
     renderDataInputTable();
