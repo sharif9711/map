@@ -241,12 +241,25 @@ function getVWorldPNU(x, y) {
 }
 
 // VWorld: PNU -> 토지 특성
+// project-detail.js
+
 function getVWorldLandCharacteristics(pnu) {
+    // ✅ 현재 연도를 동적으로 가져옵니다.
+    const currentYear = new Date().getFullYear();
+
     return new Promise((resolve) => {
         $.ajax({
             type: "get", dataType: "jsonp", jsonp: "callback",
             url: "https://api.vworld.kr/ned/data/getLandCharacteristics",
-            data: { key: "BE552462-0744-32DB-81E7-1B7317390D68", domain: "sharif9711.github.io", pnu: pnu, stdrYear: "2017", format: "json", numOfRows: 1, pageNo: 1 },
+            data: { 
+                key: "BE552462-0744-32DB-81E7-1B7317390D68", 
+                domain: "sharif9711.github.io", 
+                pnu: pnu, 
+                stdrYear: currentYear, // <--- 동적으로 가져온 현재 연도를 사용합니다
+                format: "json", 
+                numOfRows: 1, 
+                pageNo: 1 
+            },
             success: (data) => {
                 const field = data?.landCharacteristicss?.field[0];
                 if (field) resolve({ lndcgrCodeNm: field.lndcgrCodeNm, lndpclAr: field.lndpclAr });
