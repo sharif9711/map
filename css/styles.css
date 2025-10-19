@@ -18,6 +18,37 @@ body {
     display: block;
 }
 
+/* ✅ OpenLayers 전체화면 버튼 위치 커스터마이징 */
+.ol-full-screen {
+    position: absolute !important;
+    top: 10px !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    right: auto !important;
+    background: white !important;
+    border-radius: 8px !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15) !important;
+    padding: 8px 16px !important;
+}
+
+.ol-full-screen button {
+    background: white !important;
+    color: #334155 !important;
+    font-weight: 500 !important;
+    padding: 4px 8px !important;
+    border-radius: 4px !important;
+    transition: all 0.2s ease !important;
+}
+
+.ol-full-screen button:hover {
+    background: #f8fafc !important;
+}
+
+.ol-full-screen button:focus {
+    outline: 2px solid #3b82f6 !important;
+    outline-offset: 2px !important;
+}
+
 /* 사이드바 상태 */
 .sidebar {
     transition: all 0.3s ease-in-out;
@@ -94,6 +125,13 @@ body {
         top: 73px !important;
         z-index: 40;
         max-height: calc(100vh - 73px) !important;
+    }
+    
+    /* OpenLayers 전체화면 버튼 모바일 */
+    .ol-full-screen {
+        top: 80px !important;
+        padding: 6px 12px !important;
+        font-size: 14px !important;
     }
     
     /* 마커 목록 패널 모바일에서는 중앙 배치 */
