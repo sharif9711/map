@@ -23,18 +23,46 @@ body {
     transition: all 0.3s ease-in-out;
 }
 
-/* 사이드바 접힌 상태 */
+/* 사이드바 접힌 상태 - 아이콘만 표시 */
 .sidebar.collapsed {
-    width: 60px !important;
+    width: 70px !important;
 }
 
 .sidebar.collapsed .sidebar-content {
-    opacity: 0;
-    pointer-events: none;
+    padding: 0.75rem 0.5rem;
 }
 
-.sidebar.collapsed .sidebar-header h3,
-.sidebar.collapsed .sidebar-content span {
+.sidebar.collapsed .sidebar-header h3 {
+    display: none;
+}
+
+.sidebar.collapsed button span:not(.icon-emoji) {
+    display: none;
+}
+
+.sidebar.collapsed button {
+    justify-content: center;
+    padding: 0.75rem !important;
+}
+
+.sidebar.collapsed .control-label,
+.sidebar.collapsed label {
+    display: none;
+}
+
+.sidebar.collapsed .bg-slate-50 {
+    background: transparent !important;
+    padding: 0.5rem !important;
+}
+
+.sidebar.collapsed select {
+    width: 40px;
+    padding: 0.5rem !important;
+    text-indent: -9999px;
+    background-position: center;
+}
+
+.sidebar.collapsed input[type="range"] {
     display: none;
 }
 
@@ -64,6 +92,17 @@ body {
     transform: rotate(180deg);
 }
 
+/* 마커 목록 패널 위치 조정 */
+#markerListPanel {
+    left: 150px; /* 사이드바 옆에 위치 */
+    top: 1rem;
+    transition: left 0.3s ease-in-out;
+}
+
+.sidebar.collapsed ~ #markerListPanel {
+    left: 90px; /* 사이드바가 접혔을 때 */
+}
+
 /* 모바일 최적화 */
 @media (max-width: 768px) {
     /* 사이드바가 헤더 아래에 위치 */
@@ -74,12 +113,18 @@ body {
         max-height: calc(100vh - 73px) !important;
     }
     
-    /* 마커 목록 패널 모바일 최적화 */
+    /* 마커 목록 패널 모바일에서는 중앙 배치 */
     #markerListPanel {
+        left: 50% !important;
+        transform: translateX(-50%) !important;
+        top: 85px !important;
         width: 90vw !important;
         max-width: 350px !important;
-        right: 1rem !important;
-        top: 85px !important;
+    }
+    
+    .sidebar.collapsed ~ #markerListPanel {
+        left: 50% !important;
+        transform: translateX(-50%) !important;
     }
     
     /* 하단 정보 패널 모바일 최적화 */
