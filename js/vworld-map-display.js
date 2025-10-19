@@ -1,43 +1,6 @@
-// excelExport.js 내용을 여기에 통합
-function downloadExcel() {
-    if (!currentProject || !currentProject.data) return;
+// vworld-map-display.js 전체 교체 - 면적 계산 통합 버전
 
-    // 실제 데이터가 입력된 행만 필터링 (이름, 연락처, 주소 중 하나라도 있으면)
-    const filteredData = currentProject.data.filter(row => 
-        row.이름 || row.연락처 || row.주소
-    );
-
-    // id 필드 제거하고 엑셀용 데이터 생성
-    const excelData = filteredData.map(row => {
-        const { id, ...rowWithoutId } = row; // id 제거
-        
-        // 메모 배열을 문자열로 변환
-        if (rowWithoutId.메모 && Array.isArray(rowWithoutId.메모)) {
-            rowWithoutId.메모 = rowWithoutId.메모
-                .map((m, i) => `${i + 1}. ${m.내용} (${m.시간})`)
-                .join('\n');
-        }
-        
-        return rowWithoutId;
-    });
-
-    if (excelData.length === 0) {
-        showToast('⚠️ 다운로드할 데이터가 없습니다.');
-        return;
-    }
-
-    const worksheet = XLSX.utils.json_to_sheet(excelData);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "토지정보");
-
-    const filename = `${currentProject.projectName || 'project'}_report.xlsx`;
-    XLSX.writeFile(workbook, filename);
-
-    showToast(`📄 ${excelData.length}개 행이 다운로드되었습니다.`);
-}
-// VWorld 지도 표시 및 프로젝트 데이터 렌더링 (개선 버전)
-
-// 프로젝트 데이터로 지도에 마커 표시
+// 프로젝트 데이터로 지도에 마커 표시 (면적 계산 통합)
 async function displayProjectOnVWorldMap(projectData) {
     if (!vworldMap) {
         initVWorldMap();
@@ -55,7 +18,7 @@ async function displayProjectOnVWorldMap(projectData) {
     }
 
     clearVWorldMarkers();
-    clearParcelBoundaries(); // 필지도 초기화
+    clearParcelBoundaries();
 
     const addressesWithData = projectData.filter(row => row.주소 && row.주소.trim());
     if (addressesWithData.length === 0) {
@@ -168,7 +131,6 @@ async function displayProjectOnVWorldMap(projectData) {
         renderReportTable();
     }
 
-    // 마커 클릭 이벤트 등록
     if (!window.vworldClickListenerRegistered) {
         setupVWorldMarkerClick();
         window.vworldClickListenerRegistered = true;
@@ -195,16 +157,12 @@ async function displayProjectOnVWorldMap(projectData) {
     const panel = document.getElementById('markerListPanel');
     if (panel && panel.style.display !== 'none') updateMarkerList();
     
-    // ✅ 마커 표시 완료 후 자동으로 필지 외곽선 표시 및 면적 계산
-    if (successCount > 0) {
-        console.log('✅ 마커 표시 완료, 1초 후 필지 외곽선 표시 시작');
+    // ✅ 필지 외곽선 표시 및 면적 계산
+    if (successCount > 0 && typeof showAllParcelBoundariesAuto === 'function') {
+        console.log(`✅ ${successCount}개 마커 표시 완료, 필지 표시 시작`);
         setTimeout(() => {
-            if (typeof showAllParcelBoundariesAuto === 'function') {
-                showAllParcelBoundariesAuto();
-            } else {
-                console.error('❌ showAllParcelBoundariesAuto 함수를 찾을 수 없습니다');
-            }
-        }, 1000);
+            showAllParcelBoundariesAuto();
+        }, 1500);
     }
 }
 
