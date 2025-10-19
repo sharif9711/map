@@ -241,9 +241,9 @@ function getProjectDetailHTML() {
                         </select>
                     </div>
 
-                    <!-- ✅ 지적도 투명도 조절 -->
+                    <!-- ✅ 연속 지적도 투명도 조절 -->
                     <div class="bg-white p-2 rounded-lg shadow-lg border border-slate-200">
-                        <label for="parcelOpacitySlider" class="text-xs font-semibold text-slate-700 block mb-1">지적도 투명도</label>
+                        <label for="parcelOpacitySlider" class="text-xs font-semibold text-slate-700 block mb-1">연속 지적도 투명도</label>
                         <input id="parcelOpacitySlider" type="range" min="0" max="1" step="0.1" value="0.5" class="w-full">
                     </div>
                 </div>
