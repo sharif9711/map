@@ -24,6 +24,7 @@ function createInitialData() {
             부번: '',
             지목: '',
             면적: '',
+            계산면적: '', // ✅ 추가
             기록사항: '',
             메모: []
         });
@@ -36,7 +37,7 @@ function createProjectData(name, mapType) {
     return {
         id: Date.now().toString(),
         projectName: name,
-        mapType: mapType || 'kakao', // 'kakao' 또는 'vworld'
+        mapType: mapType || 'kakao',
         createdAt: new Date(),
         data: createInitialData()
     };
