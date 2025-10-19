@@ -66,23 +66,6 @@ body {
     display: none;
 }
 
-/* 사이드바 완전히 숨김 (모바일) */
-.sidebar.hidden {
-    transform: translateX(-100%);
-}
-
-/* 사이드바 오버레이 */
-.sidebar-overlay {
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.3s ease-in-out;
-}
-
-.sidebar-overlay.active {
-    opacity: 1;
-    pointer-events: auto;
-}
-
 /* 토글 버튼 회전 애니메이션 */
 .collapse-arrow {
     transition: transform 0.3s ease;
@@ -146,14 +129,6 @@ body {
     .sidebar {
         position: absolute !important;
         top: 1rem !important;
-    }
-    
-    .sidebar-overlay {
-        display: none !important;
-    }
-    
-    .mobile-toggle-btn {
-        display: none !important;
     }
 }
 
