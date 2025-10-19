@@ -53,6 +53,10 @@ function initParcelLayer() {
     });
 
     vworldMap.addLayer(parcelLayer);
+    
+    // ✅ 이 한 줄을 추가하여 다른 파일에서도 parcelLayer에 접근할 수 있게 합니다.
+    window.parcelLayer = parcelLayer;
+
     console.log('✅ Parcel layer initialized');
 }
 
