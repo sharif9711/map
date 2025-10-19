@@ -33,12 +33,21 @@ function initApp() {
         createProgressAndToastUI();
     }
 
-    // 3. 초기 화면 렌더링 (프로젝트 목록)
+    // ✅ [수정] 3. 모달창의 내용을 미리 채워 넣습니다.
+    const createModalContainer = document.getElementById('createModal');
+    if (createModalContainer && typeof getCreateModalHTML === 'function') {
+        createModalContainer.innerHTML = getCreateModalHTML();
+        console.log('✅ Create modal content loaded.');
+    } else {
+        console.error('❌ Could not load create modal content.');
+    }
+
+    // 4. 초기 화면 렌더링 (프로젝트 목록)
     if (typeof renderProjects === 'function') {
         renderProjects();
     }
     
-    // 4. URL 해시를 확인하여 특정 프로젝트가 있는지 확인 (선택적 기능)
+    // 5. URL 해시를 확인하여 특정 프로젝트가 있는지 확인 (선택적 기능)
     // 예: index.html#some-project-id
     const hash = window.location.hash.substring(1);
     if (hash) {
