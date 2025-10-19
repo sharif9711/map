@@ -17,3 +17,46 @@ body {
 .screen.active {
     display: block;
 }
+
+/* 모바일 대응 - 슬라이딩 메뉴 */
+@media (max-width: 768px) {
+    .mobile-menu-container {
+        padding: 12px;
+    }
+    
+    .mobile-menu-container > button,
+    .mobile-menu-container > div {
+        font-size: 13px;
+        padding: 10px 12px;
+    }
+    
+    /* 마커 목록 패널도 모바일에서 크기 조정 */
+    #markerListPanel {
+        width: 85vw !important;
+        max-width: 320px !important;
+        left: 10px !important;
+        top: 60px !important;
+    }
+    
+    /* 하단 정보 패널도 모바일 최적화 */
+    #bottomInfoPanel {
+        font-size: 14px;
+    }
+    
+    #bottomInfoPanel h3 {
+        font-size: 18px;
+    }
+}
+
+/* 데스크톱에서는 기존 스타일 유지 */
+@media (min-width: 769px) {
+    .mobile-menu-toggle,
+    .mobile-menu-overlay {
+        display: none !important;
+    }
+    
+    .mobile-menu-container {
+        position: absolute !important;
+        left: 1rem !important;
+    }
+}
