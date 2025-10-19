@@ -7,24 +7,24 @@ function downloadExcel() {
         row.이름 || row.연락처 || row.주소
     );
 
-    if (filteredData.length === 0) {
-        showToast('⚠️ 다운로드할 데이터가 없습니다.');
-        return;
-    }
-
     // id 필드 제거하고 엑셀용 데이터 생성
     const excelData = filteredData.map(row => {
-        const { id, vworld_lon, vworld_lat, ...rowWithoutId } = row; // id와 내부 좌표 제거
+        const { id, ...rowWithoutId } = row; // id 제거
         
         // 메모 배열을 문자열로 변환
         if (rowWithoutId.메모 && Array.isArray(rowWithoutId.메모)) {
             rowWithoutId.메모 = rowWithoutId.메모
-                .map((m, i) => `${i + 1}. ${m.내용 || m.내용} (${m.시간})`)
+                .map((m, i) => `${i + 1}. ${m.내용} (${m.시간})`)
                 .join('\n');
         }
         
         return rowWithoutId;
     });
+
+    if (excelData.length === 0) {
+        showToast('⚠️ 다운로드할 데이터가 없습니다.');
+        return;
+    }
 
     const worksheet = XLSX.utils.json_to_sheet(excelData);
     const workbook = XLSX.utils.book_new();
@@ -93,8 +93,7 @@ async function displayProjectOnVWorldMap(projectData) {
             coord = {
                 lon: row.lng,
                 lat: row.lat,
-                address: row.주소,
-                zipCode: row.우편번호 || ''
+                address: row.주소
             };
         } else {
             coord = await geocodeAddressVWorld(row.주소);
@@ -131,7 +130,7 @@ async function displayProjectOnVWorldMap(projectData) {
             
             const marker = addVWorldMarker(
                 coord, 
-                row.이름 || `#${row.순번}`, 
+                row.이름 || '#' + row.순번, 
                 row.상태, 
                 rowDataWithCoords, 
                 isDuplicate, 
@@ -141,13 +140,13 @@ async function displayProjectOnVWorldMap(projectData) {
             if (marker) {
                 coordinates.push([coord.lon, coord.lat]);
                 markerListData.push({
-                    순번: row.순번, 
-                    이름: row.이름, 
-                    연락처: row.연락처, 
+                    순번: row.순번,
+                    이름: row.이름,
+                    연락처: row.연락처,
                     주소: row.주소,
-                    상태: row.상태, 
-                    lat: parseFloat(coord.lat), 
-                    lng: parseFloat(coord.lon), 
+                    상태: row.상태,
+                    lat: parseFloat(coord.lat),
+                    lng: parseFloat(coord.lon),
                     isDuplicate
                 });
                 
@@ -158,8 +157,6 @@ async function displayProjectOnVWorldMap(projectData) {
         if (loadingStatus) {
             loadingStatus.textContent = `주소 검색 중... (${i + 1}/${addressesWithData.length}) - 성공: ${successCount}개`;
         }
-        
-        await new Promise(res => setTimeout(res, 400));
     }
     
     const projectIndex = projects.findIndex(p => p.id === currentProject.id);
@@ -223,44 +220,27 @@ function showBottomInfoPanelVWorld(rowData, markerIndex) {
         const mIdx = markerInfo.index;
         const memos = data.메모 || [];
         
-        // 좌표 정보를 vworldMarkers에서 직접 가져오기
-        let markerLat = 0;
-        let markerLng = 0;
-        
-        if (vworldMarkers[mIdx] && vworldMarkers[mIdx].feature) {
-            const geometry = vworldMarkers[mIdx].feature.getGeometry();
-            if (geometry) {
-                const coordinate = ol.proj.toLonLat(geometry.getCoordinates());
-                markerLat = coordinate[1];
-                markerLng = coordinate[0];
-            }
-        }
-        
-        // 위에서 못 가져왔으면 data에서 가져오기
-        if (!markerLat || !markerLng) {
-            markerLat = parseFloat(data.lat) || 0;
-            markerLng = parseFloat(data.lng) || 0;
-        }
+        const markerLat = data.lat || 0;
+        const markerLng = data.lng || data.lon || 0;
         
         const memosHtml = memos.length > 0 
-            ? memos.map((m, i) => `<div class="text-xs text-slate-600 mb-1"><span class="font-semibold">${i + 1}.</span> ${m.내용 || m.내용} <span class="text-slate-400">(${m.시간})</span></div>`).join('')
+            ? memos.map((memo, i) => `<div class="text-xs text-slate-600 mb-1"><span class="font-semibold">${i + 1}.</span> ${memo.내용} <span class="text-slate-400">(${memo.시간})</span></div>`).join('')
             : '<div class="text-xs text-slate-400">메모가 없습니다</div>';
         
         return `<div class="bg-white rounded-lg p-6 ${idx > 0 ? 'border-t-2 border-slate-200' : ''}">
             <div class="mb-4 pr-8">
                 <h3 class="text-xl font-bold text-slate-900 mb-2">${data.순번}. ${data.이름 || '이름없음'}</h3>
                 <div class="flex flex-wrap gap-4 text-sm text-slate-600 mb-3">
-                    <a href="tel:${data.연락처 || ''}" class="inline-flex items-center gap-2 px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium hover:bg-green-200 transition-colors ${!data.연락처 ? 'pointer-events-none opacity-50' : ''}">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                    <a href="tel:${data.연락처 || ''}" class="flex items-center gap-2 hover:text-blue-600 ${!data.연락처 ? 'pointer-events-none opacity-50' : ''}">
+                        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
                         <span class="underline">${data.연락처 || '-'}</span>
                     </a>
                     <div class="flex items-center gap-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
                         <span class="text-xs">${data.주소}</span>
                         <button id="naviBtn-vworld-${mIdx}" data-address="${(data.주소 || '').replace(/"/g, '&quot;')}" data-lat="${markerLat}" data-lng="${markerLng}" class="ml-2 p-1.5 bg-yellow-400 hover:bg-yellow-500 rounded-full transition-colors ${!markerLat || !markerLng ? 'opacity-50 cursor-not-allowed' : ''}" title="카카오내비로 안내" ${!markerLat || !markerLng ? 'disabled' : ''}>
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13a9 9 0 0 1 18 0z"/>
-                                <circle cx="12" cy="10" r="3"/>
+                                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
                             </svg>
                         </button>
                     </div>
@@ -281,10 +261,6 @@ function showBottomInfoPanelVWorld(rowData, markerIndex) {
                 </div>
                 <div class="bg-slate-50 rounded-lg p-4 max-h-32 overflow-y-auto">${memosHtml}</div>
             </div>
-            <div class="text-xs text-slate-500 border-t pt-2 mt-2">
-                <p><strong>지목:</strong> ${data.지목 || '-'}</p>
-                <p><strong>면적:</strong> ${data.면적 || '-'}</p>
-            </div>
         </div>`;
     }).join('');
     
@@ -299,7 +275,7 @@ function showBottomInfoPanelVWorld(rowData, markerIndex) {
     panel.style.display = 'block';
     panel.style.animation = 'slideUp 0.3s ease-out';
     
-    // 이벤트 리스너 등록 (HTML 생성 후)
+    // 카카오내비 버튼 이벤트 등록
     sameAddressMarkers.forEach((markerInfo) => {
         const mIdx = markerInfo.index;
         const naviBtn = document.getElementById(`naviBtn-vworld-${mIdx}`);

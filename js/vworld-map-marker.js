@@ -19,7 +19,7 @@ function createVWorldMarkerSVG(순번, status) {
             </linearGradient>
         </defs>
         <ellipse cx="20" cy="48" rx="12" ry="3" fill="rgba(0,0,0,0.2)"/>
-        <path d="M20 0 C9 0 0 9 0 0 20 C0 28 20 48 20 48 C20 48 40 28 40 20 C40 9 31 0 20 0 Z" fill="url(#g${순번})" stroke="${colors.shadow}" stroke-width="1.5"/>
+        <path d="M20 0 C9 0 0 9 0 20 C0 28 20 48 20 48 C20 48 40 28 40 20 C40 9 31 0 20 0 Z" fill="url(#g${순번})" stroke="${colors.shadow}" stroke-width="1.5"/>
         <circle cx="20" cy="18" r="12" fill="white" opacity="0.95"/>
         <text x="20" y="23" font-family="Arial" font-size="12" font-weight="bold" fill="${colors.shadow}" text-anchor="middle">${순번}</text>
     </svg>`;
@@ -151,7 +151,7 @@ function changeVWorldMarkerStatus(markerIndex, newStatus) {
         ? memoEntry 
         : markerData.기록사항 + '\n\n' + memoEntry;
 
-    // ✅ [수정] 같은 주소를 가진 모든 마커의 상태를 변경
+    // 같은 주소를 가진 모든 마커의 상태를 변경
     const targetAddress = markerData.주소;
     vworldMarkers.forEach((item, index) => {
         if (item.rowData.주소 === targetAddress) {
@@ -171,7 +171,7 @@ function changeVWorldMarkerStatus(markerIndex, newStatus) {
             
             item.feature.setStyle(newStyle);
             
-            // 필지 외곽선 색상도도 변경
+            // 필지 외곽선 색상도 변경
             if (typeof updateParcelColor === 'function') {
                 const lon = item.rowData.vworld_lon || item.rowData.lng || item.rowData.lon;
                 const lat = item.rowData.vworld_lat || item.rowData.lat;
