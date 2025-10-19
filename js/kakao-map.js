@@ -154,14 +154,19 @@ async function displayProjectOnKakaoMap(projectData) {
     clearKakaoMarkers();
 
     const addressesWithData = projectData.filter(row => row.주소 && row.주소.trim());
-    if (addressesWithData.length === 0) {
-        if (loadingStatus) {
-            loadingStatus.style.display = 'block';
-            loadingStatus.style.backgroundColor = '#f59e0b';
-            loadingStatus.textContent = '⚠ 표시할 주소가 없습니다.';
-        }
-        return;
-    }
+        if (addressesWithData.length === 0) {
+            if (loadingStatus) {
+                loadingStatus.style.display = 'block';
+                loadingStatus.style.backgroundColor = '#f59e0b';
+                loadingStatus.textContent = '⚠ 표시할 주소가 없습니다.';
+                
+                // 2초 후 자동으로 숨기기
+                setTimeout(() => {
+                    if (loadingStatus) {
+                        loadingStatus.style.display = 'none';
+                    }
+                }, 2000);
+            }
 
     const duplicateCheck = checkDuplicateAddresses(addressesWithData.map(r => r.주소));
     if (loadingStatus) {
