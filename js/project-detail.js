@@ -4,6 +4,20 @@ console.log("✅ js/project-detail.js loaded successfully.");
 // 프로젝트 상세 화면 관련 함수
 
 function showProjectDetail() {
+    // ✅ [수정] 1. 프로젝트 상세 화면의 HTML 템플릿을 가져와 그립니다.
+    const projectDetailScreen = document.getElementById('projectDetailScreen');
+    if (!projectDetailScreen) {
+        console.error('projectDetailScreen element not found!');
+        return;
+    }
+
+    // ✅ [수정] 2. 화면이 비어있을 때만 HTML을 채워넣습니다. (불필요한 재렌더링 방지)
+    if (projectDetailScreen.innerHTML.trim() === '') {
+        projectDetailScreen.innerHTML = getProjectDetailHTML();
+        console.log('✅ Project detail screen content loaded.');
+    }
+
+    // ✅ [수정] 3. HTML이 그려진 후, 화면 전환 및 데이터 설정을 시작합니다.
     document.getElementById('projectListScreen').classList.remove('active');
     document.getElementById('projectDetailScreen').classList.add('active');
     document.getElementById('currentProjectName').textContent = currentProject.projectName;
@@ -241,25 +255,12 @@ function getVWorldPNU(x, y) {
 }
 
 // VWorld: PNU -> 토지 특성
-// project-detail.js
-
 function getVWorldLandCharacteristics(pnu) {
-    // ✅ 현재 연도를 동적으로 가져옵니다.
-    const currentYear = new Date().getFullYear();
-
     return new Promise((resolve) => {
         $.ajax({
             type: "get", dataType: "jsonp", jsonp: "callback",
             url: "https://api.vworld.kr/ned/data/getLandCharacteristics",
-            data: { 
-                key: "BE552462-0744-32DB-81E7-1B7317390D68", 
-                domain: "sharif9711.github.io", 
-                pnu: pnu, 
-                stdrYear: currentYear, // <--- 동적으로 가져온 현재 연도를 사용합니다
-                format: "json", 
-                numOfRows: 1, 
-                pageNo: 1 
-            },
+            data: { key: "BE552462-0744-32DB-81E7-1B7317390D68", domain: "sharif9711.github.io", pnu: pnu, stdrYear: new Date().getFullYear(), format: "json", numOfRows: 1, pageNo: 1 },
             success: (data) => {
                 const field = data?.landCharacteristicss?.field[0];
                 if (field) resolve({ lndcgrCodeNm: field.lndcgrCodeNm, lndpclAr: field.lndpclAr });
