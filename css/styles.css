@@ -18,41 +18,89 @@ body {
     display: block;
 }
 
-/* 모바일 대응 - 슬라이딩 메뉴 */
+/* 반응형 사이드바 스타일 */
+.sidebar {
+    transform: translateX(0);
+    transition: transform 0.3s ease-in-out;
+}
+
+.sidebar.hidden {
+    transform: translateX(-100%);
+}
+
+/* 사이드바 오버레이 */
+.sidebar-overlay {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease-in-out;
+}
+
+.sidebar-overlay.active {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* 모바일 최적화 */
 @media (max-width: 768px) {
-    .mobile-menu-container > button,
-    .mobile-menu-container > div {
-        font-size: 13px;
-        padding: 10px 12px;
+    /* 사이드바가 화면 위에 떠있도록 */
+    .sidebar {
+        position: fixed !important;
+        z-index: 40;
     }
     
-    /* 마커 목록 패널도 모바일에서 크기 조정 */
+    /* 마커 목록 패널 모바일 최적화 */
     #markerListPanel {
-        width: 85vw !important;
-        max-width: 320px !important;
-        left: 10px !important;
-        top: 60px !important;
+        width: 90vw !important;
+        max-width: 350px !important;
+        left: 50% !important;
+        transform: translateX(-50%) !important;
+        top: 70px !important;
     }
     
-    /* 하단 정보 패널도 모바일 최적화 */
+    /* 하단 정보 패널 모바일 최적화 */
     #bottomInfoPanel {
-        font-size: 14px;
+        font-size: 13px;
     }
     
     #bottomInfoPanel h3 {
-        font-size: 18px;
+        font-size: 16px;
+    }
+    
+    #bottomInfoPanel .text-sm {
+        font-size: 12px;
     }
 }
 
-/* 데스크톱에서는 기존 스타일 유지 */
+/* 데스크톱 */
 @media (min-width: 769px) {
-    .menu-triangle-toggle,
-    .mobile-menu-overlay {
+    .sidebar {
+        position: absolute !important;
+    }
+    
+    .sidebar-overlay {
         display: none !important;
     }
     
-    .mobile-menu-container {
-        position: absolute !important;
-        left: 1rem !important;
+    .sidebar-toggle {
+        display: none !important;
+    }
+}
+
+/* 애니메이션 */
+@keyframes slideIn {
+    from {
+        transform: translateX(-100%);
+    }
+    to {
+        transform: translateX(0);
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
     }
 }
