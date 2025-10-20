@@ -259,10 +259,10 @@ async function displayProjectOnKakaoMap(projectData) {
         renderReportTable();
     }
 
-    if (!window.mapClickListenerRegistered) {
-        kakao.maps.event.addListener(kakaoMap, 'click', hideBottomInfoPanel);
-        window.mapClickListenerRegistered = true;
-    }
+    kakao.maps.event.addListener(kakaoMap, 'click', function() {
+    hideBottomInfoPanel();
+});
+
 
     if (coordinates.length > 0) {
         const bounds = new kakao.maps.LatLngBounds();
