@@ -1,17 +1,26 @@
-// excelExport.js 내용을 여기에 통합
-function downloadExcel() {
-    if (!currentProject || !currentProject.data) return;
+// VWorld 지도 표시 및 프로젝트 데이터 렌더링
 
-    // 실제 데이터가 입력된 행만 필터링 (이름, 연락처, 주소 중 하나라도 있으면)
+// 엑셀 다운로드 함수
+function downloadExcel() {
+    if (!currentProject || !currentProject.data) {
+        showToast('⚠️ 프로젝트 데이터가 없습니다.');
+        return;
+    }
+
     const filteredData = currentProject.data.filter(row => 
         row.이름 || row.연락처 || row.주소
     );
 
-    // id 필드 제거하고 엑셀용 데이터 생성
     const excelData = filteredData.map(row => {
-        const { id, ...rowWithoutId } = row; // id 제거
+        const { id, vworld_lon, vworld_lat, ...rowWithoutId } = row;
         
-        // 메모 배열을 문자열로 변환
+        if (rowWithoutId.본번) {
+            rowWithoutId.본번 = String(rowWithoutId.본번).padStart(4, '0');
+        }
+        if (rowWithoutId.부번) {
+            rowWithoutId.부번 = String(rowWithoutId.부번).padStart(4, '0');
+        }
+        
         if (rowWithoutId.메모 && Array.isArray(rowWithoutId.메모)) {
             rowWithoutId.메모 = rowWithoutId.메모
                 .map((m, i) => `${i + 1}. ${m.내용} (${m.시간})`)
@@ -35,7 +44,6 @@ function downloadExcel() {
 
     showToast(`📄 ${excelData.length}개 행이 다운로드되었습니다.`);
 }
-// VWorld 지도 표시 및 프로젝트 데이터 렌더링 (개선 버전)
 
 // 프로젝트 데이터로 지도에 마커 표시
 async function displayProjectOnVWorldMap(projectData) {
@@ -55,7 +63,7 @@ async function displayProjectOnVWorldMap(projectData) {
     }
 
     clearVWorldMarkers();
-    clearParcelBoundaries(); // 필지도 초기화
+    clearParcelBoundaries();
 
     const addressesWithData = projectData.filter(row => row.주소 && row.주소.trim());
     if (addressesWithData.length === 0) {
@@ -64,7 +72,6 @@ async function displayProjectOnVWorldMap(projectData) {
             loadingStatus.style.backgroundColor = '#f59e0b';
             loadingStatus.textContent = '⚠ 표시할 주소가 없습니다.';
             
-            // 2초 후 자동으로 숨기기
             setTimeout(() => {
                 if (loadingStatus) {
                     loadingStatus.style.display = 'none';
@@ -175,7 +182,6 @@ async function displayProjectOnVWorldMap(projectData) {
         renderReportTable();
     }
 
-    // 마커 클릭 이벤트 등록
     if (!window.vworldClickListenerRegistered) {
         setupVWorldMarkerClick();
         window.vworldClickListenerRegistered = true;
@@ -202,14 +208,25 @@ async function displayProjectOnVWorldMap(projectData) {
     const panel = document.getElementById('markerListPanel');
     if (panel && panel.style.display !== 'none') updateMarkerList();
     
-    // ✅ 마커 표시 완료 후 자동으로 필지 외곽선 표시
     if (successCount > 0) {
         setTimeout(() => {
             showAllParcelBoundariesAuto();
         }, 1000);
     }
+    
+    // VWorld 지도 클릭 시 하단 패널 닫기
+    vworldMap.on('click', function(evt) {
+        const feature = vworldMap.forEachFeatureAtPixel(evt.pixel, function(feature) {
+            return feature;
+        });
+        
+        if (!feature || !feature.get('rowData')) {
+            hideBottomInfoPanel();
+        }
+    });
 }
 
+// 하단 정보창 (VWorld용)
 function showBottomInfoPanelVWorld(rowData, markerIndex) {
     const sameAddressMarkers = [];
     vworldMarkers.forEach((item, index) => {
@@ -221,7 +238,6 @@ function showBottomInfoPanelVWorld(rowData, markerIndex) {
     const panel = document.getElementById('bottomInfoPanel');
     if (!panel) return;
     
-    // 기존 클릭 이벤트 제거
     const newPanel = panel.cloneNode(false);
     panel.parentNode.replaceChild(newPanel, panel);
     
@@ -248,7 +264,7 @@ function showBottomInfoPanelVWorld(rowData, markerIndex) {
                     <div class="flex items-center gap-2">
                         <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
                         <span class="text-xs">${data.주소}</span>
-                        <button onclick="openKakaoNavi('${(data.주소 || '').replace(/'/g, "\\'")}', ${markerLat}, ${markerLng})" class="ml-2 p-1.5 bg-yellow-400 hover:bg-yellow-500 rounded-full transition-colors ${!markerLat || !markerLng ? 'opacity-50 cursor-not-allowed' : ''}" title="카카오내비로 안내" ${!markerLat || !markerLng ? 'disabled' : ''}>
+                        <button id="naviBtn-vworld-${mIdx}" data-address="${(data.주소 || '').replace(/"/g, '&quot;')}" data-lat="${markerLat}" data-lng="${markerLng}" class="ml-2 p-1.5 bg-yellow-400 hover:bg-yellow-500 rounded-full transition-colors ${!markerLat || !markerLng ? 'opacity-50 cursor-not-allowed' : ''}" title="카카오내비로 안내" ${!markerLat || !markerLng ? 'disabled' : ''}>
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
                                 <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
                             </svg>
@@ -284,9 +300,7 @@ function showBottomInfoPanelVWorld(rowData, markerIndex) {
     
     newPanel.style.display = 'block';
     newPanel.style.animation = 'slideUp 0.3s ease-out';
-}
     
-    // 카카오내비 버튼 이벤트 등록
     sameAddressMarkers.forEach((markerInfo) => {
         const mIdx = markerInfo.index;
         const naviBtn = document.getElementById(`naviBtn-vworld-${mIdx}`);
