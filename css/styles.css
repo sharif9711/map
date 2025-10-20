@@ -30,6 +30,7 @@ body {
     left: 50% !important;
     transform: translateX(-50%) !important;
     right: auto !important;
+    z-index: 100 !important;
 }
 
 .ol-full-screen button {
@@ -110,15 +111,18 @@ body {
     transform: rotate(180deg);
 }
 
-/* 마커 목록 패널 위치 조정 */
+/* 마커 목록 패널 위치 조정 - 데스크톱과 모바일 공통 */
 #markerListPanel {
-    left: 150px; /* 사이드바 옆에 위치 */
+    position: absolute;
     top: 1rem;
+    left: 150px; /* 사이드바(130px) + 여백(20px) */
+    z-index: 30;
     transition: left 0.3s ease-in-out;
 }
 
+/* 사이드바 접혔을 때 */
 .sidebar.collapsed ~ #markerListPanel {
-    left: 90px; /* 사이드바가 접혔을 때 */
+    left: 90px; /* 접힌 사이드바(70px) + 여백(20px) */
 }
 
 /* 모바일 최적화 */
@@ -131,23 +135,45 @@ body {
         max-height: calc(100vh - 73px) !important;
     }
     
-    /* OpenLayers 전체화면 버튼 모바일에서도 같은 위치 유지 */
+    /* ✅ OpenLayers 전체화면 버튼 모바일 - 더 명확하게 보이도록 */
     .ol-full-screen {
-        top: 0.5em !important;
+        top: 10px !important;
+        z-index: 100 !important;
+        background: white !important;
+        border-radius: 8px !important;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.25) !important;
+        padding: 2px !important;
     }
     
-    /* 마커 목록 패널 모바일에서는 중앙 배치 */
+    .ol-full-screen button {
+        background: white !important;
+        color: #334155 !important;
+        font-size: 1.2em !important;
+        padding: 0.6em !important;
+        width: 2em !important;
+        height: 2em !important;
+        border: 2px solid rgba(0,0,0,0.1) !important;
+    }
+    
+    .ol-full-screen button:hover,
+    .ol-full-screen button:focus {
+        background: #f1f5f9 !important;
+    }
+    
+    /* ✅ 마커 목록 패널 모바일에서도 사이드바 옆에 위치 */
     #markerListPanel {
-        left: 50% !important;
-        transform: translateX(-50%) !important;
-        top: 85px !important;
-        width: 90vw !important;
-        max-width: 350px !important;
+        position: fixed !important;
+        top: 85px !important; /* 헤더(73px) + 여백 */
+        left: 150px !important; /* 사이드바(130px) + 여백(20px) */
+        width: calc(100vw - 170px) !important; /* 화면 너비 - 사이드바 - 여백 */
+        max-width: 300px !important;
+        max-height: calc(100vh - 100px) !important;
     }
     
+    /* 사이드바 접혔을 때 */
     .sidebar.collapsed ~ #markerListPanel {
-        left: 50% !important;
-        transform: translateX(-50%) !important;
+        left: 90px !important; /* 접힌 사이드바(70px) + 여백(20px) */
+        width: calc(100vw - 110px) !important;
     }
     
     /* 하단 정보 패널 모바일 최적화 */
@@ -188,5 +214,16 @@ body {
     }
     to {
         opacity: 1;
+    }
+}
+
+@keyframes slideDown {
+    from {
+        transform: translateY(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateY(100%);
+        opacity: 0;
     }
 }
