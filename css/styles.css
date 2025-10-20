@@ -166,7 +166,7 @@ body {
         top: 85px !important;
         left: 150px !important;
         width: calc(100vw - 170px) !important;
-        max-width: 200px !important;
+        max-width: 130px !important;
         max-height: calc(100vh - 100px) !important;
     }
     
