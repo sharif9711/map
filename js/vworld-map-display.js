@@ -207,7 +207,8 @@ async function displayProjectOnVWorldMap(projectData) {
 
     const panel = document.getElementById('markerListPanel');
     if (panel && panel.style.display !== 'none') updateMarkerList();
-    
+}
+
     if (successCount > 0) {
         setTimeout(() => {
             showAllParcelBoundariesAuto();
