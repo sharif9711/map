@@ -160,56 +160,51 @@ body {
         background: #f1f5f9 !important;
     }
     
-    /* ✅ 마커 목록 패널 모바일 최적화 - 크기와 글자 축소 */
+    /* ✅ 마커 목록 패널 모바일 최적화 - 순번과 이름만 표시 */
     #markerListPanel {
         position: fixed !important;
         top: 85px !important;
         left: 150px !important;
         width: calc(100vw - 170px) !important;
-        max-width: 250px !important;
+        max-width: 200px !important;
         max-height: calc(100vh - 100px) !important;
-        font-size: 11px !important;
+    }
+    
+    /* 마커 목록 헤더 */
+    #markerListPanel .p-4 {
+        padding: 0.75rem !important;
     }
     
     #markerListPanel h3 {
-        font-size: 13px !important;
+        font-size: 12px !important;
+        font-weight: 600 !important;
     }
     
-    #markerListPanel .p-4 {
-        padding: 0.5rem !important;
-    }
-    
-    #markerListPanel .text-sm {
-        font-size: 10px !important;
-    }
-    
+    /* 마커 목록 아이템 - 컴팩트하게 */
     #markerListPanel .text-xs {
-        font-size: 9px !important;
+        font-size: 11px !important;
     }
     
-    #markerListPanel .mb-3 {
-        margin-bottom: 0.5rem !important;
-    }
-    
-    #markerListPanel .gap-2 {
-        gap: 0.25rem !important;
-    }
-    
-    /* 마커 목록 아이콘 크기 축소 */
-    #markerListPanel svg {
-        width: 12px !important;
-        height: 12px !important;
-    }
-    
-    /* 순번 배지 크기 조정 */
-    #markerListPanel .px-4 {
+    /* 순번 배지 작게 */
+    #markerListPanel .px-3 {
         padding-left: 0.5rem !important;
         padding-right: 0.5rem !important;
     }
     
-    #markerListPanel .py-2 {
+    #markerListPanel .py-1\.5 {
         padding-top: 0.25rem !important;
         padding-bottom: 0.25rem !important;
+    }
+    
+    /* 상태 배지 작게 */
+    #markerListPanel .px-2 {
+        padding-left: 0.4rem !important;
+        padding-right: 0.4rem !important;
+    }
+    
+    #markerListPanel .py-0\.5 {
+        padding-top: 0.15rem !important;
+        padding-bottom: 0.15rem !important;
     }
     
     /* 사이드바 접혔을 때 */
