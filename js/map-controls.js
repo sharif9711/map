@@ -95,6 +95,8 @@ function toggleMarkerList() {
     }
 }
 
+// js/map-controls.js 파일에서 updateMarkerList() 함수를 찾아서 아래 코드로 교체하세요
+
 // 마커 목록 업데이트
 function updateMarkerList() {
     const content = document.getElementById('markerListContent');
@@ -111,42 +113,63 @@ function updateMarkerList() {
         return;
     }
 
+    // 모바일 여부 확인
+    const isMobile = window.innerWidth <= 768;
+
     content.innerHTML = markerListData.map((item, index) => {
         let statusColor = 'bg-blue-100 text-blue-700';
         if (item.상태 === '완료') statusColor = 'bg-green-100 text-green-700';
         if (item.상태 === '보류') statusColor = 'bg-amber-100 text-amber-700';
         
-        return `
-            <div onclick="focusOnMarker(${index})" 
-                 class="p-4 border-b border-slate-100 hover:bg-blue-50/50 cursor-pointer transition-all duration-200 hover:scale-[1.02]">
-                <div class="flex items-start gap-3">
-                    <div class="bg-white/60 backdrop-blur-md border-slate-200/50 text-slate-800 px-4 py-2 rounded-full text-xs font-semibold border shadow-lg flex-shrink-0">
-                        ${item.순번}. ${item.이름 || '이름없음'}
+        if (isMobile) {
+            // ✅ 모바일: 순번과 이름만 표시
+            return `
+                <div onclick="focusOnMarker(${index})" 
+                     class="p-3 border-b border-slate-100 hover:bg-blue-50/50 cursor-pointer transition-all duration-200">
+                    <div class="flex items-center justify-between">
+                        <div class="bg-white/60 backdrop-blur-md border-slate-200/50 text-slate-800 px-3 py-1.5 rounded-full text-xs font-semibold border shadow-sm">
+                            ${item.순번}. ${item.이름 || '이름없음'}
+                        </div>
+                        <span class="inline-block px-2 py-0.5 rounded-full text-xs font-medium ${statusColor}">
+                            ${item.상태}
+                        </span>
                     </div>
-                    
-                    <div class="flex-1 min-w-0">
-                        <div class="mb-1">
-                            <span class="inline-block px-2 py-1 rounded-full text-xs font-medium ${statusColor}">
-                                ${item.상태}
-                            </span>
+                </div>
+            `;
+        } else {
+            // ✅ 데스크톱: 전체 정보 표시
+            return `
+                <div onclick="focusOnMarker(${index})" 
+                     class="p-4 border-b border-slate-100 hover:bg-blue-50/50 cursor-pointer transition-all duration-200 hover:scale-[1.02]">
+                    <div class="flex items-start gap-3">
+                        <div class="bg-white/60 backdrop-blur-md border-slate-200/50 text-slate-800 px-4 py-2 rounded-full text-xs font-semibold border shadow-lg flex-shrink-0">
+                            ${item.순번}. ${item.이름 || '이름없음'}
                         </div>
-                        <div class="text-sm text-slate-700 mb-1 flex items-center gap-2">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="flex-shrink-0">
-                                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
-                            </svg>
-                            <span class="truncate">${item.연락처 || '-'}</span>
-                        </div>
-                        <div class="text-xs text-slate-600 flex items-start gap-2">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="flex-shrink-0 mt-0.5">
-                                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                                <circle cx="12" cy="10" r="3"></circle>
-                            </svg>
-                            <span class="break-words">${item.주소}</span>
+                        
+                        <div class="flex-1 min-w-0">
+                            <div class="mb-1">
+                                <span class="inline-block px-2 py-1 rounded-full text-xs font-medium ${statusColor}">
+                                    ${item.상태}
+                                </span>
+                            </div>
+                            <div class="text-sm text-slate-700 mb-1 flex items-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="flex-shrink-0">
+                                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                                </svg>
+                                <span class="truncate">${item.연락처 || '-'}</span>
+                            </div>
+                            <div class="text-xs text-slate-600 flex items-start gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="flex-shrink-0 mt-0.5">
+                                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                                    <circle cx="12" cy="10" r="3"></circle>
+                                </svg>
+                                <span class="break-words">${item.주소}</span>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
-        `;
+            `;
+        }
     }).join('');
 }
 
