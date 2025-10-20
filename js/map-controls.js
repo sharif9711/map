@@ -150,7 +150,9 @@ function updateMarkerList() {
     }).join('');
 }
 
-// 특정 마커로 포커스
+// js/map-controls.js 파일에서 focusOnMarker() 함수를 찾아서 아래 코드로 교체하세요
+
+// 특정 마커로 포커스 (확대 기능 추가)
 function focusOnMarker(index) {
     if (index < 0 || index >= markerListData.length) return;
     
@@ -158,23 +160,80 @@ function focusOnMarker(index) {
     const mapType = currentProject.mapType || 'kakao';
     
     if (mapType === 'kakao') {
+        // 카카오맵 - 최대 확대
         if (item.lat && item.lng && kakaoMap) {
             const position = new kakao.maps.LatLng(item.lat, item.lng);
             kakaoMap.setCenter(position);
-            kakaoMap.setLevel(3);
+            kakaoMap.setLevel(1); // 최대 확대 (레벨 1)
+            
+            // 부드러운 애니메이션 효과
+            setTimeout(() => {
+                kakaoMap.relayout();
+            }, 100);
         }
     } else if (mapType === 'vworld') {
+        // VWorld - 필지 외곽선이 보이도록 확대
         if (item.lat && item.lng && vworldMap) {
             const position = ol.proj.fromLonLat([item.lng, item.lat]);
+            
+            // 먼저 해당 위치로 이동
             vworldMap.getView().animate({
                 center: position,
-                zoom: 17,
+                zoom: 19, // 필지가 잘 보이는 줌 레벨
                 duration: 500
             });
+            
+            // 필지 외곽선이 있다면 그 범위에 맞춰 확대
+            setTimeout(() => {
+                focusOnParcelBoundary(item.lng, item.lat);
+            }, 600);
         }
     }
 }
 
+// VWorld 필지 외곽선에 맞춰 확대하는 함수 (새로 추가)
+function focusOnParcelBoundary(lon, lat) {
+    if (!vworldMap || !parcelLayer) return;
+    
+    const key = `${lon}_${lat}`;
+    
+    // 해당 좌표의 필지 외곽선 찾기
+    if (parcelFeatureMap && parcelFeatureMap[key]) {
+        const features = parcelFeatureMap[key].features;
+        
+        if (features && features.length > 0) {
+            // 모든 필지의 범위를 계산
+            let extent = ol.extent.createEmpty();
+            features.forEach(feature => {
+                const featureExtent = feature.getGeometry().getExtent();
+                extent = ol.extent.extend(extent, featureExtent);
+            });
+            
+            // 필지 범위에 맞춰 확대 (패딩 추가)
+            vworldMap.getView().fit(extent, {
+                padding: [50, 50, 50, 50],
+                duration: 500,
+                maxZoom: 20
+            });
+        } else {
+            // 필지 외곽선이 없으면 기본 확대
+            const position = ol.proj.fromLonLat([lon, lat]);
+            vworldMap.getView().animate({
+                center: position,
+                zoom: 19,
+                duration: 500
+            });
+        }
+    } else {
+        // 필지 정보가 없으면 기본 확대
+        const position = ol.proj.fromLonLat([lon, lat]);
+        vworldMap.getView().animate({
+            center: position,
+            zoom: 19,
+            duration: 500
+        });
+    }
+}
 // 내 위치 표시 토글
 var gpsWatchId = null;
 
