@@ -210,7 +210,6 @@ async function displayProjectOnVWorldMap(projectData) {
     }
 }
 
-// 하단 정보창 (VWorld용 - 카카오맵과 동일한 형식)
 function showBottomInfoPanelVWorld(rowData, markerIndex) {
     const sameAddressMarkers = [];
     vworldMarkers.forEach((item, index) => {
@@ -221,6 +220,10 @@ function showBottomInfoPanelVWorld(rowData, markerIndex) {
     
     const panel = document.getElementById('bottomInfoPanel');
     if (!panel) return;
+    
+    // 기존 클릭 이벤트 제거
+    const newPanel = panel.cloneNode(false);
+    panel.parentNode.replaceChild(newPanel, panel);
     
     const markersHtml = sameAddressMarkers.map((markerInfo, idx) => {
         const data = markerInfo.data;
@@ -245,7 +248,7 @@ function showBottomInfoPanelVWorld(rowData, markerIndex) {
                     <div class="flex items-center gap-2">
                         <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
                         <span class="text-xs">${data.주소}</span>
-                        <button id="naviBtn-vworld-${mIdx}" data-address="${(data.주소 || '').replace(/"/g, '&quot;')}" data-lat="${markerLat}" data-lng="${markerLng}" class="ml-2 p-1.5 bg-yellow-400 hover:bg-yellow-500 rounded-full transition-colors ${!markerLat || !markerLng ? 'opacity-50 cursor-not-allowed' : ''}" title="카카오내비로 안내" ${!markerLat || !markerLng ? 'disabled' : ''}>
+                        <button onclick="openKakaoNavi('${(data.주소 || '').replace(/'/g, "\\'")}', ${markerLat}, ${markerLng})" class="ml-2 p-1.5 bg-yellow-400 hover:bg-yellow-500 rounded-full transition-colors ${!markerLat || !markerLng ? 'opacity-50 cursor-not-allowed' : ''}" title="카카오내비로 안내" ${!markerLat || !markerLng ? 'disabled' : ''}>
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
                                 <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
                             </svg>
@@ -271,7 +274,7 @@ function showBottomInfoPanelVWorld(rowData, markerIndex) {
         </div>`;
     }).join('');
     
-    panel.innerHTML = `<div class="bg-white rounded-t-2xl shadow-2xl max-w-4xl mx-auto relative">
+    newPanel.innerHTML = `<div class="bg-white rounded-t-2xl shadow-2xl max-w-4xl mx-auto relative">
         <button onclick="hideBottomInfoPanel()" class="absolute top-4 right-4 p-2 hover:bg-slate-100 rounded-lg z-10">
             <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
@@ -279,8 +282,9 @@ function showBottomInfoPanelVWorld(rowData, markerIndex) {
         <div class="max-h-[70vh] overflow-y-auto">${markersHtml}</div>
     </div>`;
     
-    panel.style.display = 'block';
-    panel.style.animation = 'slideUp 0.3s ease-out';
+    newPanel.style.display = 'block';
+    newPanel.style.animation = 'slideUp 0.3s ease-out';
+}
     
     // 카카오내비 버튼 이벤트 등록
     sameAddressMarkers.forEach((markerInfo) => {
