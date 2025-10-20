@@ -130,7 +130,6 @@ function clearVWorldMarkers() {
     vworldMarkers = [];
 }
 
-// 상태 변경 (위치 고정 유지)
 function changeVWorldMarkerStatus(markerIndex, newStatus) {
     if (!currentProject || !vworldMarkers[markerIndex]) return;
     
@@ -138,14 +137,14 @@ function changeVWorldMarkerStatus(markerIndex, newStatus) {
     const markerData = markerItem.rowData;
     const oldStatus = markerData.상태;
 
-    // ✅ 상태 변경 메모 추가
+    // 상태 변경 메모 추가
     const now = new Date();
     const timeStr = `${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, '0')}.${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
     const memoText = `상태변경: ${oldStatus}->${newStatus} (${timeStr})`;
     if (!markerData.메모) markerData.메모 = [];
     markerData.메모.push({ 내용: memoText, 시간: timeStr });
     
-    // ✅ 기록사항 업데이트
+    // 기록사항 업데이트
     const memoEntry = `${markerData.메모.length}. ${memoText}`;
     markerData.기록사항 = (!markerData.기록사항 || markerData.기록사항.trim() === '' || markerData.기록사항 === '-') 
         ? memoEntry 
@@ -180,6 +179,13 @@ function changeVWorldMarkerStatus(markerIndex, newStatus) {
         }
     });
 
+    // ✅ markerListData도 업데이트
+    markerListData.forEach(item => {
+        if (item.주소 === targetAddress) {
+            item.상태 = newStatus;
+        }
+    });
+
     // 원본 데이터 업데이트
     const row = currentProject.data.find(r => r.id === markerData.id);
     if (row) {
@@ -191,6 +197,11 @@ function changeVWorldMarkerStatus(markerIndex, newStatus) {
     
     const projectIndex = projects.findIndex(p => p.id === currentProject.id);
     if (projectIndex !== -1) projects[projectIndex] = currentProject;
+    
+    // ✅ 마커 목록 업데이트
+    if (document.getElementById('markerListPanel').style.display !== 'none') {
+        updateMarkerList();
+    }
     
     showBottomInfoPanelVWorld(markerData, markerIndex);
 }
