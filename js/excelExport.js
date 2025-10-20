@@ -1,3 +1,5 @@
+// js/excelExport.js 파일 전체를 이렇게 수정하세요:
+
 // 엑셀 다운로드 기능 (개선 버전)
 
 function downloadExcel() {
@@ -19,6 +21,14 @@ function downloadExcel() {
     // id 필드 제거하고 엑셀용 데이터 생성
     const excelData = filteredData.map(row => {
         const { id, vworld_lon, vworld_lat, ...rowWithoutId } = row; // id와 내부 좌표 제거
+        
+        // ✅ 본번과 부번을 4자리 문자열로 포맷팅
+        if (rowWithoutId.본번) {
+            rowWithoutId.본번 = String(rowWithoutId.본번).padStart(4, '0');
+        }
+        if (rowWithoutId.부번) {
+            rowWithoutId.부번 = String(rowWithoutId.부번).padStart(4, '0');
+        }
         
         // 메모 배열을 문자열로 변환
         if (rowWithoutId.메모 && Array.isArray(rowWithoutId.메모)) {
