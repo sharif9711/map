@@ -494,14 +494,14 @@ function changeMarkerStatus(markerIndex, newStatus) {
     const markerData = kakaoMarkers[markerIndex].rowData;
     const oldStatus = markerData.상태;
 
-    // ✅ 상태 변경 메모 추가
+    // 상태 변경 메모 추가
     const now = new Date();
     const timeStr = `${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, '0')}.${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
     const memoText = `상태변경: ${oldStatus}->${newStatus} (${timeStr})`;
     if (!markerData.메모) markerData.메모 = [];
     markerData.메모.push({ 내용: memoText, 시간: timeStr });
     
-    // ✅ 기록사항 업데이트
+    // 기록사항 업데이트
     const memoEntry = `${markerData.메모.length}. ${memoText}`;
     markerData.기록사항 = (!markerData.기록사항 || markerData.기록사항.trim() === '' || markerData.기록사항 === '-') 
         ? memoEntry 
@@ -523,6 +523,13 @@ function changeMarkerStatus(markerIndex, newStatus) {
         }
     });
 
+    // ✅ markerListData도 업데이트
+    markerListData.forEach(item => {
+        if (item.주소 === targetAddress) {
+            item.상태 = newStatus;
+        }
+    });
+
     // 원본 데이터 업데이트
     const row = currentProject.data.find(r => r.id === markerData.id);
     if (row) {
@@ -538,6 +545,11 @@ function changeMarkerStatus(markerIndex, newStatus) {
     currentDisplayedMarkers.forEach(item => {
         if (item.index === markerIndex) item.data.상태 = newStatus;
     });
+    
+    // ✅ 마커 목록 업데이트
+    if (document.getElementById('markerListPanel').style.display !== 'none') {
+        updateMarkerList();
+    }
     
     showBottomInfoPanel(markerData, markerIndex);
 }
