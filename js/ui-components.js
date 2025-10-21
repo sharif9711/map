@@ -4,17 +4,22 @@ function getProjectListHTML() {
     return `
         <header class="border-b border-slate-300/50 bg-white/50 backdrop-blur-sm sticky top-0 z-10">
             <div class="container mx-auto px-4 py-6">
-                <div class="flex items-center gap-3">
-                    <div class="p-2 rounded-lg bg-gradient-to-br from-blue-600 to-purple-600">
+                <div class="flex items-center justify-between">
+                    <!-- 왼쪽: 홈 아이콘 -->
+                    <a href="https://okjido.com" class="p-2 rounded-lg bg-gradient-to-br from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 transition-all shadow-md hover:shadow-lg" title="홈으로">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"></polygon>
-                            <line x1="9" y1="3" x2="9" y2="18"></line>
-                            <line x1="15" y1="6" x2="15" y2="21"></line>
+                            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                            <polyline points="9 22 9 12 15 12 15 22"></polyline>
                         </svg>
-                    </div>
-                    <h1 class="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                    </a>
+                    
+                    <!-- 가운데: 타이틀 -->
+                    <h1 class="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent absolute left-1/2 transform -translate-x-1/2">
                         지도 프로젝트 관리
                     </h1>
+                    
+                    <!-- 오른쪽: 빈 공간 (균형 유지) -->
+                    <div class="w-10"></div>
                 </div>
             </div>
         </header>
